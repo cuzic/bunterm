@@ -23,7 +23,7 @@ describe('server feature tests', () => {
     proxy_mode: 'proxy',
     caddy_admin_api: 'http://localhost:2019',
     tmux_mode: 'auto',
-    toolbar: {
+    terminal_ui: {
       font_size_default_mobile: 32,
       font_size_default_pc: 14,
       font_size_min: 10,

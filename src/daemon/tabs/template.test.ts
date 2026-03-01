@@ -11,7 +11,7 @@ describe('generateTabsHtml', () => {
     listen_sockets: [],
     proxy_mode: 'proxy',
     caddy_admin_api: 'http://localhost:2019',
-    toolbar: { enabled: true, keyboard_help: true },
+    terminal_ui: { enabled: true, keyboard_help: true },
     notifications: { enabled: false },
     tabs: {
       enabled: true,
