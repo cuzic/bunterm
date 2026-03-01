@@ -5,12 +5,17 @@
  * Uses dependency injection for testability.
  */
 
-import { normalize } from 'node:path';
+import { join, normalize } from 'node:path';
+import { DEFAULT_PREVIEW_CONFIG } from '@/config/types.js';
 import { createLogger } from '@/utils/logger.js';
 import { type FileWatcherDeps, type WatchHandle, defaultFileWatcherDeps } from './deps.js';
+import { GitignoreMatcher } from './gitignore.js';
 import type { FileChangeEvent, PreviewOptions } from './types.js';
 
 const log = createLogger('preview-watcher');
+
+/** Maximum number of files to watch in a directory */
+const MAX_WATCHED_FILES = 500;
 
 /** Watched file info */
 interface WatchedFile<TClient> {
@@ -20,10 +25,20 @@ interface WatchedFile<TClient> {
   clients: Set<TClient>;
 }
 
-/** Default options */
+/** Watched directory info */
+interface WatchedDir<TClient> {
+  sessionDir: string;
+  relativePath: string;
+  fullPath: string;
+  sessionName: string;
+  clients: Set<TClient>;
+  watchedPaths: Set<string>;
+}
+
+/** Default options (uses config defaults for consistency) */
 const DEFAULT_OPTIONS: PreviewOptions = {
-  debounceMs: 300,
-  allowedExtensions: ['.html', '.htm']
+  debounceMs: DEFAULT_PREVIEW_CONFIG.debounce_ms,
+  allowedExtensions: DEFAULT_PREVIEW_CONFIG.allowed_extensions
 };
 
 /**
@@ -38,6 +53,10 @@ export class FileWatcherService<TClient = unknown> {
   private watchers = new Map<string, WatchHandle>();
   private watchedFiles = new Map<string, WatchedFile<TClient>>();
   private changeListeners: Array<(event: FileChangeEvent) => void> = [];
+
+  // Directory watching state
+  private dirWatchers = new Map<string, WatchHandle[]>();
+  private watchedDirs = new Map<string, WatchedDir<TClient>>();
 
   constructor(
     deps: FileWatcherDeps = defaultFileWatcherDeps,
@@ -162,6 +181,7 @@ export class FileWatcherService<TClient = unknown> {
    * Remove all watches for a client
    */
   unwatchAllForClient(client: TClient): void {
+    // Remove client from file watches
     for (const [key, watchedFile] of this.watchedFiles.entries()) {
       if (watchedFile.clients.has(client)) {
         watchedFile.clients.delete(client);
@@ -178,6 +198,216 @@ export class FileWatcherService<TClient = unknown> {
         }
       }
     }
+
+    // Remove client from directory watches
+    for (const watchedDir of this.watchedDirs.values()) {
+      if (watchedDir.clients.has(client)) {
+        this.unwatchDirectory(watchedDir.sessionDir, watchedDir.relativePath, client);
+      }
+    }
+  }
+
+  // ===========================================================================
+  // Directory Watching
+  // ===========================================================================
+
+  /**
+   * Watch a directory recursively for file changes
+   *
+   * - Respects .gitignore patterns
+   * - Limits to MAX_WATCHED_FILES files
+   * - Ignores node_modules, .git, etc.
+   *
+   * @param sessionDir Session working directory
+   * @param relativePath Relative path to directory within session
+   * @param sessionName Session name for events
+   * @param client Client to register
+   * @returns true if watching started, false on error
+   */
+  watchDirectory(
+    sessionDir: string,
+    relativePath: string,
+    sessionName: string,
+    client: TClient
+  ): boolean {
+    const fullPath = this.deps.pathResolver.resolveFilePath(sessionDir, relativePath);
+    if (!fullPath || !this.deps.fs.existsSync(fullPath)) {
+      log.warn(`Directory not found: ${relativePath}`);
+      return false;
+    }
+
+    // Check if it's actually a directory
+    try {
+      const stat = this.deps.fs.statSync(fullPath);
+      if (!stat.isDirectory()) {
+        log.warn(`Not a directory: ${relativePath}`);
+        return false;
+      }
+    } catch {
+      log.warn(`Cannot stat: ${relativePath}`);
+      return false;
+    }
+
+    const key = this.getDirKey(sessionDir, relativePath);
+
+    // Already watching?
+    const existingDir = this.watchedDirs.get(key);
+    if (existingDir) {
+      existingDir.clients.add(client);
+      log.debug(`Added client to existing directory watch: ${key}`);
+      return true;
+    }
+
+    // Create gitignore matcher (looks for .gitignore in session root)
+    const gitignore = new GitignoreMatcher(sessionDir, this.deps.fs);
+
+    // Collect files to watch (limited)
+    const filesToWatch = this.collectFilesToWatch(fullPath, relativePath, gitignore);
+    if (filesToWatch.length === 0) {
+      log.warn(`No watchable files in: ${relativePath}`);
+      return false;
+    }
+
+    log.info(`Watching ${filesToWatch.length} files in: ${sessionName}/${relativePath || '.'}`);
+
+    // Create individual watchers for each file
+    const watchers: WatchHandle[] = [];
+    const watchedPaths = new Set<string>();
+
+    for (const file of filesToWatch) {
+      try {
+        const watcher = this.deps.fs.watch(file.fullPath, (eventType) => {
+          if (eventType === 'change') {
+            this.emitChange(sessionName, file.relativePath);
+          }
+        });
+        watcher.on('error', () => {
+          // Ignore individual watcher errors
+        });
+        watchers.push(watcher);
+        watchedPaths.add(file.relativePath);
+      } catch {
+        // Skip files that can't be watched
+      }
+    }
+
+    this.dirWatchers.set(key, watchers);
+    this.watchedDirs.set(key, {
+      sessionDir,
+      relativePath,
+      fullPath,
+      sessionName,
+      clients: new Set([client]),
+      watchedPaths
+    });
+
+    return true;
+  }
+
+  /**
+   * Stop watching a directory for a client
+   */
+  unwatchDirectory(sessionDir: string, relativePath: string, client: TClient): void {
+    const key = this.getDirKey(sessionDir, relativePath);
+    const watchedDir = this.watchedDirs.get(key);
+    if (!watchedDir) {
+      return;
+    }
+
+    watchedDir.clients.delete(client);
+
+    // If no more clients, stop watching
+    if (watchedDir.clients.size === 0) {
+      const watchers = this.dirWatchers.get(key) || [];
+      for (const w of watchers) {
+        w.close();
+      }
+      this.dirWatchers.delete(key);
+      this.watchedDirs.delete(key);
+      log.info(`Stopped watching directory: ${key}`);
+    }
+  }
+
+  /**
+   * Collect files to watch in a directory (recursive)
+   */
+  private collectFilesToWatch(
+    dirPath: string,
+    relativeBase: string,
+    gitignore: GitignoreMatcher
+  ): Array<{ fullPath: string; relativePath: string }> {
+    const files: Array<{ fullPath: string; relativePath: string }> = [];
+    this.walkDirectory(dirPath, relativeBase, gitignore, files);
+    return files;
+  }
+
+  /**
+   * Recursively walk a directory and collect files
+   */
+  private walkDirectory(
+    dir: string,
+    relDir: string,
+    gitignore: GitignoreMatcher,
+    files: Array<{ fullPath: string; relativePath: string }>
+  ): void {
+    if (files.length >= MAX_WATCHED_FILES) {
+      return;
+    }
+
+    const entries = this.readDirectoryEntries(dir);
+    for (const entry of entries) {
+      if (files.length >= MAX_WATCHED_FILES) {
+        break;
+      }
+      this.processDirectoryEntry(dir, relDir, entry, gitignore, files);
+    }
+  }
+
+  /**
+   * Read directory entries safely
+   */
+  private readDirectoryEntries(dir: string): string[] {
+    try {
+      return this.deps.fs.readdirSync(dir);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Process a single directory entry
+   */
+  private processDirectoryEntry(
+    dir: string,
+    relDir: string,
+    entry: string,
+    gitignore: GitignoreMatcher,
+    files: Array<{ fullPath: string; relativePath: string }>
+  ): void {
+    const fullPath = join(dir, entry);
+    const relativePath = relDir ? `${relDir}/${entry}` : entry;
+
+    if (gitignore.isIgnored(relativePath)) {
+      return;
+    }
+
+    try {
+      const stat = this.deps.fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        this.walkDirectory(fullPath, relativePath, gitignore, files);
+      } else if (stat.isFile()) {
+        files.push({ fullPath, relativePath });
+      }
+    } catch {
+      // Skip files that can't be stat'd
+    }
+  }
+
+  /**
+   * Generate a unique key for a watched directory
+   */
+  private getDirKey(sessionDir: string, relativePath: string): string {
+    return `dir:${normalize(sessionDir)}:${normalize(relativePath || '.')}`;
   }
 
   /**
@@ -217,12 +447,21 @@ export class FileWatcherService<TClient = unknown> {
     }
     this.debounceTimers.clear();
 
-    // Close all watchers
+    // Close all file watchers
     for (const watcher of this.watchers.values()) {
       watcher.close();
     }
     this.watchers.clear();
     this.watchedFiles.clear();
+
+    // Close all directory watchers
+    for (const watchers of this.dirWatchers.values()) {
+      for (const watcher of watchers) {
+        watcher.close();
+      }
+    }
+    this.dirWatchers.clear();
+    this.watchedDirs.clear();
 
     log.info('All watchers cleaned up');
   }
@@ -315,6 +554,21 @@ export function unwatchFile(sessionDir: string, relativePath: string, client: un
 /** Remove all watches for a client (backward compatible) */
 export function unwatchAllForClient(client: unknown): void {
   getDefaultService().unwatchAllForClient(client);
+}
+
+/** Watch a directory for changes (backward compatible) */
+export function watchDirectory(
+  sessionDir: string,
+  relativePath: string,
+  sessionName: string,
+  client: unknown
+): boolean {
+  return getDefaultService().watchDirectory(sessionDir, relativePath, sessionName, client);
+}
+
+/** Stop watching a directory (backward compatible) */
+export function unwatchDirectory(sessionDir: string, relativePath: string, client: unknown): void {
+  getDefaultService().unwatchDirectory(sessionDir, relativePath, client);
 }
 
 /** Register a file change listener (backward compatible) */

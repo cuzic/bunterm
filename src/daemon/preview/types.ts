@@ -17,7 +17,9 @@ export interface FileChangeEvent {
 /** Client → Server messages */
 export type PreviewClientMessage =
   | { action: 'watch'; session: string; path: string }
-  | { action: 'unwatch'; session: string; path: string };
+  | { action: 'unwatch'; session: string; path: string }
+  | { action: 'watchDir'; session: string; path: string }
+  | { action: 'unwatchDir'; session: string; path: string };
 
 /** Server → Client messages */
 export type PreviewServerMessage = FileChangeEvent;
@@ -28,6 +30,16 @@ export interface WatchedFile {
   relativePath: string;
   fullPath: string;
   clients: Set<WebSocket>;
+}
+
+/** Watched directory info */
+export interface WatchedDir {
+  sessionDir: string;
+  relativePath: string;
+  fullPath: string;
+  sessionName: string;
+  clients: Set<WebSocket>;
+  watchedPaths: Set<string>;
 }
 
 /** Preview configuration (subset from types.ts) */

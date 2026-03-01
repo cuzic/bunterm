@@ -137,6 +137,26 @@ export class PreviewWsHandler {
           break;
         }
 
+        case 'watchDir': {
+          this.clientSessions.set(ws, message.session);
+          const success = this.deps.fileWatcher.watchDirectory(
+            session.dir,
+            message.path,
+            message.session,
+            ws
+          );
+          if (success) {
+            log.debug(`Client watching directory: ${message.session}/${message.path}`);
+          }
+          break;
+        }
+
+        case 'unwatchDir': {
+          this.deps.fileWatcher.unwatchDirectory(session.dir, message.path, ws);
+          log.debug(`Client unwatched directory: ${message.session}/${message.path}`);
+          break;
+        }
+
         default:
           log.warn(`Unknown action: ${(message as { action: string }).action}`);
       }

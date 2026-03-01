@@ -45,9 +45,14 @@ export {
   onFileChange,
   resetDefaultService,
   unwatchAllForClient,
+  unwatchDirectory,
   unwatchFile,
+  watchDirectory,
   watchFile
 } from './watcher.js';
+
+// Gitignore matcher
+export { GitignoreMatcher } from './gitignore.js';
 
 // PreviewWsHandler
 export type {

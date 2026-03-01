@@ -4,7 +4,7 @@
  * Dependency injection interfaces for testability.
  */
 
-import { existsSync, watch } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, watch } from 'node:fs';
 import type { SessionState } from '@/config/types.js';
 import { resolveFilePath } from '../file-transfer.js';
 
@@ -18,12 +18,24 @@ export interface WatchHandle {
   on(event: 'error', listener: (err: Error) => void): void;
 }
 
+/** File stat result */
+export interface FileStat {
+  isDirectory(): boolean;
+  isFile(): boolean;
+}
+
 /** File system operations for file watching */
 export interface FileSystemDeps {
   /** Check if file exists */
   existsSync(path: string): boolean;
   /** Watch a file for changes */
   watch(path: string, callback: (eventType: string) => void): WatchHandle;
+  /** Read file contents as UTF-8 string */
+  readFileSync(path: string): string;
+  /** Read directory entries */
+  readdirSync(path: string): string[];
+  /** Get file/directory stats */
+  statSync(path: string): FileStat;
 }
 
 /** Default file system implementation */
@@ -37,7 +49,10 @@ export const defaultFileSystemDeps: FileSystemDeps = {
         watcher.on(event, listener);
       }
     };
-  }
+  },
+  readFileSync: (path) => readFileSync(path, 'utf-8'),
+  readdirSync,
+  statSync
 };
 
 /** Create mock file system for testing */
@@ -51,6 +66,12 @@ export function createMockFileSystem(overrides: Partial<FileSystemDeps> = {}): F
       on: () => {
         // Mock on - no-op
       }
+    }),
+    readFileSync: () => '',
+    readdirSync: () => [],
+    statSync: () => ({
+      isDirectory: () => false,
+      isFile: () => true
     }),
     ...overrides
   };
