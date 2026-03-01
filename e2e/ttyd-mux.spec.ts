@@ -1393,3 +1393,218 @@ test.describe('Directory Browser Disabled', () => {
     expect(response.status()).toBe(403);
   });
 });
+
+test.describe('Native Terminal Mode', () => {
+  let daemonProcess: ChildProcess | null = null;
+  let daemonPort: number;
+  const sessionName = 'e2e-native-terminal';
+
+  // Create config with native terminal backend
+  function createNativeTerminalConfig(port: number): string {
+    const configPath = join(TEST_DIR, 'native-terminal-config.yaml');
+    const configContent = `
+daemon_port: ${port}
+base_path: ${BASE_PATH}
+base_port: 17600
+session_backend: native
+tmux_mode: none
+native_terminal:
+  scrollback: 10000
+  output_buffer_size: 1000
+`;
+    writeFileSync(configPath, configContent);
+    return configPath;
+  }
+
+  test.beforeAll(async () => {
+    if (existsSync(TEST_STATE_DIR)) {
+      rmSync(TEST_STATE_DIR, { recursive: true });
+    }
+    mkdirSync(TEST_STATE_DIR, { recursive: true });
+
+    if (!existsSync(TEST_DIR)) {
+      mkdirSync(TEST_DIR, { recursive: true });
+    }
+
+    daemonPort = await findAvailablePort();
+    const configPath = createNativeTerminalConfig(daemonPort);
+
+    daemonProcess = spawn('bun', ['run', 'src/index.ts', 'start', '-f', '-c', configPath], {
+      cwd: process.cwd(),
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: false,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Daemon failed to start')), 15000);
+      daemonProcess!.stdout?.on('data', (data) => {
+        const output = data.toString();
+        // Match daemon startup message patterns
+        if (output.includes('daemon started') || output.includes('Native terminal server started')) {
+          clearTimeout(timeout);
+          setTimeout(resolve, 1000);
+        }
+      });
+      daemonProcess!.stderr?.on('data', (data) => {
+        console.error('[daemon stderr]', data.toString());
+      });
+    });
+  });
+
+  test.afterAll(async () => {
+    // Clean up session
+    const deleteResponse = await fetch(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions/${sessionName}`, {
+      method: 'DELETE',
+    });
+    if (!deleteResponse.ok && deleteResponse.status !== 404) {
+      console.error(`Failed to cleanup session: ${deleteResponse.status}`);
+    }
+
+    if (daemonProcess) {
+      daemonProcess.kill('SIGTERM');
+      daemonProcess = null;
+    }
+  });
+
+  test('can create native terminal session via API', async ({ request }) => {
+    const response = await request.post(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions`, {
+      data: {
+        name: sessionName,
+        dir: TEST_DIR,
+      },
+    });
+
+    expect(response.ok()).toBeTruthy();
+
+    const session = await response.json();
+    expect(session.name).toBe(sessionName);
+    expect(session.dir).toBe(TEST_DIR);
+  });
+
+  test('native terminal loads without JavaScript errors', async ({ page }) => {
+    // Track JavaScript errors
+    const jsErrors: string[] = [];
+    page.on('pageerror', (error) => {
+      jsErrors.push(error.message);
+    });
+
+    // Create session if not exists
+    await fetch(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: sessionName, dir: TEST_DIR }),
+    });
+
+    // Wait for session to be ready
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Navigate to the native terminal session
+    await page.goto(`http://127.0.0.1:${daemonPort}${BASE_PATH}/${sessionName}/`);
+
+    // Wait for terminal to load
+    await page.waitForSelector('#terminal', { timeout: 10000 });
+
+    // Wait a bit for all scripts to initialize
+    await page.waitForTimeout(2000);
+
+    // Check for the specific error we fixed (base_path undefined)
+    const basePathError = jsErrors.find(e => e.includes("Cannot read properties of undefined (reading 'replace')"));
+    expect(basePathError).toBeUndefined();
+
+    // Verify terminal UI config has base_path set correctly
+    const configCheck = await page.evaluate(() => {
+      const config = (window as Window & { __TERMINAL_UI_CONFIG__?: { base_path?: string } }).__TERMINAL_UI_CONFIG__;
+      return {
+        hasConfig: !!config,
+        hasBasePath: !!config?.base_path,
+        basePath: config?.base_path,
+      };
+    });
+
+    expect(configCheck.hasConfig).toBe(true);
+    expect(configCheck.hasBasePath).toBe(true);
+    expect(configCheck.basePath).toBe(BASE_PATH);
+  });
+
+  test('native terminal xterm initializes correctly', async ({ page }) => {
+    // Create session if not exists
+    await fetch(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: sessionName, dir: TEST_DIR }),
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await page.goto(`http://127.0.0.1:${daemonPort}${BASE_PATH}/${sessionName}/`);
+
+    // Wait for xterm to initialize
+    await page.waitForSelector('.xterm', { timeout: 15000 });
+    await page.waitForSelector('.xterm-helper-textarea', { timeout: 15000 });
+
+    // Verify xterm is visible
+    await expect(page.locator('.xterm')).toBeVisible();
+    await expect(page.locator('.xterm-helper-textarea')).toBeAttached();
+  });
+
+  test('native terminal WebSocket connects successfully', async ({ page }) => {
+    // Create session if not exists
+    await fetch(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: sessionName, dir: TEST_DIR }),
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await page.goto(`http://127.0.0.1:${daemonPort}${BASE_PATH}/${sessionName}/`);
+
+    // Wait for terminal to load
+    await page.waitForSelector('.xterm', { timeout: 15000 });
+    await page.waitForTimeout(2000);
+
+    // Check WebSocket connection status
+    const isConnected = await page.evaluate(() => {
+      const client = (window as Window & { __TERMINAL_CLIENT__?: { isConnected: boolean } }).__TERMINAL_CLIENT__;
+      return client?.isConnected ?? false;
+    });
+
+    expect(isConnected).toBe(true);
+
+    // Loading indicator should be hidden
+    const loadingHidden = await page.evaluate(() => {
+      const loading = document.getElementById('loading');
+      return loading?.classList.contains('hidden') ?? false;
+    });
+
+    expect(loadingHidden).toBe(true);
+  });
+
+  test('can type in native terminal', async ({ page }) => {
+    const outputFile = `${TEST_DIR}/native-terminal-test.txt`;
+
+    // Create session if not exists
+    await fetch(`http://127.0.0.1:${daemonPort}${BASE_PATH}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: sessionName, dir: TEST_DIR }),
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await page.goto(`http://127.0.0.1:${daemonPort}${BASE_PATH}/${sessionName}/`);
+
+    // Wait for terminal
+    await page.waitForSelector('.xterm-helper-textarea', { timeout: 15000 });
+    await page.waitForTimeout(2000);
+
+    // Type a command
+    await page.locator('.xterm-helper-textarea').focus();
+    await page.keyboard.type(`echo "native terminal works" > ${outputFile}`, { delay: 50 });
+    await page.keyboard.press('Enter');
+
+    // Wait for file to be created
+    const hasContent = await waitForFileContent(outputFile, 'native terminal works', 10000);
+    expect(hasContent).toBe(true);
+  });
+});

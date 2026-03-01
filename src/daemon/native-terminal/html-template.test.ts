@@ -266,4 +266,33 @@ describe('generateNativeTerminalHtml', () => {
     expect(html).toContain('visibilitychange');
     expect(html).toContain("document.visibilityState === 'visible'");
   });
+
+  test('includes base_path in terminal UI config (snake_case, not camelCase)', () => {
+    // Regression test: terminal-ui.js expects base_path (snake_case), not basePath (camelCase)
+    // If basePath is used instead, config.base_path will be undefined and cause:
+    // "Cannot read properties of undefined (reading 'replace')" error
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/ttyd-mux',
+      sessionPath: '/ttyd-mux/test-session',
+      config: createTestConfig(),
+    });
+
+    // Must have "base_path": not "basePath":
+    expect(html).toContain('"base_path":"/ttyd-mux"');
+    // basePath should NOT appear as a JSON key (it can appear in JS variable names)
+    expect(html).not.toMatch(/"basePath"\s*:/);
+  });
+
+  test('uses basePath parameter value for base_path config', () => {
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/custom-base',
+      sessionPath: '/custom-base/test-session',
+      config: createTestConfig(),
+    });
+
+    // The base_path in config should match the basePath parameter
+    expect(html).toContain('"base_path":"/custom-base"');
+  });
 });

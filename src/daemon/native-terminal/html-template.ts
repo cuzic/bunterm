@@ -42,9 +42,9 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   // Terminal UI config as JSON
   const terminalUiConfig = JSON.stringify({
     ...config.terminal_ui,
+    base_path: basePath,
     sessionName,
     sessionPath,
-    basePath,
     isShared,
     isNativeTerminal: true,
   });
@@ -66,6 +66,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1e1e1e">
@@ -134,6 +135,15 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   ${terminalUiHtml}
   ${onboardingHtml}
 
+  <!-- Configuration (must be before terminal-ui.js) -->
+  <script>
+    // Configuration for terminal-ui.js
+    window.__TERMINAL_UI_CONFIG__ = ${terminalUiConfig};
+    window.__TTYD_MUX_CONFIG__ = window.__TERMINAL_UI_CONFIG__;
+    window.__NOTIFICATION_CONFIG__ = ${notificationConfig};
+    window.__PREVIEW_CONFIG__ = ${previewConfig};
+  </script>
+
   <!-- Scripts -->
   <script src="${basePath}/xterm-bundle.js"></script>
   <script src="${basePath}/terminal-client.js"></script>
@@ -143,15 +153,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     (function() {
       'use strict';
 
-      // Configuration
-      var config = ${terminalUiConfig};
-      var notificationConfig = ${notificationConfig};
-      var previewConfig = ${previewConfig};
-
-      // Store config globally for terminal-ui.js
-      window.__TTYD_MUX_CONFIG__ = config;
-      window.__NOTIFICATION_CONFIG__ = notificationConfig;
-      window.__PREVIEW_CONFIG__ = previewConfig;
+      var config = window.__TERMINAL_UI_CONFIG__;
 
       // Determine WebSocket URL
       var loc = window.location;
