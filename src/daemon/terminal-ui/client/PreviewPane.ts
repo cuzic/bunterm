@@ -4,7 +4,7 @@
  * Manages the preview iframe and resizing functionality.
  */
 
-const STORAGE_KEY_WIDTH = 'ttyd-preview-width';
+const STORAGE_KEY_WIDTH = 'tui-preview-width';
 const MIN_WIDTH = 200;
 const MAX_WIDTH = window.innerWidth * 0.8;
 
@@ -19,14 +19,66 @@ export interface PreviewPaneElements {
   resizer: HTMLElement;
 }
 
+export interface PreviewError {
+  type: 'error' | 'unhandledrejection';
+  message: string;
+  url?: string;
+  line?: number;
+  col?: number;
+  stack?: string | null;
+}
+
+export type PreviewErrorCallback = (error: PreviewError) => void;
+export type PreviewConsoleErrorCallback = (message: string) => void;
+
 export class PreviewPane {
   private elements: PreviewPaneElements | null = null;
   private width: number;
   private isResizing = false;
   private currentUrl: string | null = null;
+  private onError: PreviewErrorCallback | null = null;
+  private onConsoleError: PreviewConsoleErrorCallback | null = null;
 
   constructor(defaultWidth = 400) {
     this.width = this.loadWidth() || defaultWidth;
+    this.setupMessageListener();
+  }
+
+  /**
+   * Set error callback
+   */
+  setOnError(callback: PreviewErrorCallback): void {
+    this.onError = callback;
+  }
+
+  /**
+   * Set console error callback
+   */
+  setOnConsoleError(callback: PreviewConsoleErrorCallback): void {
+    this.onConsoleError = callback;
+  }
+
+  /**
+   * Setup postMessage listener for errors from iframe
+   */
+  private setupMessageListener(): void {
+    window.addEventListener('message', (event) => {
+      // Only handle messages from our iframe
+      if (!this.elements) {
+        return;
+      }
+
+      const data = event.data;
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+
+      if (data.type === 'preview-error' && data.error) {
+        this.onError?.(data.error as PreviewError);
+      } else if (data.type === 'preview-console-error' && data.message) {
+        this.onConsoleError?.(data.message as string);
+      }
+    });
   }
 
   /**
@@ -220,13 +272,19 @@ export class PreviewPane {
 
   /**
    * Update terminal width to accommodate preview pane
+   * Calls fit multiple times to ensure proper resize after CSS transition
    */
   private updateTerminalWidth(): void {
-    // Trigger xterm.js fit
+    // Trigger xterm.js fit multiple times to ensure proper resize
     if (window.fitAddon) {
+      // First fit after CSS is applied
       setTimeout(() => {
         window.fitAddon?.fit();
-      }, 100);
+      }, 50);
+      // Second fit to ensure layout is stable
+      setTimeout(() => {
+        window.fitAddon?.fit();
+      }, 200);
     }
   }
 

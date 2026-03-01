@@ -5,14 +5,24 @@
  * Uses the file transfer API endpoints for secure file operations.
  */
 
-import type { ToolbarConfig } from './types.js';
-import { getSessionNameFromURL } from './utils.js';
+import type { TerminalUiConfig } from './types.js';
+import { getSessionNameFromURL, isPreviewable as isPreviewableUtil } from './utils.js';
 
 export interface FileInfo {
   name: string;
   size: number;
   isDirectory: boolean;
   modifiedAt: string;
+  /** For directories in preview mode: true if index.html exists recursively */
+  hasIndexHtml?: boolean;
+}
+
+/** Recent file info from API */
+export interface RecentFileInfo {
+  path: string;
+  name: string;
+  modifiedAt: string;
+  size: number;
 }
 
 export interface FileTransferElements {
@@ -27,15 +37,21 @@ export interface FileTransferElements {
   uploadBtn2: HTMLButtonElement;
 }
 
+/** Callback for preview selection */
+export interface PreviewSelection {
+  path: string;
+  isDirectory: boolean;
+}
+
 export class FileTransferManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private elements: FileTransferElements | null = null;
   private currentPath = '.';
   private sessionName = '';
   private previewMode = false;
-  private previewCallback: ((path: string) => void) | null = null;
+  private previewCallback: ((selection: PreviewSelection) => void) | null = null;
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
     this.sessionName = getSessionNameFromURL(config.base_path);
   }
@@ -107,7 +123,9 @@ export class FileTransferManager {
       const files = this.elements?.uploadInput.files;
       if (files && files.length > 0) {
         await this.uploadFiles(files);
-        this.elements?.uploadInput.value = '';
+        if (this.elements) {
+          this.elements.uploadInput.value = '';
+        }
       }
     });
 
@@ -151,17 +169,148 @@ export class FileTransferManager {
   /**
    * Open file browser for preview file selection
    */
-  async openForPreview(callback: (path: string) => void): Promise<void> {
+  async openForPreview(callback: (selection: PreviewSelection) => void): Promise<void> {
     if (!this.elements) {
       return;
     }
 
     this.previewMode = true;
     this.previewCallback = callback;
-    this.elements.modalTitle.textContent = 'プレビューするHTMLファイルを選択';
+    this.elements.modalTitle.textContent = 'プレビューするファイルまたはフォルダを選択';
     this.elements.modal.classList.remove('hidden');
     this.currentPath = '.';
-    await this.loadFileList();
+
+    // Load recent files and file list in parallel
+    await Promise.all([this.loadRecentFiles(), this.loadFileList()]);
+  }
+
+  /**
+   * Load recent files from API
+   */
+  private async loadRecentFiles(): Promise<void> {
+    if (!this.elements || !this.previewMode) {
+      return;
+    }
+
+    // Build extensions parameter from config
+    const extensions = this.config.preview_allowed_extensions?.join(',') || '.html,.htm,.md,.txt';
+    const url = `${this.config.base_path}/api/files/recent?session=${encodeURIComponent(this.sessionName)}&extensions=${encodeURIComponent(extensions)}&count=5`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as { files: RecentFileInfo[] };
+      this.renderRecentFiles(data.files);
+    } catch {
+      // Silently fail - recent files section is optional
+    }
+  }
+
+  /**
+   * Render recent files section
+   */
+  private renderRecentFiles(files: RecentFileInfo[]): void {
+    if (!this.elements || files.length === 0) {
+      return;
+    }
+
+    const { fileList } = this.elements;
+
+    // Remove existing recent files section if present
+    const existingSection = fileList.parentElement?.querySelector('.tui-recent-files');
+    if (existingSection) {
+      existingSection.remove();
+    }
+
+    // Create recent files section
+    const section = document.createElement('div');
+    section.className = 'tui-recent-files';
+
+    const header = document.createElement('div');
+    header.className = 'tui-recent-header';
+    header.textContent = '\uD83D\uDCCC 最近更新されたファイル:';
+    section.appendChild(header);
+
+    for (const file of files) {
+      const item = this.createRecentFileItem(file);
+      section.appendChild(item);
+    }
+
+    // Insert before file list
+    fileList.parentElement?.insertBefore(section, fileList);
+  }
+
+  /**
+   * Create a recent file item element
+   */
+  private createRecentFileItem(file: RecentFileInfo): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'tui-recent-item';
+
+    const left = document.createElement('div');
+    left.className = 'tui-recent-left';
+
+    const icon = document.createElement('span');
+    icon.className = 'tui-recent-icon';
+    icon.textContent = '\uD83D\uDCC4'; // 📄
+
+    const name = document.createElement('span');
+    name.className = 'tui-recent-name';
+    name.textContent = file.path;
+    name.title = file.path;
+
+    left.appendChild(icon);
+    left.appendChild(name);
+
+    const time = document.createElement('span');
+    time.className = 'tui-recent-time';
+    time.textContent = this.formatRelativeTime(file.modifiedAt);
+
+    item.appendChild(left);
+    item.appendChild(time);
+
+    // Click handler - select file for preview
+    item.addEventListener('click', () => {
+      if (this.previewCallback) {
+        this.previewCallback({ path: file.path, isDirectory: false });
+      }
+      this.hide();
+      this.previewMode = false;
+      this.previewCallback = null;
+    });
+
+    return item;
+  }
+
+  /**
+   * Format relative time (e.g., "2分前", "1時間前")
+   */
+  private formatRelativeTime(isoString: string): string {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) {
+      return 'たった今';
+    }
+    if (diffMin < 60) {
+      return `${diffMin}分前`;
+    }
+    if (diffHour < 24) {
+      return `${diffHour}時間前`;
+    }
+    if (diffDay < 7) {
+      return `${diffDay}日前`;
+    }
+    // Show date for older files
+    return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
   }
 
   /**
@@ -172,6 +321,21 @@ export class FileTransferManager {
       return;
     }
     this.elements.modal.classList.add('hidden');
+    this.clearRecentFiles();
+  }
+
+  /**
+   * Clear recent files section
+   */
+  private clearRecentFiles(): void {
+    if (!this.elements) {
+      return;
+    }
+    const existingSection =
+      this.elements.fileList.parentElement?.querySelector('.tui-recent-files');
+    if (existingSection) {
+      existingSection.remove();
+    }
   }
 
   /**
@@ -185,11 +349,12 @@ export class FileTransferManager {
     const { fileList } = this.elements;
 
     // Show loading
-    fileList.innerHTML = '<div class="ttyd-file-loading">読み込み中...</div>';
+    fileList.innerHTML = '<div class="tui-file-loading">読み込み中...</div>';
 
     try {
+      const previewParam = this.previewMode ? '&preview=true' : '';
       const response = await fetch(
-        `${this.config.base_path}/api/files/list?session=${encodeURIComponent(this.sessionName)}&path=${encodeURIComponent(this.currentPath)}`
+        `${this.config.base_path}/api/files/list?session=${encodeURIComponent(this.sessionName)}&path=${encodeURIComponent(this.currentPath)}${previewParam}`
       );
 
       if (!response.ok) {
@@ -201,7 +366,7 @@ export class FileTransferManager {
       this.renderFileList(data.files);
       this.renderBreadcrumb();
     } catch (error) {
-      fileList.innerHTML = `<div class="ttyd-file-error">エラー: ${error instanceof Error ? error.message : 'Unknown error'}</div>`;
+      fileList.innerHTML = `<div class="tui-file-error">エラー: ${error instanceof Error ? error.message : 'Unknown error'}</div>`;
     }
   }
 
@@ -216,10 +381,22 @@ export class FileTransferManager {
     const { fileList } = this.elements;
     fileList.innerHTML = '';
 
-    // Filter files in preview mode (only show HTML files and directories)
+    // Filter files in preview mode
+    // - Show HTML files
+    // - Show directories only if they contain index.html recursively
     let filteredFiles = files;
     if (this.previewMode) {
-      filteredFiles = files.filter((f) => f.isDirectory || this.isPreviewable(f.name));
+      filteredFiles = files.filter((f) => {
+        // HTML files are always shown
+        if (this.isPreviewable(f.name)) {
+          return true;
+        }
+        // Directories are only shown if they contain index.html
+        if (f.isDirectory) {
+          return f.hasIndexHtml === true;
+        }
+        return false;
+      });
     }
 
     // Sort: directories first, then by name
@@ -243,7 +420,7 @@ export class FileTransferManager {
 
     if (sorted.length === 0) {
       const message = this.previewMode ? 'HTMLファイルがありません' : 'ファイルがありません';
-      fileList.innerHTML = `<div class="ttyd-file-empty">${message}</div>`;
+      fileList.innerHTML = `<div class="tui-file-empty">${message}</div>`;
       return;
     }
 
@@ -258,26 +435,45 @@ export class FileTransferManager {
    */
   private createFileItem(file: FileInfo): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'ttyd-file-item';
+    item.className = 'tui-file-item';
     if (file.isDirectory) {
       item.classList.add('directory');
     }
 
     const icon = document.createElement('span');
-    icon.className = 'ttyd-file-icon';
+    icon.className = 'tui-file-icon';
     icon.textContent = file.isDirectory ? '\uD83D\uDCC1' : '\uD83D\uDCC4'; // 📁 : 📄
 
     const name = document.createElement('span');
-    name.className = 'ttyd-file-name';
+    name.className = 'tui-file-name';
     name.textContent = file.name;
 
     const size = document.createElement('span');
-    size.className = 'ttyd-file-size';
+    size.className = 'tui-file-size';
     size.textContent = file.isDirectory ? '' : this.formatSize(file.size);
 
     item.appendChild(icon);
     item.appendChild(name);
     item.appendChild(size);
+
+    // Add SPA preview button for directories in preview mode (except "..")
+    if (this.previewMode && file.isDirectory && file.name !== '..') {
+      const spaBtn = document.createElement('button');
+      spaBtn.className = 'tui-file-spa-btn';
+      spaBtn.textContent = '👁';
+      spaBtn.title = 'SPAとしてプレビュー';
+      spaBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fullPath = this.currentPath === '.' ? file.name : `${this.currentPath}/${file.name}`;
+        if (this.previewCallback) {
+          this.previewCallback({ path: fullPath, isDirectory: true });
+        }
+        this.hide();
+        this.previewMode = false;
+        this.previewCallback = null;
+      });
+      item.appendChild(spaBtn);
+    }
 
     // Click handler
     item.addEventListener('click', () => {
@@ -287,7 +483,7 @@ export class FileTransferManager {
         // In preview mode, select the file for preview
         const fullPath = this.currentPath === '.' ? file.name : `${this.currentPath}/${file.name}`;
         if (this.previewCallback) {
-          this.previewCallback(fullPath);
+          this.previewCallback({ path: fullPath, isDirectory: false });
         }
         this.hide();
         this.previewMode = false;
@@ -301,11 +497,10 @@ export class FileTransferManager {
   }
 
   /**
-   * Check if file is previewable (HTML)
+   * Check if file is previewable (based on server config)
    */
   private isPreviewable(filename: string): boolean {
-    const lowerName = filename.toLowerCase();
-    return lowerName.endsWith('.html') || lowerName.endsWith('.htm');
+    return isPreviewableUtil(filename, this.config.preview_allowed_extensions);
   }
 
   /**
@@ -321,7 +516,18 @@ export class FileTransferManager {
       // Go to child directory
       this.currentPath = this.currentPath === '.' ? dirName : `${this.currentPath}/${dirName}`;
     }
+
+    // Clear recent files when navigating away from root
+    if (this.currentPath !== '.') {
+      this.clearRecentFiles();
+    }
+
     await this.loadFileList();
+
+    // Show recent files again when returning to root in preview mode
+    if (this.currentPath === '.' && this.previewMode) {
+      await this.loadRecentFiles();
+    }
   }
 
   /**

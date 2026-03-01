@@ -7,11 +7,11 @@
 import qrcode from 'qrcode-generator';
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
 import { type ModalController, createModalController } from './ModalController.js';
-import type { ToolbarConfig } from './types.js';
+import type { TerminalUiConfig } from './types.js';
 import { getSessionNameFromURL } from './utils.js';
 
 export class ShareManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private apiClient: ToolbarApiClient;
   private shareBtn: HTMLElement | null = null;
   private modal: HTMLElement | null = null;
@@ -24,7 +24,7 @@ export class ShareManager {
   private expiryOptions: NodeListOf<HTMLInputElement> | null = null;
   private modalController: ModalController | null = null;
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
     this.apiClient = createApiClient({ basePath: config.base_path });
   }
@@ -51,7 +51,7 @@ export class ShareManager {
     this.copyBtn = copyBtn;
     this.qrBtn = qrBtn;
     this.expiryOptions = document.querySelectorAll(
-      'input[name="ttyd-share-expiry"]'
+      'input[name="tui-share-expiry"]'
     ) as NodeListOf<HTMLInputElement>;
 
     this.setupEventListeners();
@@ -166,7 +166,7 @@ export class ShareManager {
       }
 
       const share = await this.apiClient.createShare(sessionName, expiresIn);
-      const shareUrl = `${window.location.origin}${basePath}/s/${share.token}`;
+      const shareUrl = `${window.location.origin}${basePath}/share/${share.token}`;
 
       this.showResult(shareUrl);
     } catch (error) {

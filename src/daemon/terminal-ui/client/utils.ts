@@ -64,3 +64,18 @@ export function truncateText(text: string, maxLength: number, suffix = '...'): s
   }
   return text.slice(0, maxLength - suffix.length) + suffix;
 }
+
+/** Default preview allowed extensions (fallback if not provided by server) */
+const DEFAULT_PREVIEW_EXTENSIONS = ['.html', '.htm', '.md', '.txt'];
+
+/**
+ * Check if a file is previewable based on its extension
+ * @param filename - The filename to check
+ * @param allowedExtensions - Array of allowed extensions (uses default if not provided)
+ * @returns True if the file is previewable
+ */
+export function isPreviewable(filename: string, allowedExtensions?: string[]): boolean {
+  const extensions = allowedExtensions ?? DEFAULT_PREVIEW_EXTENSIONS;
+  const lowerName = filename.toLowerCase();
+  return extensions.some((ext) => lowerName.endsWith(ext.toLowerCase()));
+}

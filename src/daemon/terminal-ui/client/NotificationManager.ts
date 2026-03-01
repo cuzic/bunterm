@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
-import type { ToolbarConfig } from './types.js';
+import type { TerminalUiConfig } from './types.js';
 import { STORAGE_KEYS } from './types.js';
 import { getSessionNameFromURL } from './utils.js';
 
@@ -21,14 +21,14 @@ const subscriptionSchema = z
 type SubscriptionData = { id: string } | null;
 
 export class NotificationManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private apiClient: ToolbarApiClient;
   private subscribed = false;
   private subscriptionId: string | null = null;
   private notifyBtn: HTMLElement | null = null;
   private storage: StorageManager<SubscriptionData>;
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
     this.apiClient = createApiClient({ basePath: config.base_path });
     this.storage = createStorageManager({
@@ -210,5 +210,45 @@ export class NotificationManager {
     } else {
       await this.subscribe();
     }
+  }
+
+  /**
+   * Show a toast notification message
+   * @param message The message to display
+   * @param type The type of toast ('info' | 'error' | 'success')
+   */
+  showToast(message: string, type: 'info' | 'error' | 'success' = 'info'): void {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `tui-toast tui-toast-${type}`;
+    toast.textContent = message;
+
+    // Create container if not exists
+    let container = document.getElementById('tui-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'tui-toast-container';
+      document.body.appendChild(container);
+    }
+
+    // Add toast
+    container.appendChild(toast);
+
+    // Show with animation
+    requestAnimationFrame(() => {
+      toast.classList.add('show');
+    });
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        toast.remove();
+        // Remove container if empty
+        if (container && container.children.length === 0) {
+          container.remove();
+        }
+      }, 300);
+    }, 5000);
   }
 }

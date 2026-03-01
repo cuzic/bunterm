@@ -89,4 +89,26 @@ export class InputHandler {
   sendText(text: string): boolean {
     return this.ws.sendText(text);
   }
+
+  /**
+   * Send mouse wheel event (SGR extended mode)
+   * @param direction - 'up' or 'down'
+   * @param count - number of wheel ticks (default: 1)
+   */
+  sendWheel(direction: 'up' | 'down', count = 1): void {
+    // SGR extended mouse mode: ESC [ < Cb ; Cx ; Cy M
+    // Wheel up: Cb = 64, Wheel down: Cb = 65
+    const button = direction === 'up' ? 64 : 65;
+
+    // Use center of terminal as coordinates (typical default)
+    const x = 40;
+    const y = 12;
+
+    const seq = `\x1b[<${button};${x};${y}M`;
+    const bytes = Array.from(new TextEncoder().encode(seq));
+
+    for (let i = 0; i < count; i++) {
+      this.ws.sendBytes(bytes);
+    }
+  }
 }

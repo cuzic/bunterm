@@ -48,14 +48,32 @@ export interface FitAddon {
   fit(): void;
 }
 
+/** Web links addon interface */
+export interface WebLinksAddon {
+  // WebLinksAddon is loaded and attached to terminal, no public methods needed
+  dispose?(): void;
+}
+
+/** Client-side Sentry configuration (subset of server config) */
+export interface ClientSentryConfig {
+  enabled: boolean;
+  dsn?: string;
+  environment: string;
+  sample_rate: number;
+}
+
 /** Toolbar configuration from server */
-export interface ToolbarConfig {
+export interface TerminalUiConfig {
   base_path: string;
   font_size_min: number;
   font_size_max: number;
   font_size_default_mobile: number;
   font_size_default_pc: number;
   double_tap_delay: number;
+  reconnect_retries: number;
+  reconnect_interval: number;
+  preview_allowed_extensions?: string[];
+  sentry?: ClientSentryConfig;
 }
 
 /** DOM element IDs for toolbar */
@@ -75,14 +93,10 @@ export interface ToolbarElements {
   tabBtn: HTMLButtonElement;
   upBtn: HTMLButtonElement;
   downBtn: HTMLButtonElement;
-  copyBtn: HTMLButtonElement;
   copyAllBtn: HTMLButtonElement;
   pasteBtn: HTMLButtonElement;
   autoBtn: HTMLButtonElement;
   minimizeBtn: HTMLButtonElement;
-  scrollBtn: HTMLButtonElement;
-  pageUpBtn: HTMLButtonElement;
-  pageDownBtn: HTMLButtonElement;
   notifyBtn: HTMLButtonElement;
   shareBtn: HTMLButtonElement;
   snippetBtn: HTMLButtonElement;
@@ -111,9 +125,9 @@ export interface ToolbarElements {
 
 /** localStorage keys */
 export const STORAGE_KEYS = {
-  FONT_SIZE: 'ttyd-toolbar-font-size',
-  ONBOARDING_SHOWN: 'ttyd-toolbar-onboarding-shown',
-  AUTO_RUN: 'ttyd-toolbar-auto-run',
+  FONT_SIZE: 'tui-font-size',
+  ONBOARDING_SHOWN: 'tui-onboarding-shown',
+  AUTO_RUN: 'tui-auto-run',
   NOTIFY_SUBSCRIPTION: 'ttyd-mux-notify-subscription',
   SNIPPETS: 'ttyd-mux-snippets',
   CLIPBOARD_HISTORY: 'ttyd-mux-clipboard-history'
@@ -173,6 +187,16 @@ export type SmartPasteContentType =
 /** Pending upload item for preview - re-exported from smartPasteMachine */
 export type { PendingUpload } from './smartPasteMachine.js';
 
+/** Session switcher modal elements */
+export interface SessionSwitcherElements {
+  modal: HTMLElement;
+  modalClose: HTMLButtonElement;
+  refreshBtn: HTMLButtonElement;
+  searchInput: HTMLInputElement;
+  sessionList: HTMLElement;
+  sessionBtn: HTMLButtonElement;
+}
+
 /** Smart paste modal elements */
 export interface SmartPasteElements {
   previewModal: HTMLElement;
@@ -191,12 +215,19 @@ export interface SmartPasteElements {
 /** Declare global window extensions */
 declare global {
   interface Window {
-    __TOOLBAR_CONFIG__: ToolbarConfig;
+    __TERMINAL_UI_CONFIG__: TerminalUiConfig;
     term?: Terminal;
     socket?: WebSocket;
     fitAddon?: FitAddon;
     SearchAddon?: {
       SearchAddon: new () => SearchAddon;
+    };
+    WebLinksAddon?: {
+      WebLinksAddon: new (handler: (event: MouseEvent, uri: string) => void) => WebLinksAddon;
+    };
+    Sentry?: {
+      captureException(error: unknown): void;
+      captureMessage(message: string, level?: string): void;
     };
   }
 }

@@ -19,7 +19,7 @@ import {
   type SmartPasteEvent,
   smartPasteMachine
 } from './smartPasteMachine.js';
-import type { SmartPasteElements, ToolbarConfig } from './types.js';
+import type { SmartPasteElements, TerminalUiConfig } from './types.js';
 import { getSessionNameFromURL } from './utils.js';
 
 // Re-export PendingUpload from state machine
@@ -28,15 +28,16 @@ export type { PendingUpload } from './smartPasteMachine.js';
 type SmartPasteActor = Actor<typeof smartPasteMachine>;
 
 export class SmartPasteManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private inputHandler: InputHandler;
   private historyManager: ClipboardHistoryManager;
   private elements: SmartPasteElements | null = null;
   private actor: SmartPasteActor;
   private unsubscribe: (() => void) | null = null;
+  private inputTextarea: HTMLTextAreaElement | null = null;
 
   constructor(
-    config: ToolbarConfig,
+    config: TerminalUiConfig,
     inputHandler: InputHandler,
     historyManager: ClipboardHistoryManager
   ) {
@@ -117,6 +118,13 @@ export class SmartPasteManager {
     this.elements = elements;
     this.setupEventListeners();
     this.setupDropZone();
+  }
+
+  /**
+   * Bind input textarea for text paste
+   */
+  bindInputTextarea(textarea: HTMLTextAreaElement): void {
+    this.inputTextarea = textarea;
   }
 
   /**
@@ -337,20 +345,13 @@ export class SmartPasteManager {
             for (const type of item.types) {
               if (type.startsWith('image/')) {
                 const blob = await item.getType(type);
-                const dataUrl = await this.readFileAsDataUrl(blob);
 
                 // Generate filename
                 const ext = type.split('/')[1] || 'png';
                 const name = `clipboard-${this.formatTimestamp()}.${ext}`;
 
-                const upload: PendingUpload = {
-                  blob,
-                  dataUrl,
-                  name,
-                  mimeType: type
-                };
-
-                this.send({ type: 'IMAGE_FOUND', uploads: [upload] });
+                // Upload directly without preview
+                await this.uploadImageDirectly(blob, name, type);
                 return true;
               }
             }
@@ -358,10 +359,20 @@ export class SmartPasteManager {
         } catch (_err) {}
       }
 
-      // Fall back to text paste
+      // Fall back to text paste - paste into input textarea
       const text = await navigator.clipboard.readText();
       if (text) {
         this.send({ type: 'TEXT_FOUND', text });
+        if (this.inputTextarea) {
+          // Paste into input textarea instead of sending directly to terminal
+          this.inputTextarea.value = text;
+          this.inputTextarea.focus();
+          // Trigger input event to adjust textarea height
+          this.inputTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+          this.historyManager.addToHistory(text);
+          return true;
+        }
+        // Fallback: send directly to terminal if textarea not bound
         const result = this.inputHandler.sendText(text);
         if (result) {
           this.historyManager.addToHistory(text);
@@ -478,7 +489,7 @@ export class SmartPasteManager {
 
     for (let i = 0; i < context.pendingUploads.length; i++) {
       const dot = document.createElement('span');
-      dot.className = 'ttyd-preview-dot';
+      dot.className = 'tui-preview-dot';
       dot.dataset.index = String(i);
       if (i === context.currentIndex) {
         dot.classList.add('active');
@@ -497,7 +508,7 @@ export class SmartPasteManager {
 
     this.elements.previewDots.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      if (target.classList.contains('ttyd-preview-dot') && target.dataset.index) {
+      if (target.classList.contains('tui-preview-dot') && target.dataset.index) {
         const index = Number.parseInt(target.dataset.index, 10);
         this.send({ type: 'GOTO', index });
       }
@@ -616,6 +627,56 @@ export class SmartPasteManager {
       // Send path to terminal
       if (result.path) {
         this.inputHandler.sendText(result.path);
+      }
+    } catch (_err) {}
+  }
+
+  /**
+   * Upload image directly without preview
+   */
+  private async uploadImageDirectly(blob: Blob, name: string, mimeType: string): Promise<void> {
+    try {
+      const sessionName = this.getSessionName();
+      if (!sessionName) {
+        return;
+      }
+
+      // Convert blob to base64
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+
+      // Upload to server
+      const response = await fetch(
+        `${this.config.base_path}/api/clipboard-image?session=${encodeURIComponent(sessionName)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            images: [{ data: base64, mimeType, name }]
+          })
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // Paste path into input textarea
+      if (result.paths && result.paths.length > 0) {
+        const pathText = result.paths.join(' ');
+        if (this.inputTextarea) {
+          this.inputTextarea.value = pathText;
+          this.inputTextarea.focus();
+          this.inputTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          this.inputHandler.sendText(pathText);
+        }
       }
     } catch (_err) {}
   }

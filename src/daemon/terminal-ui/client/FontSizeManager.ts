@@ -6,16 +6,16 @@
 
 import { z } from 'zod';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
-import type { ToolbarConfig } from './types.js';
+import type { TerminalUiConfig } from './types.js';
 import { STORAGE_KEYS } from './types.js';
 import { isMobileDevice } from './utils.js';
 
 export class FontSizeManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private storage: StorageManager<number>;
   private defaultSize: number;
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
     this.defaultSize = isMobileDevice()
       ? config.font_size_default_mobile

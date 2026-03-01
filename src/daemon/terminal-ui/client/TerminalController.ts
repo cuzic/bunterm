@@ -11,14 +11,14 @@
 import type { ClipboardHistoryManager } from './ClipboardHistoryManager.js';
 import type { InputHandler } from './InputHandler.js';
 import { toolbarEvents } from './events.js';
-import type { Terminal, ToolbarConfig } from './types.js';
+import type { Terminal, TerminalUiConfig } from './types.js';
 import { isMobileDevice } from './utils.js';
 
 export class TerminalController {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private isMobile: boolean;
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
     this.isMobile = isMobileDevice();
   }

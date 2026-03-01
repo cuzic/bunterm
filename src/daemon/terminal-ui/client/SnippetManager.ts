@@ -422,7 +422,7 @@ export class SnippetManager {
     }
 
     const { list } = this.elements;
-    const empty = document.getElementById('ttyd-snippet-empty');
+    const empty = document.getElementById('tui-snippet-empty');
 
     // Clear existing items
     list.innerHTML = '';
@@ -434,7 +434,7 @@ export class SnippetManager {
         // Show search-specific empty message
         empty?.classList.add('hidden');
         const noResults = document.createElement('div');
-        noResults.id = 'ttyd-snippet-no-results';
+        noResults.id = 'tui-snippet-no-results';
         noResults.style.cssText =
           'text-align: center; color: #888; padding: 24px; font-size: 14px;';
         noResults.textContent = '検索結果がありません';
@@ -460,21 +460,21 @@ export class SnippetManager {
    */
   private createSnippetElement(snippet: Snippet): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'ttyd-snippet-item';
+    item.className = 'tui-snippet-item';
     item.dataset.id = snippet.id;
 
     const header = document.createElement('div');
-    header.className = 'ttyd-snippet-item-header';
+    header.className = 'tui-snippet-item-header';
 
     const name = document.createElement('span');
-    name.className = 'ttyd-snippet-item-name';
+    name.className = 'tui-snippet-item-name';
     name.textContent = snippet.name;
 
     const actions = document.createElement('div');
-    actions.className = 'ttyd-snippet-item-actions';
+    actions.className = 'tui-snippet-item-actions';
 
     const runBtn = document.createElement('button');
-    runBtn.className = 'ttyd-snippet-item-run';
+    runBtn.className = 'tui-snippet-item-run';
     runBtn.textContent = '\u25B6'; // ▶
     runBtn.title = '実行';
     runBtn.addEventListener('click', (e) => {
@@ -483,7 +483,7 @@ export class SnippetManager {
     });
 
     const editBtn = document.createElement('button');
-    editBtn.className = 'ttyd-snippet-item-edit';
+    editBtn.className = 'tui-snippet-item-edit';
     editBtn.textContent = '\u270E'; // ✎
     editBtn.title = '編集';
     editBtn.addEventListener('click', (e) => {
@@ -492,7 +492,7 @@ export class SnippetManager {
     });
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'ttyd-snippet-item-delete';
+    deleteBtn.className = 'tui-snippet-item-delete';
     deleteBtn.textContent = '\uD83D\uDDD1'; // 🗑
     deleteBtn.title = '削除';
     deleteBtn.addEventListener('click', (e) => {
@@ -510,7 +510,7 @@ export class SnippetManager {
     header.appendChild(actions);
 
     const command = document.createElement('div');
-    command.className = 'ttyd-snippet-item-command';
+    command.className = 'tui-snippet-item-command';
     command.textContent = snippet.command;
 
     // Create edit form (hidden by default)
@@ -528,7 +528,7 @@ export class SnippetManager {
    */
   private createEditForm(item: HTMLElement, snippet: Snippet): HTMLElement {
     const form = document.createElement('div');
-    form.className = 'ttyd-snippet-item-edit-form';
+    form.className = 'tui-snippet-item-edit-form';
 
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
@@ -541,10 +541,10 @@ export class SnippetManager {
     commandInput.rows = 2;
 
     const buttons = document.createElement('div');
-    buttons.className = 'ttyd-snippet-item-edit-buttons';
+    buttons.className = 'tui-snippet-item-edit-buttons';
 
     const saveBtn = document.createElement('button');
-    saveBtn.className = 'ttyd-snippet-item-edit-save';
+    saveBtn.className = 'tui-snippet-item-edit-save';
     saveBtn.textContent = '保存';
     saveBtn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -585,21 +585,21 @@ export class SnippetManager {
    */
   private showEditForm(item: HTMLElement, snippet: Snippet): void {
     // Close any other editing items
-    const editingItems = document.querySelectorAll('.ttyd-snippet-item.editing');
+    const editingItems = document.querySelectorAll('.tui-snippet-item.editing');
     editingItems.forEach((el) => el.classList.remove('editing'));
 
     // Open edit form for this item
     item.classList.add('editing');
 
     // Focus the name input
-    const nameInput = item.querySelector('.ttyd-snippet-item-edit-form input') as HTMLInputElement;
+    const nameInput = item.querySelector('.tui-snippet-item-edit-form input') as HTMLInputElement;
     if (nameInput) {
       nameInput.value = snippet.name;
       nameInput.focus();
     }
 
     const commandInput = item.querySelector(
-      '.ttyd-snippet-item-edit-form textarea'
+      '.tui-snippet-item-edit-form textarea'
     ) as HTMLTextAreaElement;
     if (commandInput) {
       commandInput.value = snippet.command;

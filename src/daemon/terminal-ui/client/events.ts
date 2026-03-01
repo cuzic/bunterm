@@ -30,6 +30,9 @@ export type ToolbarEvents = {
   // Font
   'font:change': number;
 
+  // Session
+  'session:open': undefined;
+
   // Upload
   'upload:progress': { current: number; total: number };
   'upload:complete': string[];
@@ -41,7 +44,7 @@ export type ToolbarEvents = {
 /**
  * Modal names for type safety
  */
-export type ModalName = 'snippet' | 'preview' | 'share' | 'file' | 'clipboard-history';
+export type ModalName = 'snippet' | 'preview' | 'share' | 'file' | 'clipboard-history' | 'session';
 
 /**
  * Toolbar event bus interface

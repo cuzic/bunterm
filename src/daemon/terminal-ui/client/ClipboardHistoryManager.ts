@@ -61,19 +61,19 @@ export class ClipboardHistoryManager {
    */
   private createPopup(): void {
     this.popup = document.createElement('div');
-    this.popup.id = 'ttyd-clipboard-history';
+    this.popup.id = 'tui-clipboard-history';
     this.popup.className = 'hidden';
     this.popup.innerHTML = `
-      <div id="ttyd-clipboard-history-header">
+      <div id="tui-clipboard-history-header">
         <span>履歴</span>
-        <button id="ttyd-clipboard-history-close">×</button>
+        <button id="tui-clipboard-history-close">×</button>
       </div>
-      <div id="ttyd-clipboard-history-list"></div>
+      <div id="tui-clipboard-history-list"></div>
     `;
     document.body.appendChild(this.popup);
 
     // Close button
-    const closeBtn = this.popup.querySelector('#ttyd-clipboard-history-close');
+    const closeBtn = this.popup.querySelector('#tui-clipboard-history-close');
     closeBtn?.addEventListener('click', () => this.hidePopup());
 
     // Close on outside click
@@ -225,7 +225,7 @@ export class ClipboardHistoryManager {
    * Render the history list
    */
   private renderList(): void {
-    const list = this.popup?.querySelector('#ttyd-clipboard-history-list');
+    const list = this.popup?.querySelector('#tui-clipboard-history-list');
     if (!list) {
       return;
     }
@@ -234,7 +234,7 @@ export class ClipboardHistoryManager {
 
     if (this.history.length === 0) {
       const empty = document.createElement('div');
-      empty.id = 'ttyd-clipboard-history-empty';
+      empty.id = 'tui-clipboard-history-empty';
       empty.textContent = '履歴がありません';
       list.appendChild(empty);
       return;
@@ -242,7 +242,7 @@ export class ClipboardHistoryManager {
 
     for (const item of this.history) {
       const el = document.createElement('div');
-      el.className = 'ttyd-clipboard-history-item';
+      el.className = 'tui-clipboard-history-item';
       el.textContent = this.truncateText(item.text, 50);
       el.title = item.text;
       el.addEventListener('click', () => this.sendFromHistory(item.id));

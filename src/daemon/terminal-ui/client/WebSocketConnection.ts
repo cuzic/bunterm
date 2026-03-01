@@ -3,46 +3,44 @@
  *
  * Handles WebSocket connection to ttyd server and provides
  * methods for sending text and binary data.
+ *
+ * WebSocket interception is done early in <head> via inline script
+ * to ensure we capture ttyd's WebSocket before it's created.
+ * The captured WebSocket is stored in window.__TTYD_WS__.
  */
 
-const OriginalWebSocket = window.WebSocket;
+// Extend window type for captured WebSocket
+declare global {
+  interface Window {
+    __TTYD_WS__?: WebSocket;
+  }
+}
 
 export class WebSocketConnection {
   private ws: WebSocket | null = null;
 
   constructor() {
-    this.interceptWebSocketCreation();
-  }
-
-  /**
-   * Intercept WebSocket creation to capture ttyd connection
-   */
-  private interceptWebSocketCreation(): void {
-    // biome-ignore lint/suspicious/noExplicitAny: WebSocket constructor override
-    (window as any).WebSocket = (url: string, protocols?: string | string[]) => {
-      const socket = new OriginalWebSocket(url, protocols);
-      if (url.includes('/ws')) {
-        this.ws = socket;
-      }
-      return socket;
-    };
-
-    // Copy static properties
-    window.WebSocket.prototype = OriginalWebSocket.prototype;
-    Object.defineProperty(window.WebSocket, 'CONNECTING', { value: OriginalWebSocket.CONNECTING });
-    Object.defineProperty(window.WebSocket, 'OPEN', { value: OriginalWebSocket.OPEN });
-    Object.defineProperty(window.WebSocket, 'CLOSING', { value: OriginalWebSocket.CLOSING });
-    Object.defineProperty(window.WebSocket, 'CLOSED', { value: OriginalWebSocket.CLOSED });
+    // WebSocket interception is now done in <head> via inline script
+    // Just retrieve the captured WebSocket
+    this.ws = window.__TTYD_WS__ ?? null;
   }
 
   /**
    * Find active WebSocket connection
    */
   findWebSocket(): WebSocket | null {
+    // First, check if we already have an open connection
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return this.ws;
     }
 
+    // Try to get from captured WebSocket (set by inline script in <head>)
+    if (window.__TTYD_WS__ && window.__TTYD_WS__.readyState === WebSocket.OPEN) {
+      this.ws = window.__TTYD_WS__;
+      return this.ws;
+    }
+
+    // Fallback: check window.socket (if ttyd exposes it)
     if (window.socket && window.socket.readyState === WebSocket.OPEN) {
       this.ws = window.socket;
       return this.ws;

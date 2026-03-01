@@ -6,14 +6,17 @@
  */
 
 import type { FileChangeEvent, FileWatcherClient } from './FileWatcherClient.js';
-import type { PreviewPane, PreviewPaneElements } from './PreviewPane.js';
-import type { ToolbarConfig } from './types.js';
-import { getSessionNameFromURL } from './utils.js';
+import type { PreviewError, PreviewPane, PreviewPaneElements } from './PreviewPane.js';
+import type { TerminalUiConfig } from './types.js';
+import { getSessionNameFromURL, isPreviewable as isPreviewableUtil } from './utils.js';
 
-/** Currently previewing file */
+export type PreviewErrorHandler = (error: PreviewError) => void;
+
+/** Currently previewing file or directory */
 interface CurrentFile {
   session: string;
   path: string;
+  isDirectory?: boolean;
 }
 
 export interface PreviewManagerDeps {
@@ -22,7 +25,7 @@ export interface PreviewManagerDeps {
 }
 
 export class PreviewManager {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private pane: PreviewPane;
   private watcher: FileWatcherClient;
   private currentFile: CurrentFile | null = null;
@@ -33,7 +36,7 @@ export class PreviewManager {
   } | null = null;
   private fileSelectCallback: ((path: string) => void) | null = null;
 
-  constructor(config: ToolbarConfig, deps: PreviewManagerDeps) {
+  constructor(config: TerminalUiConfig, deps: PreviewManagerDeps) {
     this.config = config;
     this.pane = deps.pane;
     this.watcher = deps.watcher;
@@ -41,6 +44,17 @@ export class PreviewManager {
 
     // Listen for file changes
     this.watcher.onFileChange((event) => this.onFileChange(event));
+  }
+
+  /**
+   * Set error handler for preview errors
+   * @param handler Callback to handle errors from the preview iframe
+   */
+  setErrorHandler(handler: PreviewErrorHandler): void {
+    this.pane.setOnError(handler);
+    this.pane.setOnConsoleError((message) => {
+      handler({ type: 'error', message });
+    });
   }
 
   /**
@@ -110,7 +124,11 @@ export class PreviewManager {
    */
   close(): void {
     if (this.currentFile) {
-      this.watcher.unwatch(this.currentFile.session, this.currentFile.path);
+      if (this.currentFile.isDirectory) {
+        this.watcher.unwatchDir(this.currentFile.session, this.currentFile.path);
+      } else {
+        this.watcher.unwatch(this.currentFile.session, this.currentFile.path);
+      }
       this.currentFile = null;
     }
 
@@ -122,13 +140,17 @@ export class PreviewManager {
    * Preview a specific file
    */
   previewFile(session: string, path: string): void {
-    // Unwatch previous file
+    // Unwatch previous file or directory
     if (this.currentFile) {
-      this.watcher.unwatch(this.currentFile.session, this.currentFile.path);
+      if (this.currentFile.isDirectory) {
+        this.watcher.unwatchDir(this.currentFile.session, this.currentFile.path);
+      } else {
+        this.watcher.unwatch(this.currentFile.session, this.currentFile.path);
+      }
     }
 
     // Set new file
-    this.currentFile = { session, path };
+    this.currentFile = { session, path, isDirectory: false };
 
     // Watch for changes
     this.watcher.watch(session, path);
@@ -143,6 +165,58 @@ export class PreviewManager {
       this.pane.show();
       this.updateButtonState();
     }
+  }
+
+  /**
+   * Preview a directory as SPA (uses static serving endpoint)
+   * @param session Session name
+   * @param dirPath Directory path relative to session dir (e.g., "dist" or "build")
+   */
+  previewDirectory(session: string, dirPath: string): void {
+    // Unwatch previous file or directory
+    if (this.currentFile) {
+      if (this.currentFile.isDirectory) {
+        this.watcher.unwatchDir(this.currentFile.session, this.currentFile.path);
+      } else {
+        this.watcher.unwatch(this.currentFile.session, this.currentFile.path);
+      }
+    }
+
+    // Set current to directory
+    this.currentFile = { session, path: dirPath, isDirectory: true };
+
+    // Watch the entire directory recursively
+    this.watcher.watchDir(session, dirPath);
+
+    // Use static serving endpoint for SPA support
+    // Normalize path: ensure no leading/trailing slashes
+    const normalizedPath = dirPath.replace(/^\/+|\/+$/g, '');
+    const url = `${this.config.base_path}/api/preview/static/${encodeURIComponent(session)}/${normalizedPath}/`;
+    this.pane.loadUrl(url);
+    this.pane.setTitle(normalizedPath || 'Preview');
+
+    // Show pane if hidden
+    if (!this.pane.isVisible()) {
+      this.pane.show();
+      this.updateButtonState();
+    }
+  }
+
+  /**
+   * Check if a path looks like an SPA directory
+   */
+  isSpaDirectory(path: string): boolean {
+    const lowerPath = path.toLowerCase();
+    // Common SPA build output directories
+    return (
+      lowerPath === 'dist' ||
+      lowerPath === 'build' ||
+      lowerPath === 'out' ||
+      lowerPath === 'public' ||
+      lowerPath.endsWith('/dist') ||
+      lowerPath.endsWith('/build') ||
+      lowerPath.endsWith('/out')
+    );
   }
 
   /**
@@ -161,10 +235,14 @@ export class PreviewManager {
   openFileSelector(): void {
     // Trigger the file modal in "preview select" mode
     // This is handled by FileTransferManager integration
-    const event = new CustomEvent('ttyd-preview-select', {
+    const event = new CustomEvent('tui-preview-select', {
       detail: {
-        callback: (path: string) => {
-          this.previewFile(this.sessionName, path);
+        callback: (selection: { path: string; isDirectory: boolean }) => {
+          if (selection.isDirectory) {
+            this.previewDirectory(this.sessionName, selection.path);
+          } else {
+            this.previewFile(this.sessionName, selection.path);
+          }
         }
       }
     });
@@ -190,8 +268,7 @@ export class PreviewManager {
    * Check if a file is previewable
    */
   isPreviewable(filename: string): boolean {
-    const lowerName = filename.toLowerCase();
-    return lowerName.endsWith('.html') || lowerName.endsWith('.htm');
+    return isPreviewableUtil(filename, this.config.preview_allowed_extensions);
   }
 
   /**
@@ -216,8 +293,19 @@ export class PreviewManager {
       return;
     }
 
-    // Check if the changed file matches current preview
-    if (event.session === this.currentFile.session && event.path === this.currentFile.path) {
+    // Check session matches
+    if (event.session !== this.currentFile.session) {
+      return;
+    }
+
+    if (this.currentFile.isDirectory) {
+      // Directory watching: reload if changed file is within the watched directory
+      const dirPath = this.currentFile.path;
+      if (event.path.startsWith(`${dirPath}/`) || event.path === dirPath || dirPath === '') {
+        this.pane.reload();
+      }
+    } else if (event.path === this.currentFile.path) {
+      // File watching: exact match
       this.pane.reload();
     }
   }

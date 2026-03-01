@@ -4,7 +4,7 @@
  * WebSocket client for receiving file change notifications from the server.
  */
 
-import type { ToolbarConfig } from './types.js';
+import type { TerminalUiConfig } from './types.js';
 
 /** File change event from server */
 export interface FileChangeEvent {
@@ -17,13 +17,15 @@ export interface FileChangeEvent {
 /** Client → Server message */
 export type WatchMessage =
   | { action: 'watch'; session: string; path: string }
-  | { action: 'unwatch'; session: string; path: string };
+  | { action: 'unwatch'; session: string; path: string }
+  | { action: 'watchDir'; session: string; path: string }
+  | { action: 'unwatchDir'; session: string; path: string };
 
 /** Connection state */
 type ConnectionState = 'disconnected' | 'connecting' | 'connected';
 
 export class FileWatcherClient {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private ws: WebSocket | null = null;
   private state: ConnectionState = 'disconnected';
   private changeListeners: Array<(event: FileChangeEvent) => void> = [];
@@ -33,7 +35,7 @@ export class FileWatcherClient {
   private reconnectDelay = 1000;
   private watchedFiles: Set<string> = new Set();
 
-  constructor(config: ToolbarConfig) {
+  constructor(config: TerminalUiConfig) {
     this.config = config;
   }
 
@@ -56,11 +58,23 @@ export class FileWatcherClient {
         this.state = 'connected';
         this.reconnectAttempts = 0;
 
-        // Re-subscribe to previously watched files
+        // Re-subscribe to previously watched files/directories
         for (const key of this.watchedFiles) {
-          const [session, path] = key.split(':');
-          if (session && path) {
-            this.sendWatch(session, path);
+          if (key.startsWith('dir:')) {
+            // Directory watch: "dir:session:path"
+            const parts = key.slice(4).split(':');
+            const session = parts[0];
+            const path = parts.slice(1).join(':') || '';
+            if (session) {
+              this.sendWatchDir(session, path);
+            }
+          } else {
+            // File watch: "session:path"
+            const [session, ...pathParts] = key.split(':');
+            const path = pathParts.join(':');
+            if (session && path) {
+              this.sendWatch(session, path);
+            }
           }
         }
       };
@@ -129,6 +143,32 @@ export class FileWatcherClient {
   }
 
   /**
+   * Watch a directory recursively for changes
+   */
+  watchDir(session: string, path: string): void {
+    const key = `dir:${session}:${path}`;
+    this.watchedFiles.add(key);
+
+    if (this.state === 'connected') {
+      this.sendWatchDir(session, path);
+    } else if (this.state === 'disconnected') {
+      this.connect();
+    }
+  }
+
+  /**
+   * Stop watching a directory
+   */
+  unwatchDir(session: string, path: string): void {
+    const key = `dir:${session}:${path}`;
+    this.watchedFiles.delete(key);
+
+    if (this.state === 'connected') {
+      this.sendUnwatchDir(session, path);
+    }
+  }
+
+  /**
    * Stop watching all files
    */
   unwatchAll(): void {
@@ -181,6 +221,22 @@ export class FileWatcherClient {
    */
   private sendUnwatch(session: string, path: string): void {
     const message: WatchMessage = { action: 'unwatch', session, path };
+    this.send(message);
+  }
+
+  /**
+   * Send watchDir message
+   */
+  private sendWatchDir(session: string, path: string): void {
+    const message: WatchMessage = { action: 'watchDir', session, path };
+    this.send(message);
+  }
+
+  /**
+   * Send unwatchDir message
+   */
+  private sendUnwatchDir(session: string, path: string): void {
+    const message: WatchMessage = { action: 'unwatchDir', session, path };
     this.send(message);
   }
 

@@ -55,10 +55,10 @@ describe('ToolbarEventBus', () => {
       expect(handler).toHaveBeenCalledWith('copied text');
     });
 
-    test('emits toolbar:toggle event', () => {
+    test('emits terminal_ui:toggle event', () => {
       const handler = mock(() => {});
-      bus.on('toolbar:toggle', handler);
-      bus.emit('toolbar:toggle');
+      bus.on('terminal_ui:toggle', handler);
+      bus.emit('terminal_ui:toggle');
       expect(handler).toHaveBeenCalledTimes(1);
     });
 

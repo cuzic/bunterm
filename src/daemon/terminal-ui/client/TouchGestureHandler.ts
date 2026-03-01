@@ -12,12 +12,16 @@ import type { InputHandler } from './InputHandler.js';
 import type { ModifierKeyState } from './ModifierKeyState.js';
 import type { TerminalController } from './TerminalController.js';
 import { toolbarEvents } from './events.js';
-import type { ToolbarConfig } from './types.js';
+import type { TerminalUiConfig } from './types.js';
 
 const SCROLL_THRESHOLD = 30; // Pixels to drag before triggering scroll
+const EDGE_SWIPE_THRESHOLD = 30; // Pixels from edge to start swipe detection
+const SWIPE_HORIZONTAL_THRESHOLD = 100; // Minimum horizontal distance for swipe
+const SWIPE_VERTICAL_LIMIT = 50; // Maximum vertical distance for swipe
+const ALT_SCROLL_THRESHOLD = 30; // Pixels to drag for one wheel tick
 
 export class TouchGestureHandler {
-  private config: ToolbarConfig;
+  private config: TerminalUiConfig;
   private terminal: TerminalController;
   private input: InputHandler;
   private modifiers: ModifierKeyState;
@@ -33,8 +37,17 @@ export class TouchGestureHandler {
 
   private scrollBtn: HTMLElement | null = null;
 
+  // Edge swipe for session switcher
+  private edgeSwipeStartX = 0;
+  private edgeSwipeStartY = 0;
+  private edgeSwipeStartedFromEdge = false;
+
+  // Alt+swipe scroll state
+  private altScrollActive = false;
+  private altScrollLastY = 0;
+
   constructor(
-    config: ToolbarConfig,
+    config: TerminalUiConfig,
     terminal: TerminalController,
     input: InputHandler,
     modifiers: ModifierKeyState
@@ -81,6 +94,8 @@ export class TouchGestureHandler {
     this.setupPinchZoom();
     this.setupWheelZoom();
     this.setupDoubleTap();
+    this.setupEdgeSwipe();
+    this.setupAltScroll();
   }
 
   /**
@@ -99,8 +114,8 @@ export class TouchGestureHandler {
         (e: MouseEvent) => {
           // Don't interfere with toolbar buttons
           if (
-            (e.target as HTMLElement).closest('#ttyd-toolbar') ||
-            (e.target as HTMLElement).closest('#ttyd-toolbar-toggle')
+            (e.target as HTMLElement).closest('#tui') ||
+            (e.target as HTMLElement).closest('#tui-toggle')
           ) {
             return;
           }
@@ -167,7 +182,7 @@ export class TouchGestureHandler {
         const target = e.target as HTMLElement;
 
         // Don't interfere with toolbar buttons
-        if (target.closest('#ttyd-toolbar') || target.closest('#ttyd-toolbar-toggle')) {
+        if (target.closest('#tui') || target.closest('#tui-toggle')) {
           return;
         }
 
@@ -328,6 +343,12 @@ export class TouchGestureHandler {
     document.addEventListener(
       'wheel',
       (e: WheelEvent) => {
+        // Skip events targeting preview pane (let iframe handle its own scrolling)
+        const target = e.target as HTMLElement;
+        if (target.closest('#tui-preview-pane')) {
+          return;
+        }
+
         // ctrlKey = trackpad pinch (Mac) or Ctrl+scroll (PC)
         if (e.ctrlKey) {
           e.preventDefault(); // Suppress browser zoom
@@ -353,7 +374,7 @@ export class TouchGestureHandler {
         const target = e.target as HTMLElement;
 
         // Exclude toolbar elements
-        if (target.closest('#ttyd-toolbar') || target.closest('#ttyd-toolbar-toggle')) {
+        if (target.closest('#tui') || target.closest('#tui-toggle')) {
           return;
         }
 
@@ -372,6 +393,141 @@ export class TouchGestureHandler {
         }
       },
       { passive: true }
+    );
+  }
+
+  /**
+   * Setup edge swipe from right to open session switcher
+   * Detection: Touch starts within 30px of right edge, swipe left 100px+ with <50px vertical movement
+   */
+  private setupEdgeSwipe(): void {
+    document.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+
+        // Don't interfere with toolbar or modals
+        if (
+          target.closest('#tui') ||
+          target.closest('#tui-toggle') ||
+          target.closest('#tui-session-modal') ||
+          target.closest('#tui-snippet-modal') ||
+          target.closest('#tui-share-modal') ||
+          target.closest('#tui-file-modal')
+        ) {
+          this.edgeSwipeStartedFromEdge = false;
+          return;
+        }
+
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          const screenWidth = window.innerWidth;
+
+          // Check if touch started from right edge
+          if (screenWidth - touch.clientX <= EDGE_SWIPE_THRESHOLD) {
+            this.edgeSwipeStartX = touch.clientX;
+            this.edgeSwipeStartY = touch.clientY;
+            this.edgeSwipeStartedFromEdge = true;
+          } else {
+            this.edgeSwipeStartedFromEdge = false;
+          }
+        }
+      },
+      { passive: true }
+    );
+
+    document.addEventListener(
+      'touchend',
+      (e: TouchEvent) => {
+        if (!this.edgeSwipeStartedFromEdge) {
+          return;
+        }
+
+        if (e.changedTouches.length === 1) {
+          const touch = e.changedTouches[0];
+          const deltaX = this.edgeSwipeStartX - touch.clientX; // Positive = swipe left
+          const deltaY = Math.abs(touch.clientY - this.edgeSwipeStartY);
+
+          // Check if this is a valid left swipe
+          if (deltaX >= SWIPE_HORIZONTAL_THRESHOLD && deltaY < SWIPE_VERTICAL_LIMIT) {
+            // Emit session:open event
+            toolbarEvents.emit('session:open');
+          }
+        }
+
+        this.edgeSwipeStartedFromEdge = false;
+      },
+      { passive: true }
+    );
+  }
+
+  /**
+   * Setup Alt+swipe scroll gesture
+   * When Alt is active, vertical swipe sends mouse wheel events
+   */
+  private setupAltScroll(): void {
+    document.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+
+        // Don't interfere with toolbar or modals
+        if (
+          target.closest('#tui') ||
+          target.closest('#tui-toggle') ||
+          target.closest('#tui-session-modal') ||
+          target.closest('#tui-snippet-modal') ||
+          target.closest('#tui-share-modal') ||
+          target.closest('#tui-file-modal')
+        ) {
+          return;
+        }
+
+        // Single finger touch with Alt active -> enable alt scroll mode
+        if (e.touches.length === 1 && this.modifiers.isAltActive()) {
+          this.altScrollActive = true;
+          this.altScrollLastY = e.touches[0].clientY;
+          e.preventDefault();
+        }
+      },
+      { passive: false, capture: true }
+    );
+
+    document.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        if (!this.altScrollActive || e.touches.length !== 1) {
+          return;
+        }
+
+        const touch = e.touches[0];
+        const deltaY = this.altScrollLastY - touch.clientY;
+
+        if (Math.abs(deltaY) >= ALT_SCROLL_THRESHOLD) {
+          const ticks = Math.floor(Math.abs(deltaY) / ALT_SCROLL_THRESHOLD);
+          const direction = deltaY > 0 ? 'down' : 'up';
+          this.input.sendWheel(direction, ticks);
+          this.altScrollLastY = touch.clientY;
+        }
+        e.preventDefault();
+      },
+      { passive: false, capture: true }
+    );
+
+    document.addEventListener(
+      'touchend',
+      () => {
+        this.altScrollActive = false;
+      },
+      { passive: true, capture: true }
+    );
+
+    document.addEventListener(
+      'touchcancel',
+      () => {
+        this.altScrollActive = false;
+      },
+      { passive: true, capture: true }
     );
   }
 }

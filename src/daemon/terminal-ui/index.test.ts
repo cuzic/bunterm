@@ -2,47 +2,47 @@ import { describe, expect, test } from 'bun:test';
 import {
   AUTO_RUN_KEY,
   CLIPBOARD_HISTORY_KEY,
-  DEFAULT_TOOLBAR_CONFIG,
+  DEFAULT_TERMINAL_UI_CONFIG,
   ONBOARDING_SHOWN_KEY,
   SNIPPETS_KEY,
   STORAGE_KEY,
-  injectToolbar,
+  injectTerminalUi,
   onboardingHtml,
-  toolbarHtml,
-  toolbarStyles
+  terminalUiHtml,
+  terminalUiStyles
 } from './index.js';
 
 describe('toolbar/config', () => {
-  test('DEFAULT_TOOLBAR_CONFIG has correct font_size_min', () => {
-    expect(DEFAULT_TOOLBAR_CONFIG.font_size_min).toBe(10);
+  test('DEFAULT_TERMINAL_UI_CONFIG has correct font_size_min', () => {
+    expect(DEFAULT_TERMINAL_UI_CONFIG.font_size_min).toBe(10);
   });
 
-  test('DEFAULT_TOOLBAR_CONFIG has correct font_size_max', () => {
-    expect(DEFAULT_TOOLBAR_CONFIG.font_size_max).toBe(48);
+  test('DEFAULT_TERMINAL_UI_CONFIG has correct font_size_max', () => {
+    expect(DEFAULT_TERMINAL_UI_CONFIG.font_size_max).toBe(48);
   });
 
-  test('DEFAULT_TOOLBAR_CONFIG has correct font_size_default_mobile', () => {
-    expect(DEFAULT_TOOLBAR_CONFIG.font_size_default_mobile).toBe(32);
+  test('DEFAULT_TERMINAL_UI_CONFIG has correct font_size_default_mobile', () => {
+    expect(DEFAULT_TERMINAL_UI_CONFIG.font_size_default_mobile).toBe(32);
   });
 
-  test('DEFAULT_TOOLBAR_CONFIG has correct font_size_default_pc', () => {
-    expect(DEFAULT_TOOLBAR_CONFIG.font_size_default_pc).toBe(14);
+  test('DEFAULT_TERMINAL_UI_CONFIG has correct font_size_default_pc', () => {
+    expect(DEFAULT_TERMINAL_UI_CONFIG.font_size_default_pc).toBe(14);
   });
 
-  test('DEFAULT_TOOLBAR_CONFIG has correct double_tap_delay', () => {
-    expect(DEFAULT_TOOLBAR_CONFIG.double_tap_delay).toBe(300);
+  test('DEFAULT_TERMINAL_UI_CONFIG has correct double_tap_delay', () => {
+    expect(DEFAULT_TERMINAL_UI_CONFIG.double_tap_delay).toBe(300);
   });
 
   test('STORAGE_KEY is defined', () => {
-    expect(STORAGE_KEY).toBe('ttyd-toolbar-font-size');
+    expect(STORAGE_KEY).toBe('tui-font-size');
   });
 
   test('ONBOARDING_SHOWN_KEY is defined', () => {
-    expect(ONBOARDING_SHOWN_KEY).toBe('ttyd-toolbar-onboarding-shown');
+    expect(ONBOARDING_SHOWN_KEY).toBe('tui-onboarding-shown');
   });
 
   test('AUTO_RUN_KEY is defined', () => {
-    expect(AUTO_RUN_KEY).toBe('ttyd-toolbar-auto-run');
+    expect(AUTO_RUN_KEY).toBe('tui-auto-run');
   });
 
   test('SNIPPETS_KEY is defined', () => {
@@ -56,85 +56,84 @@ describe('toolbar/config', () => {
 
 describe('toolbar/styles', () => {
   test('contains toolbar container styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar');
+    expect(terminalUiStyles).toContain('#tui');
   });
 
   test('contains toolbar toggle button styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar-toggle');
+    expect(terminalUiStyles).toContain('#tui-toggle');
   });
 
   test('contains button styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar-buttons button');
+    expect(terminalUiStyles).toContain('#tui-buttons button');
   });
 
   test('contains mobile media query', () => {
-    expect(toolbarStyles).toContain('@media (max-width: 768px)');
+    expect(terminalUiStyles).toContain('@media (max-width: 768px)');
   });
 
   test('contains hidden class', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar.hidden');
+    expect(terminalUiStyles).toContain('#tui.hidden');
   });
 
   test('contains minimized mode styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar.minimized');
-    expect(toolbarStyles).toContain('#ttyd-toolbar.minimized #ttyd-toolbar-buttons');
+    expect(terminalUiStyles).toContain('#tui.minimized');
+    expect(terminalUiStyles).toContain('#tui.minimized #tui-buttons');
   });
 
   test('contains minimize button styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar-minimize');
+    expect(terminalUiStyles).toContain('#tui-minimize');
   });
 
   test('contains onboarding tooltip styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-toolbar-onboarding');
-    expect(toolbarStyles).toContain('#ttyd-toolbar-onboarding-close');
+    expect(terminalUiStyles).toContain('#tui-onboarding');
+    expect(terminalUiStyles).toContain('#tui-onboarding-close');
   });
 });
 
 describe('toolbar/template', () => {
   test('contains toolbar container element', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar"');
+    expect(terminalUiHtml).toContain('id="tui"');
   });
 
   test('contains toolbar toggle button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-toggle"');
+    expect(terminalUiHtml).toContain('id="tui-toggle"');
   });
 
   test('contains modifier buttons', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-ctrl"');
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-alt"');
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-shift"');
+    expect(terminalUiHtml).toContain('id="tui-ctrl"');
+    expect(terminalUiHtml).toContain('id="tui-alt"');
+    expect(terminalUiHtml).toContain('id="tui-shift"');
   });
 
   test('contains zoom buttons', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-zoomin"');
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-zoomout"');
+    expect(terminalUiHtml).toContain('id="tui-zoomin"');
+    expect(terminalUiHtml).toContain('id="tui-zoomout"');
   });
 
   test('contains copy buttons', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-copy"');
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-copyall"');
+    expect(terminalUiHtml).toContain('id="tui-copyall"');
   });
 
   test('contains input textarea', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-input"');
+    expect(terminalUiHtml).toContain('id="tui-input"');
   });
 
   test('has hidden class by default', () => {
-    expect(toolbarHtml).toContain('class="hidden"');
+    expect(terminalUiHtml).toContain('class="hidden"');
   });
 
   test('contains minimize button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-minimize"');
+    expect(terminalUiHtml).toContain('id="tui-minimize"');
   });
 });
 
 describe('toolbar/onboarding', () => {
   test('contains onboarding container', () => {
-    expect(onboardingHtml).toContain('id="ttyd-toolbar-onboarding"');
+    expect(onboardingHtml).toContain('id="tui-onboarding"');
   });
 
   test('contains close button', () => {
-    expect(onboardingHtml).toContain('id="ttyd-toolbar-onboarding-close"');
+    expect(onboardingHtml).toContain('id="tui-onboarding-close"');
   });
 
   test('contains tips content', () => {
@@ -144,21 +143,31 @@ describe('toolbar/onboarding', () => {
   });
 });
 
-describe('injectToolbar', () => {
+describe('injectTerminalUi', () => {
+  test('injects WebSocket interception script in <head>', () => {
+    const html = '<html><head></head><body></body></html>';
+    const result = injectTerminalUi(html, '/ttyd-mux');
+
+    // WebSocket interception should be injected right after <head>
+    expect(result).toContain('<head>\n<script>');
+    expect(result).toContain('window.__TTYD_WS__');
+    expect(result).toContain('OriginalWebSocket');
+  });
+
   test('injects styles, HTML, config, and script tag before </body>', () => {
     const html = '<html><head></head><body><p>content</p></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
     expect(result).toContain('<style>');
-    expect(result).toContain('#ttyd-toolbar');
-    expect(result).toContain('window.__TOOLBAR_CONFIG__');
-    expect(result).toContain('<script src="/ttyd-mux/toolbar.js"></script>');
+    expect(result).toContain('#tui');
+    expect(result).toContain('window.__TERMINAL_UI_CONFIG__');
+    expect(result).toContain('<script src="/ttyd-mux/terminal-ui.js"></script>');
     expect(result).toContain('</body>');
   });
 
   test('preserves original HTML content', () => {
     const html = '<html><head><title>Test</title></head><body><p>Hello World</p></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
     expect(result).toContain('<title>Test</title>');
     expect(result).toContain('<p>Hello World</p>');
@@ -166,15 +175,17 @@ describe('injectToolbar', () => {
 
   test('handles HTML without body closing tag', () => {
     const html = '<html><head></head><body><p>content</p>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
-    // Should not modify since there's no </body> to replace
-    expect(result).toBe(html);
+    // Should inject WebSocket interception in <head> even if </body> is missing
+    expect(result).toContain('window.__TTYD_WS__');
+    // Body injection should not happen (no </body> to replace)
+    expect(result).not.toContain('terminal-ui.js');
   });
 
   test('only replaces first </body> tag', () => {
     const html = '<html><body>content</body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
     const bodyCloseCount = (result.match(/<\/body>/g) || []).length;
     expect(bodyCloseCount).toBe(1);
@@ -182,41 +193,41 @@ describe('injectToolbar', () => {
 
   test('uses provided basePath in script src', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/custom-path');
+    const result = injectTerminalUi(html, '/custom-path');
 
-    expect(result).toContain('<script src="/custom-path/toolbar.js"></script>');
+    expect(result).toContain('<script src="/custom-path/terminal-ui.js"></script>');
   });
 
   test('includes onboarding HTML', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
-    expect(result).toContain('id="ttyd-toolbar-onboarding"');
+    expect(result).toContain('id="tui-onboarding"');
   });
 
   test('onboarding HTML is hidden by default', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
     expect(result).toContain('style="display:none"');
   });
 
   test('script tag appears before </body>', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
-    const scriptIndex = result.indexOf('toolbar.js');
+    const scriptIndex = result.indexOf('terminal-ui.js');
     const bodyIndex = result.indexOf('</body>');
     expect(scriptIndex).toBeLessThan(bodyIndex);
   });
 
   test('embeds default config as JSON when no config provided', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
-    expect(result).toContain(`"font_size_min":${DEFAULT_TOOLBAR_CONFIG.font_size_min}`);
-    expect(result).toContain(`"font_size_max":${DEFAULT_TOOLBAR_CONFIG.font_size_max}`);
-    expect(result).toContain(`"double_tap_delay":${DEFAULT_TOOLBAR_CONFIG.double_tap_delay}`);
+    expect(result).toContain(`"font_size_min":${DEFAULT_TERMINAL_UI_CONFIG.font_size_min}`);
+    expect(result).toContain(`"font_size_max":${DEFAULT_TERMINAL_UI_CONFIG.font_size_max}`);
+    expect(result).toContain(`"double_tap_delay":${DEFAULT_TERMINAL_UI_CONFIG.double_tap_delay}`);
   });
 
   test('embeds custom config as JSON', () => {
@@ -228,7 +239,7 @@ describe('injectToolbar', () => {
       font_size_default_pc: 16,
       double_tap_delay: 400
     };
-    const result = injectToolbar(html, '/ttyd-mux', customConfig);
+    const result = injectTerminalUi(html, '/ttyd-mux', customConfig);
 
     expect(result).toContain('"font_size_min":12');
     expect(result).toContain('"font_size_max":64');
@@ -237,12 +248,12 @@ describe('injectToolbar', () => {
     expect(result).toContain('"double_tap_delay":400');
   });
 
-  test('config script appears before toolbar.js script', () => {
+  test('config script appears before terminal-ui.js script', () => {
     const html = '<html><body></body></html>';
-    const result = injectToolbar(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/ttyd-mux');
 
-    const configIndex = result.indexOf('__TOOLBAR_CONFIG__');
-    const toolbarJsIndex = result.indexOf('toolbar.js');
+    const configIndex = result.indexOf('__TERMINAL_UI_CONFIG__');
+    const toolbarJsIndex = result.indexOf('terminal-ui.js');
     expect(configIndex).toBeLessThan(toolbarJsIndex);
   });
 });
@@ -253,50 +264,50 @@ describe('injectToolbar', () => {
 
 describe('toolbar/search - template', () => {
   test('contains search button in toolbar', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-search"');
+    expect(terminalUiHtml).toContain('id="tui-search"');
   });
 
   test('contains search bar container', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-bar"');
+    expect(terminalUiHtml).toContain('id="tui-search-bar"');
   });
 
   test('contains search input field', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-input"');
+    expect(terminalUiHtml).toContain('id="tui-search-input"');
   });
 
   test('contains search navigation buttons', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-prev"');
-    expect(toolbarHtml).toContain('id="ttyd-search-next"');
+    expect(terminalUiHtml).toContain('id="tui-search-prev"');
+    expect(terminalUiHtml).toContain('id="tui-search-next"');
   });
 
   test('contains search close button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-close"');
+    expect(terminalUiHtml).toContain('id="tui-search-close"');
   });
 
   test('contains match count display', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-count"');
+    expect(terminalUiHtml).toContain('id="tui-search-count"');
   });
 
   test('contains case sensitivity toggle', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-case"');
+    expect(terminalUiHtml).toContain('id="tui-search-case"');
   });
 
   test('contains regex toggle', () => {
-    expect(toolbarHtml).toContain('id="ttyd-search-regex"');
+    expect(terminalUiHtml).toContain('id="tui-search-regex"');
   });
 });
 
 describe('toolbar/search - styles', () => {
   test('contains search bar styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-search-bar');
+    expect(terminalUiStyles).toContain('#tui-search-bar');
   });
 
   test('contains search input styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-search-input');
+    expect(terminalUiStyles).toContain('#tui-search-input');
   });
 
   test('contains search bar hidden state', () => {
-    expect(toolbarStyles).toContain('#ttyd-search-bar.hidden');
+    expect(terminalUiStyles).toContain('#tui-search-bar.hidden');
   });
 });
 
@@ -306,15 +317,15 @@ describe('toolbar/search - styles', () => {
 
 describe('toolbar/paste - template', () => {
   test('contains paste button in toolbar', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-paste"');
+    expect(terminalUiHtml).toContain('id="tui-paste"');
   });
 
   test('paste button has correct title', () => {
-    expect(toolbarHtml).toContain('title="スマートペースト（テキスト/画像を自動判別）"');
+    expect(terminalUiHtml).toContain('title="スマートペースト（テキスト/画像を自動判別） Alt+V"');
   });
 
   test('paste button uses clipboard emoji', () => {
-    expect(toolbarHtml).toContain('📋');
+    expect(terminalUiHtml).toContain('📋');
   });
 });
 
@@ -324,137 +335,137 @@ describe('toolbar/paste - template', () => {
 
 describe('toolbar/snippet - template', () => {
   test('contains snippet button in toolbar', () => {
-    expect(toolbarHtml).toContain('id="ttyd-toolbar-snippet"');
+    expect(terminalUiHtml).toContain('id="tui-snippet"');
   });
 
   test('snippet button has correct title', () => {
-    expect(toolbarHtml).toContain('title="スニペット"');
+    expect(terminalUiHtml).toContain('title="スニペット"');
   });
 
   test('snippet button uses pin emoji', () => {
-    expect(toolbarHtml).toContain('📌');
+    expect(terminalUiHtml).toContain('📌');
   });
 
   test('contains snippet modal container', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-modal"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-modal"');
   });
 
   test('snippet modal is hidden by default', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-modal" class="hidden"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-modal" class="hidden"');
   });
 
   test('contains snippet modal header', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-modal-header"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-modal-header"');
   });
 
   test('contains snippet add button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add"');
   });
 
   test('contains snippet import button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-import"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-import"');
   });
 
   test('contains snippet export button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-export"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-export"');
   });
 
   test('contains snippet search input', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-search"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-search"');
   });
 
   test('contains snippet list container', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-list"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-list"');
   });
 
   test('contains snippet add form', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add-form"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add-form"');
   });
 
   test('contains snippet name input', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add-name"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add-name"');
   });
 
   test('contains snippet command input', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add-command"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add-command"');
   });
 
   test('contains snippet save button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add-save"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add-save"');
   });
 
   test('contains snippet cancel button', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-add-cancel"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-add-cancel"');
   });
 
   test('contains snippet empty state', () => {
-    expect(toolbarHtml).toContain('id="ttyd-snippet-empty"');
+    expect(terminalUiHtml).toContain('id="tui-snippet-empty"');
   });
 });
 
 describe('toolbar/snippet - styles', () => {
   test('contains snippet modal styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-modal');
+    expect(terminalUiStyles).toContain('#tui-snippet-modal');
   });
 
   test('contains snippet modal content styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-modal-content');
+    expect(terminalUiStyles).toContain('#tui-snippet-modal-content');
   });
 
   test('contains snippet modal hidden state', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-modal.hidden');
+    expect(terminalUiStyles).toContain('#tui-snippet-modal.hidden');
   });
 
   test('contains snippet search input styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-search');
+    expect(terminalUiStyles).toContain('#tui-snippet-search');
   });
 
   test('contains snippet add form styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-add-form');
+    expect(terminalUiStyles).toContain('#tui-snippet-add-form');
   });
 
   test('contains snippet list styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-list');
+    expect(terminalUiStyles).toContain('#tui-snippet-list');
   });
 
   test('contains snippet item styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item');
+    expect(terminalUiStyles).toContain('.tui-snippet-item');
   });
 
   test('contains snippet item header styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-header');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-header');
   });
 
   test('contains snippet item name styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-name');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-name');
   });
 
   test('contains snippet item command styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-command');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-command');
   });
 
   test('contains snippet item run button styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-run');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-run');
   });
 
   test('contains snippet item edit button styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-edit');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-edit');
   });
 
   test('contains snippet item delete button styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-delete');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-delete');
   });
 
   test('contains snippet edit form styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item-edit-form');
+    expect(terminalUiStyles).toContain('.tui-snippet-item-edit-form');
   });
 
   test('contains snippet editing state styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-snippet-item.editing');
+    expect(terminalUiStyles).toContain('.tui-snippet-item.editing');
   });
 
   test('contains mobile adjustments for snippet modal', () => {
-    expect(toolbarStyles).toContain('#ttyd-snippet-modal-content');
+    expect(terminalUiStyles).toContain('#tui-snippet-modal-content');
   });
 });
 
@@ -464,30 +475,30 @@ describe('toolbar/snippet - styles', () => {
 
 describe('toolbar/clipboard-history - styles', () => {
   test('contains clipboard history popup styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history');
   });
 
   test('contains clipboard history hidden state', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history.hidden');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history.hidden');
   });
 
   test('contains clipboard history header styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history-header');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history-header');
   });
 
   test('contains clipboard history list styles', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history-list');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history-list');
   });
 
   test('contains clipboard history item styles', () => {
-    expect(toolbarStyles).toContain('.ttyd-clipboard-history-item');
+    expect(terminalUiStyles).toContain('.tui-clipboard-history-item');
   });
 
   test('contains clipboard history empty state', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history-empty');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history-empty');
   });
 
   test('contains mobile adjustments for clipboard history', () => {
-    expect(toolbarStyles).toContain('#ttyd-clipboard-history');
+    expect(terminalUiStyles).toContain('#tui-clipboard-history');
   });
 });
