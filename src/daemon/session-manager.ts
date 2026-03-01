@@ -89,7 +89,7 @@ export class SessionManager extends EventEmitter {
     if (!portAvailable) {
       log.error(`Port ${port} is already in use`);
       throw new Error(
-        `Port ${port} is already in use by another process.\n  To find the process: lsof -i :${port}\n  To stop all sessions: ttyd-mux daemon stop -s`
+        `Port ${port} is already in use by another process.\n  To find the process: lsof -i :${port}\n  To stop all sessions: ttyd-mux stop -s`
       );
     }
 
@@ -197,6 +197,14 @@ export class SessionManager extends EventEmitter {
     }
 
     return activeSessions;
+  }
+
+  /**
+   * Find a session by name
+   * Returns undefined if no session with the given name exists
+   */
+  findByName(name: string): SessionState | undefined {
+    return this.listSessions().find((s) => s.name === name);
   }
 
   stopAllSessions(options?: { killTmux?: boolean }): void {

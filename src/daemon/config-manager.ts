@@ -32,8 +32,8 @@ const RESTART_REQUIRED_KEYS = ['daemon_port', 'base_path', 'base_port'] as const
 // Settings that require restart (JSON comparison)
 const RESTART_REQUIRED_ARRAY_KEYS = ['listen_addresses', 'listen_sockets'] as const;
 
-// Toolbar keys to check
-const TOOLBAR_KEYS = [
+// Terminal UI keys to check
+const TERMINAL_UI_KEYS = [
   'font_size_default_mobile',
   'font_size_default_pc',
   'font_size_min',
@@ -60,10 +60,10 @@ function detectChanges(
   const hotReloadable: string[] = [];
   const requiresRestart: string[] = [];
 
-  // Check toolbar config
-  for (const key of TOOLBAR_KEYS) {
-    if (oldConfig.toolbar[key] !== newConfig.toolbar[key]) {
-      hotReloadable.push(`toolbar.${key}`);
+  // Check terminal UI config
+  for (const key of TERMINAL_UI_KEYS) {
+    if (oldConfig.terminal_ui[key] !== newConfig.terminal_ui[key]) {
+      hotReloadable.push(`terminal_ui.${key}`);
     }
   }
 

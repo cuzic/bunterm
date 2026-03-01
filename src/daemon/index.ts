@@ -10,6 +10,8 @@ import {
   setDaemonState
 } from '@/config/state.js';
 import { createLogger } from '@/utils/logger.js';
+import { captureException, initSentry } from '@/utils/sentry.js';
+import { VERSION } from '@/version.js';
 import { getCurrentConfig, initConfigManager, reloadConfig } from './config-manager.js';
 import { createNotificationService } from './notification/index.js';
 import { createDaemonServer, setConfigGetter } from './server.js';
@@ -68,19 +70,24 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<void> {
 
   revalidateExistingSessions();
 
-  // Set up global error handlers
+  const configManager = initConfigManager(options.configPath);
+  const config = configManager.getConfig();
+  log.info(`Config loaded: port=${config.daemon_port}, base_path=${config.base_path}`);
+
+  // Initialize Sentry early (before setting up error handlers)
+  await initSentry(config.sentry, VERSION);
+
+  // Set up global error handlers (with Sentry integration)
   process.on('uncaughtException', (error) => {
     log.error(`Uncaught exception: ${error.message}`, error.stack);
+    captureException(error, { type: 'uncaughtException' });
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason, promise) => {
     log.error(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+    captureException(reason, { type: 'unhandledRejection' });
   });
-
-  const configManager = initConfigManager(options.configPath);
-  const config = configManager.getConfig();
-  log.info(`Config loaded: port=${config.daemon_port}, base_path=${config.base_path}`);
 
   // Set up config getter for hot-reload support
   setConfigGetter(getCurrentConfig);

@@ -24,7 +24,7 @@ describe('ConfigManager', () => {
       configPath,
       `
 base_port: 8000
-toolbar:
+terminal_ui:
   font_size_default_mobile: 36
 `
     );
@@ -33,7 +33,7 @@ toolbar:
     const config = manager.getConfig();
 
     expect(config.base_port).toBe(8000);
-    expect(config.toolbar.font_size_default_mobile).toBe(36);
+    expect(config.terminal_ui.font_size_default_mobile).toBe(36);
   });
 
   test('reload detects no changes', () => {
@@ -53,7 +53,7 @@ toolbar:
     writeFileSync(
       configPath,
       `
-toolbar:
+terminal_ui:
   font_size_default_mobile: 32
 `
     );
@@ -64,7 +64,7 @@ toolbar:
     writeFileSync(
       configPath,
       `
-toolbar:
+terminal_ui:
   font_size_default_mobile: 40
 `
     );
@@ -72,12 +72,12 @@ toolbar:
     const result = manager.reload();
 
     expect(result.success).toBe(true);
-    expect(result.reloaded).toContain('toolbar.font_size_default_mobile');
+    expect(result.reloaded).toContain('terminal_ui.font_size_default_mobile');
     expect(result.requiresRestart).toEqual([]);
 
     // Verify config was updated
     const config = manager.getConfig();
-    expect(config.toolbar.font_size_default_mobile).toBe(40);
+    expect(config.terminal_ui.font_size_default_mobile).toBe(40);
   });
 
   test('reload detects restart-required changes', () => {
@@ -119,7 +119,7 @@ toolbar:
     writeFileSync(
       configPath,
       `
-toolbar:
+terminal_ui:
   font_size_default_mobile: 32
   font_size_default_pc: 14
 proxy_mode: proxy
@@ -132,7 +132,7 @@ proxy_mode: proxy
     writeFileSync(
       configPath,
       `
-toolbar:
+terminal_ui:
   font_size_default_mobile: 40
   font_size_default_pc: 16
 proxy_mode: static
@@ -143,8 +143,8 @@ daemon_port: 9000
     const result = manager.reload();
 
     expect(result.success).toBe(true);
-    expect(result.reloaded).toContain('toolbar.font_size_default_mobile');
-    expect(result.reloaded).toContain('toolbar.font_size_default_pc');
+    expect(result.reloaded).toContain('terminal_ui.font_size_default_mobile');
+    expect(result.reloaded).toContain('terminal_ui.font_size_default_pc');
     expect(result.reloaded).toContain('proxy_mode');
     expect(result.requiresRestart).toContain('daemon_port');
   });
