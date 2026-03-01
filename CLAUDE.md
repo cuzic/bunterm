@@ -39,7 +39,7 @@ src/
 │   ├── ws-proxy.ts       # WebSocket プロキシ
 │   ├── portal.ts         # ポータル HTML 生成
 │   ├── pwa.ts            # PWA マニフェスト、Service Worker
-│   ├── toolbar/          # ツールバーモジュール
+│   ├── terminal-ui/      # ターミナルUI モジュール
 │   │   ├── index.ts      # エクスポート、inject 関数
 │   │   ├── config.ts     # 設定定数
 │   │   ├── styles.ts     # CSS
@@ -87,7 +87,7 @@ src/
 │   ├── share.ts          # 読み取り専用共有コマンド
 │   └── deploy.ts         # デプロイコマンド（static モード用）
 └── scripts/
-    └── build-toolbar.mjs # ツールバー JS バンドル生成
+    └── build-terminal-ui.mjs # ターミナルUI JS バンドル生成
 ```
 
 **パスエイリアス**: `@/` で `src/` ディレクトリを参照可能（例: `import { loadConfig } from "@/config/config.js"`）
@@ -192,7 +192,7 @@ interface Config {
   proxy_mode: 'proxy' | 'static';  // プロキシモード
   hostname?: string;      // Caddy 連携用ホスト名
   caddy_admin_api: string; // Caddy Admin API URL
-  toolbar: ToolbarConfig; // ツールバー設定
+  terminal_ui: TerminalUiConfig; // ターミナルUI設定
   notifications: NotificationConfig; // 通知設定
   sessions?: SessionDefinition[];
 }
@@ -221,7 +221,7 @@ interface SessionState {
 - 読み取り専用共有リンク（`ttyd-mux share`）
 - シンプルな Caddy 設定（単一ルート）
 - Unix ソケット経由のリバースプロキシ対応 (`listen_sockets`)
-- toolbar.js は静的ファイルとして配信（ETag キャッシュ対応）
+- terminal-ui.js は静的ファイルとして配信（ETag キャッシュ対応）
 
 ### static モード
 - Caddy から ttyd に直接ルーティング
