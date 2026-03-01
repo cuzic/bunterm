@@ -129,9 +129,13 @@
         "src/config/index.ts",
         "src/config/state-store.ts",
         "src/daemon/notification/index.ts",
-        "src/daemon/toolbar/index.ts",
+        "src/daemon/terminal-ui/index.ts",
         "src/daemon/preview/index.ts",
-        "src/daemon/tabs/index.ts"
+        "src/daemon/tabs/index.ts",
+        "src/daemon/api/index.ts",
+        "src/daemon/api-handler.ts",
+        "src/daemon/file-transfer.ts",
+        "src/daemon/directory-browser.ts"
       ],
       "linter": {
         "rules": {
@@ -145,6 +149,7 @@
     {
       "include": [
         "src/daemon/api-handler.ts",
+        "src/daemon/api/**/*.ts",
         "src/daemon/router.ts",
         "src/daemon/index.ts"
       ],
@@ -158,7 +163,7 @@
     },
     {
       "include": [
-        "src/daemon/toolbar/client/**/*.ts",
+        "src/daemon/terminal-ui/client/**/*.ts",
         "src/daemon/tabs/client/**/*.ts",
         "src/daemon/tabs/styles.ts"
       ],
