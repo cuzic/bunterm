@@ -36,9 +36,9 @@ Usage Patterns:
     $ ttyd-mux down
 
   Static (server deployment with predefined sessions):
-    $ ttyd-mux daemon start --sessions    # Start daemon + all sessions
-    $ ttyd-mux daemon start -s            # Start daemon + select sessions
-    $ ttyd-mux daemon stop --stop-sessions
+    $ ttyd-mux start --sessions    # Start daemon + all sessions
+    $ ttyd-mux start -s            # Start daemon + select sessions
+    $ ttyd-mux stop --stop-sessions
 `
   );
 
@@ -83,9 +83,7 @@ program
 
 // === Daemon control ===
 
-const daemon = program.command('daemon').description('Daemon management');
-
-daemon
+program
   .command('start')
   .description('Start the daemon')
   .option('-f, --foreground', 'Run in foreground')
@@ -94,21 +92,22 @@ daemon
   .option('-s, --select', 'Interactively select sessions to start')
   .action((options) => daemonCommand(options));
 
-daemon
+program
   .command('stop')
+  .alias('shutdown')
   .description('Stop the daemon')
   .option('-c, --config <path>', 'Config file path')
   .option('-s, --stop-sessions', 'Stop all sessions before shutting down')
   .option('--kill-tmux', 'Also terminate tmux sessions (requires -s)')
   .action((options) => shutdownCommand(options));
 
-daemon
+program
   .command('reload')
   .description('Reload configuration without restart')
   .option('-c, --config <path>', 'Config file path')
   .action((options) => reloadCommand(options));
 
-daemon
+program
   .command('restart')
   .description('Restart the daemon (apply code updates)')
   .option('-c, --config <path>', 'Config file path')

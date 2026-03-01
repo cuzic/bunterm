@@ -126,17 +126,17 @@ function buildDaemonCommand(configPath?: string): DaemonCommand {
   switch (mode) {
     case 'bun-run': {
       executable = process.argv[0] ?? 'bun';
-      args = ['run', resolveScriptPath(process.argv[2]), 'daemon', '-f'];
+      args = ['run', resolveScriptPath(process.argv[2]), 'start', '-f'];
       break;
     }
     case 'script': {
       executable = process.argv[0] ?? 'bun';
-      args = [resolveScriptPath(process.argv[1]), 'daemon', '-f'];
+      args = [resolveScriptPath(process.argv[1]), 'start', '-f'];
       break;
     }
     default: {
       executable = process.execPath;
-      args = ['daemon', '-f'];
+      args = ['start', '-f'];
     }
   }
 
@@ -147,22 +147,33 @@ function buildDaemonCommand(configPath?: string): DaemonCommand {
   return { executable, args };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 /**
  * Wait for daemon to become ready
+ * Uses setInterval to keep the event loop alive during the wait
  */
 async function waitForDaemon(): Promise<boolean> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < DAEMON_START_TIMEOUT) {
-    if (await isDaemonRunning()) {
-      return true;
-    }
-    await sleep(DAEMON_CHECK_INTERVAL);
-  }
-  return false;
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+
+    const check = async () => {
+      if (Date.now() - startTime >= DAEMON_START_TIMEOUT) {
+        clearInterval(intervalId);
+        resolve(false);
+        return;
+      }
+
+      const running = await isDaemonRunning();
+      if (running) {
+        clearInterval(intervalId);
+        resolve(true);
+      }
+    };
+
+    // Use setInterval to keep the event loop alive
+    const intervalId = setInterval(check, DAEMON_CHECK_INTERVAL);
+    // Run the first check immediately
+    check();
+  });
 }
 
 /**
@@ -185,7 +196,7 @@ export async function ensureDaemon(configPath?: string): Promise<void> {
 
   if (!(await waitForDaemon())) {
     throw new Error(
-      `Failed to start daemon: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n  Possible causes:\n    - Required commands (ttyd, tmux) not installed\n    - Port ${process.env['TTYD_MUX_DAEMON_PORT'] || 7680} already in use\n    - Permission issues with socket path\n  Run 'ttyd-mux doctor' to diagnose the problem.\n  Or start manually: ttyd-mux daemon start -f`
+      `Failed to start daemon: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n  Possible causes:\n    - Required commands (ttyd, tmux) not installed\n    - Port ${process.env['TTYD_MUX_DAEMON_PORT'] || 7680} already in use\n    - Permission issues with socket path\n  Run 'ttyd-mux doctor' to diagnose the problem.\n  Or start manually: ttyd-mux start -f`
     );
   }
 }
@@ -275,16 +286,31 @@ export async function shutdownDaemon(options: ShutdownDaemonOptions = {}): Promi
 
 /**
  * Wait for daemon to stop
+ * Uses setInterval to keep the event loop alive during the wait
  */
 async function waitForDaemonStop(): Promise<boolean> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < DAEMON_STOP_TIMEOUT) {
-    if (!(await isDaemonRunning())) {
-      return true;
-    }
-    await sleep(DAEMON_CHECK_INTERVAL);
-  }
-  return false;
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+
+    const check = async () => {
+      if (Date.now() - startTime >= DAEMON_STOP_TIMEOUT) {
+        clearInterval(intervalId);
+        resolve(false);
+        return;
+      }
+
+      const running = await isDaemonRunning();
+      if (!running) {
+        clearInterval(intervalId);
+        resolve(true);
+      }
+    };
+
+    // Use setInterval to keep the event loop alive
+    const intervalId = setInterval(check, DAEMON_CHECK_INTERVAL);
+    // Run the first check immediately
+    check();
+  });
 }
 
 export interface RestartDaemonOptions {
