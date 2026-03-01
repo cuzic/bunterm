@@ -58,7 +58,17 @@ src/
 │   │   └── vapid.ts      # VAPID キー管理
 │   ├── share-manager.ts  # 読み取り専用共有リンク管理
 │   ├── session-manager.ts # ttyd プロセス管理（DI対応）
-│   └── session-resolver.ts # セッション名解決
+│   ├── session-resolver.ts # セッション名解決
+│   └── native-terminal/  # ネイティブターミナル（Bun.Terminal）
+│       ├── index.ts      # モジュールエクスポート
+│       ├── types.ts      # WebSocket プロトコル型定義
+│       ├── terminal-session.ts # PTY セッション管理
+│       ├── session-manager.ts  # 複数セッション管理
+│       ├── ws-handler.ts # WebSocket ハンドラ
+│       ├── html-template.ts # HTML テンプレート
+│       └── client/       # ブラウザ側クライアント
+│           ├── xterm-bundle.ts # xterm.js バンドル
+│           └── terminal-client.ts # WebSocket クライアント
 ├── client/
 │   ├── index.ts          # クライアント re-exports
 │   ├── api-client.ts     # HTTP API クライアント
@@ -87,7 +97,9 @@ src/
 │   ├── share.ts          # 読み取り専用共有コマンド
 │   └── deploy.ts         # デプロイコマンド（static モード用）
 └── scripts/
-    └── build-terminal-ui.mjs # ターミナルUI JS バンドル生成
+    ├── build-terminal-ui.mjs  # ターミナルUI JS バンドル生成
+    ├── build-xterm-bundle.mjs # xterm.js バンドル生成
+    └── build-terminal-client.mjs # ターミナルクライアントバンドル生成
 ```
 
 **パスエイリアス**: `@/` で `src/` ディレクトリを参照可能（例: `import { loadConfig } from "@/config/config.js"`）
@@ -190,10 +202,12 @@ interface Config {
   listen_addresses: string[];  // ["127.0.0.1", "::1"]
   listen_sockets: string[];    // Unix ソケットパス（オプション）
   proxy_mode: 'proxy' | 'static';  // プロキシモード
+  session_backend: 'ttyd' | 'native'; // セッションバックエンド
   hostname?: string;      // Caddy 連携用ホスト名
   caddy_admin_api: string; // Caddy Admin API URL
   terminal_ui: TerminalUiConfig; // ターミナルUI設定
   notifications: NotificationConfig; // 通知設定
+  native_terminal: NativeTerminalConfig; // ネイティブターミナル設定
   sessions?: SessionDefinition[];
 }
 
@@ -207,6 +221,32 @@ interface SessionState {
   started_at: string;
 }
 ```
+
+## セッションバックエンド
+
+### ttyd モード（デフォルト）
+- 外部プロセス ttyd を使用してターミナルセッションを提供
+- tmux と組み合わせてセッション永続化
+- バイナリ WebSocket プロトコル（ttyd 独自形式）
+- **依存**: ttyd, tmux がシステムにインストール済みであること
+
+### native モード（実験的）
+- Bun.Terminal API を使用した組み込み PTY 実装
+- ttyd への外部依存なし
+- JSON ベースの WebSocket プロトコル
+- xterm.js によるブラウザ側ターミナル描画
+- **依存**: Bun 1.3.5 以上（POSIX のみ）
+- **設定**: `session_backend: native` を config.yaml に追加
+
+```yaml
+# config.yaml
+session_backend: native
+native_terminal:
+  scrollback: 10000
+  output_buffer_size: 16384
+```
+
+詳細は `docs/adr/038-native-terminal-bun.md` を参照。
 
 ## プロキシモード
 
@@ -241,7 +281,7 @@ interface SessionState {
 
 ## 注意事項
 
-- ttyd がシステムにインストールされている必要があります
-- tmux がシステムにインストールされている必要があります
+- **ttyd モード**: ttyd と tmux がシステムにインストールされている必要があります
+- **native モード**: Bun 1.3.5 以上が必要です（ttyd/tmux 不要）
 - bun 1.0 以上が必要です
 - `ttyd-mux doctor` で問題を診断できます

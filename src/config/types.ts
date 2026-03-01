@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // === 設定ファイル (config.yaml) ===
 
-export const TmuxModeSchema = z.enum(['auto', 'attach', 'new']);
+export const TmuxModeSchema = z.enum(['auto', 'attach', 'new', 'none']);
 export type TmuxMode = z.infer<typeof TmuxModeSchema>;
 
 export const SessionDefinitionSchema = z.object({
@@ -239,6 +239,26 @@ export const DEFAULT_SENTRY_CONFIG: SentryConfig = {
   debug: false
 };
 
+export const SessionBackendSchema = z.enum(['ttyd', 'native']);
+export type SessionBackend = z.infer<typeof SessionBackendSchema>;
+
+export const NativeTerminalConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  default_shell: z.string().default('/bin/bash'),
+  scrollback: z.number().int().min(100).max(100000).default(10000),
+  output_buffer_size: z.number().int().min(100).max(10000).default(1000)
+});
+
+export type NativeTerminalConfig = z.infer<typeof NativeTerminalConfigSchema>;
+
+/** Default native terminal configuration */
+export const DEFAULT_NATIVE_TERMINAL_CONFIG: NativeTerminalConfig = {
+  enabled: false,
+  default_shell: '/bin/bash',
+  scrollback: 10000,
+  output_buffer_size: 1000
+};
+
 export const ConfigSchema = z.object({
   base_path: z.string().startsWith('/').default('/ttyd-mux'),
   base_port: z.number().int().min(1024).max(65535).default(7600),
@@ -251,13 +271,15 @@ export const ConfigSchema = z.object({
   hostname: z.string().optional(),
   caddy_admin_api: z.string().default('http://localhost:2019'),
   tmux_mode: TmuxModeSchema.default('auto'),
+  session_backend: SessionBackendSchema.default('ttyd'),
   terminal_ui: TerminalUiConfigSchema.default(DEFAULT_TERMINAL_UI_CONFIG),
   notifications: NotificationConfigSchema.default(DEFAULT_NOTIFICATION_CONFIG),
   file_transfer: FileTransferConfigSchema.default(DEFAULT_FILE_TRANSFER_CONFIG),
   tabs: TabsConfigSchema.default(DEFAULT_TABS_CONFIG),
   preview: PreviewConfigSchema.default(DEFAULT_PREVIEW_CONFIG),
   directory_browser: DirectoryBrowserConfigSchema.default(DEFAULT_DIRECTORY_BROWSER_CONFIG),
-  sentry: SentryConfigSchema.default(DEFAULT_SENTRY_CONFIG)
+  sentry: SentryConfigSchema.default(DEFAULT_SENTRY_CONFIG),
+  native_terminal: NativeTerminalConfigSchema.default(DEFAULT_NATIVE_TERMINAL_CONFIG)
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

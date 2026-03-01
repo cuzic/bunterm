@@ -9,6 +9,7 @@ import {
   removePushSubscription,
   setDaemonState
 } from '@/config/state.js';
+import type { Config } from '@/config/types.js';
 import { createLogger } from '@/utils/logger.js';
 import { captureException, initSentry } from '@/utils/sentry.js';
 import { VERSION } from '@/version.js';
@@ -17,6 +18,7 @@ import { createNotificationService } from './notification/index.js';
 import { createDaemonServer, setConfigGetter } from './server.js';
 import { sessionManager } from './session-manager.js';
 import { setNotificationService } from './ws-proxy.js';
+import { createNativeTerminalServer, type NativeTerminalServer } from './native-terminal/index.js';
 
 const log = createLogger('daemon');
 
@@ -68,11 +70,9 @@ function revalidateExistingSessions(): void {
 export async function startDaemon(options: DaemonOptions = {}): Promise<void> {
   log.info('Starting daemon...');
 
-  revalidateExistingSessions();
-
   const configManager = initConfigManager(options.configPath);
   const config = configManager.getConfig();
-  log.info(`Config loaded: port=${config.daemon_port}, base_path=${config.base_path}`);
+  log.info(`Config loaded: port=${config.daemon_port}, base_path=${config.base_path}, backend=${config.session_backend ?? 'ttyd'}`);
 
   // Initialize Sentry early (before setting up error handlers)
   await initSentry(config.sentry, VERSION);
@@ -89,11 +89,140 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<void> {
     captureException(reason, { type: 'unhandledRejection' });
   });
 
+  const stateDir = getStateDir();
+  const socketPath = getSocketPath();
+
+  // Ensure state directory exists
+  if (!existsSync(stateDir)) {
+    mkdirSync(stateDir, { recursive: true });
+    log.info(`Created state directory: ${stateDir}`);
+  }
+
+  // Clean up old sockets
+  cleanupSocketFile(socketPath, 'CLI socket');
+
+  // Check session backend mode
+  const isNativeMode = config.session_backend === 'native';
+
+  if (isNativeMode) {
+    // Native terminal mode using Bun.serve
+    await startNativeTerminalDaemon(config, configManager, socketPath, stateDir, options);
+  } else {
+    // ttyd mode using Node.js http server
+    revalidateExistingSessions();
+    await startTtydDaemon(config, configManager, socketPath, stateDir, options);
+  }
+}
+
+/**
+ * Start daemon in native terminal mode (Bun.serve based)
+ */
+async function startNativeTerminalDaemon(
+  config: Config,
+  _configManager: ReturnType<typeof initConfigManager>,
+  socketPath: string,
+  _stateDir: string,
+  options: DaemonOptions
+): Promise<void> {
+  log.info('Starting native terminal daemon...');
+
+  // Create native terminal server
+  let nativeServer: NativeTerminalServer;
+  try {
+    nativeServer = createNativeTerminalServer({
+      config,
+      getConfig: getCurrentConfig,
+    });
+  } catch (error) {
+    log.error(`Failed to start native terminal server: ${error}`);
+    throw error;
+  }
+
+  console.log(
+    `ttyd-mux daemon started on http://localhost:${config.daemon_port}${config.base_path}/`
+  );
+  console.log(`  Backend: native (Bun.Terminal)`);
+  console.log(`  Listening on: ${config.listen_addresses[0] || '127.0.0.1'}`);
+
+  // Save daemon state
+  setDaemonState({
+    pid: process.pid,
+    port: config.daemon_port,
+    started_at: new Date().toISOString()
+  });
+  log.info(`Daemon state saved: pid=${process.pid}`);
+
+  // Create Unix socket for CLI communication
+  const unixServer = createUnixServer((socket) => {
+    socket.on('data', (data) => {
+      const command = data.toString().trim();
+      log.debug(`Unix socket received command: ${command}`);
+      if (command === 'ping') {
+        socket.write('pong');
+      } else if (command === 'shutdown' || command === 'shutdown-with-sessions' || command === 'shutdown-with-sessions-kill-tmux') {
+        socket.write('ok');
+        shutdownNative();
+      } else if (command === 'reload') {
+        const result = reloadConfig();
+        socket.write(JSON.stringify(result));
+      }
+      socket.end();
+    });
+    socket.on('error', (err) => {
+      log.error(`Unix socket connection error: ${err.message}`);
+    });
+  });
+
+  unixServer.on('error', (err) => {
+    log.error(`Unix server error: ${err.message}`, err.stack);
+  });
+
+  unixServer.listen(socketPath, () => {
+    log.info(`Unix socket listening: ${socketPath}`);
+    console.log(`Unix socket: ${socketPath}`);
+  });
+
+  // Shutdown handler for native mode
+  const shutdownNative = async () => {
+    log.info('Shutdown requested (native mode)');
+    console.log('\nShutting down...');
+    await nativeServer.stop();
+    clearDaemonState();
+    unixServer.close();
+    cleanupSocketFile(socketPath, 'CLI socket');
+    log.info('Native daemon shutdown complete');
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => {
+    log.info('Received SIGINT');
+    shutdownNative();
+  });
+  process.on('SIGTERM', () => {
+    log.info('Received SIGTERM');
+    shutdownNative();
+  });
+
+  // Keep process running
+  if (!options.foreground) {
+    process.stdin.unref?.();
+  }
+}
+
+/**
+ * Start daemon in ttyd mode (Node.js http server based)
+ */
+async function startTtydDaemon(
+  config: Config,
+  _configManager: ReturnType<typeof initConfigManager>,
+  socketPath: string,
+  stateDir: string,
+  options: DaemonOptions
+): Promise<void> {
   // Set up config getter for hot-reload support
   setConfigGetter(getCurrentConfig);
 
   // Initialize notification service if configured
-  const stateDir = getStateDir();
   if (config.notifications.enabled !== false) {
     try {
       const notificationService = createNotificationService(config.notifications, stateDir, {
@@ -110,17 +239,6 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<void> {
       log.error(`Failed to initialize notification service: ${String(error)}`);
     }
   }
-
-  const socketPath = getSocketPath();
-
-  // Ensure state directory exists
-  if (!existsSync(stateDir)) {
-    mkdirSync(stateDir, { recursive: true });
-    log.info(`Created state directory: ${stateDir}`);
-  }
-
-  // Clean up old sockets
-  cleanupSocketFile(socketPath, 'CLI socket');
 
   // Create HTTP servers for each listen address
   const listenAddresses = config.listen_addresses;
@@ -153,6 +271,7 @@ export async function startDaemon(options: DaemonOptions = {}): Promise<void> {
         console.log(
           `ttyd-mux daemon started on http://localhost:${config.daemon_port}${config.base_path}/`
         );
+        console.log(`  Backend: ttyd`);
         console.log(`  Listening on: ${listenAddresses.join(', ')}`);
         if (listenSockets.length > 0) {
           console.log(`  Unix sockets: ${listenSockets.join(', ')}`);

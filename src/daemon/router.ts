@@ -31,6 +31,18 @@ let tabsJsEtag: string | null = null;
 let swJsCache: string | null = null;
 let swJsEtag: string | null = null;
 
+// Cache for xterm-bundle.js (native terminal)
+let xtermBundleCache: string | null = null;
+let xtermBundleEtag: string | null = null;
+
+// Cache for terminal-client.js (native terminal)
+let terminalClientCache: string | null = null;
+let terminalClientEtag: string | null = null;
+
+// Cache for xterm.css (native terminal)
+let xtermCssCache: string | null = null;
+let xtermCssEtag: string | null = null;
+
 // Regex for stripping trailing slashes
 const TRAILING_SLASH_REGEX = /\/$/;
 
@@ -65,6 +77,30 @@ export function resetTabsCache(): void {
 export function resetSwCache(): void {
   swJsCache = null;
   swJsEtag = null;
+}
+
+/**
+ * Reset xterm-bundle.js cache (for testing)
+ */
+export function resetXtermBundleCache(): void {
+  xtermBundleCache = null;
+  xtermBundleEtag = null;
+}
+
+/**
+ * Reset terminal-client.js cache (for testing)
+ */
+export function resetTerminalClientCache(): void {
+  terminalClientCache = null;
+  terminalClientEtag = null;
+}
+
+/**
+ * Reset xterm.css cache (for testing)
+ */
+export function resetXtermCssCache(): void {
+  xtermCssCache = null;
+  xtermCssEtag = null;
 }
 
 // Share manager for validating share tokens
@@ -412,6 +448,137 @@ function serveTabs(config: Config, res: ServerResponse, sessionName: string | nu
   res.end(html);
 }
 
+// === Native Terminal Static Files ===
+
+/**
+ * Load xterm-bundle.js from dist directory (cached)
+ */
+function loadXtermBundle(): { content: string; etag: string } {
+  if (xtermBundleCache !== null && xtermBundleEtag !== null) {
+    return { content: xtermBundleCache, etag: xtermBundleEtag };
+  }
+
+  try {
+    const distPath = join(__dirname, '../../dist/xterm-bundle.js');
+    xtermBundleCache = readFileSync(distPath, 'utf-8');
+    log.debug('Loaded xterm-bundle.js from dist');
+  } catch {
+    log.warn('xterm-bundle.js not found in dist, returning placeholder');
+    xtermBundleCache = '// xterm-bundle.js not built - run: bun run build:xterm\nconsole.warn("[xterm] Bundle not found");';
+  }
+
+  xtermBundleEtag = generateEtag(xtermBundleCache);
+  return { content: xtermBundleCache, etag: xtermBundleEtag };
+}
+
+/**
+ * Load terminal-client.js from dist directory (cached)
+ */
+function loadTerminalClient(): { content: string; etag: string } {
+  if (terminalClientCache !== null && terminalClientEtag !== null) {
+    return { content: terminalClientCache, etag: terminalClientEtag };
+  }
+
+  try {
+    const distPath = join(__dirname, '../../dist/terminal-client.js');
+    terminalClientCache = readFileSync(distPath, 'utf-8');
+    log.debug('Loaded terminal-client.js from dist');
+  } catch {
+    log.warn('terminal-client.js not found in dist, returning placeholder');
+    terminalClientCache = '// terminal-client.js not built - run: bun run build:terminal-client\nconsole.warn("[TerminalClient] Bundle not found");';
+  }
+
+  terminalClientEtag = generateEtag(terminalClientCache);
+  return { content: terminalClientCache, etag: terminalClientEtag };
+}
+
+/**
+ * Load xterm.css from dist directory (cached)
+ */
+function loadXtermCss(): { content: string; etag: string } {
+  if (xtermCssCache !== null && xtermCssEtag !== null) {
+    return { content: xtermCssCache, etag: xtermCssEtag };
+  }
+
+  try {
+    const distPath = join(__dirname, '../../dist/xterm.css');
+    xtermCssCache = readFileSync(distPath, 'utf-8');
+    log.debug('Loaded xterm.css from dist');
+  } catch {
+    log.warn('xterm.css not found in dist, returning placeholder');
+    xtermCssCache = '/* xterm.css not found - run: bun run build:xterm */';
+  }
+
+  xtermCssEtag = generateEtag(xtermCssCache);
+  return { content: xtermCssCache, etag: xtermCssEtag };
+}
+
+/**
+ * Serve xterm-bundle.js with ETag caching
+ */
+function serveXtermBundle(req: IncomingMessage, res: ServerResponse): void {
+  const { content, etag } = loadXtermBundle();
+
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch === etag) {
+    res.writeHead(304, { ETag: etag, 'Cache-Control': 'public, max-age=0, must-revalidate' });
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/javascript',
+    'Content-Length': Buffer.byteLength(content),
+    ETag: etag,
+    'Cache-Control': 'public, max-age=0, must-revalidate'
+  });
+  res.end(content);
+}
+
+/**
+ * Serve terminal-client.js with ETag caching
+ */
+function serveTerminalClient(req: IncomingMessage, res: ServerResponse): void {
+  const { content, etag } = loadTerminalClient();
+
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch === etag) {
+    res.writeHead(304, { ETag: etag, 'Cache-Control': 'public, max-age=0, must-revalidate' });
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/javascript',
+    'Content-Length': Buffer.byteLength(content),
+    ETag: etag,
+    'Cache-Control': 'public, max-age=0, must-revalidate'
+  });
+  res.end(content);
+}
+
+/**
+ * Serve xterm.css with ETag caching
+ */
+function serveXtermCss(req: IncomingMessage, res: ServerResponse): void {
+  const { content, etag } = loadXtermCss();
+
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch === etag) {
+    res.writeHead(304, { ETag: etag, 'Cache-Control': 'public, max-age=0, must-revalidate' });
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/css',
+    'Content-Length': Buffer.byteLength(content),
+    ETag: etag,
+    'Cache-Control': 'public, max-age=0, must-revalidate'
+  });
+  res.end(content);
+}
+
 /**
  * Handle incoming HTTP request
  */
@@ -470,6 +637,20 @@ export function handleRequest(config: Config, req: IncomingMessage, res: ServerR
   // Tabs JavaScript (static file)
   if (url === `${basePath}/tabs.js`) {
     serveTabsJs(req, res);
+    return;
+  }
+
+  // Native terminal static files
+  if (url === `${basePath}/xterm-bundle.js`) {
+    serveXtermBundle(req, res);
+    return;
+  }
+  if (url === `${basePath}/terminal-client.js`) {
+    serveTerminalClient(req, res);
+    return;
+  }
+  if (url === `${basePath}/xterm.css`) {
+    serveXtermCss(req, res);
     return;
   }
 
