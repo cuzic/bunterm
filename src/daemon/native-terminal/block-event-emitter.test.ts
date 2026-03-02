@@ -2,9 +2,9 @@
  * Tests for BlockEventEmitter
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
-  BlockEventEmitter,
+  type BlockEventEmitter,
   createBlockEventEmitter,
   formatSSEEvent
 } from './block-event-emitter.js';
@@ -329,11 +329,7 @@ function createMockBlock(id: string): ExtendedBlock {
   };
 }
 
-function createMockChunk(
-  blockId: string,
-  stream: 'stdout' | 'stderr',
-  seq: number
-): OutputChunk {
+function createMockChunk(blockId: string, stream: 'stdout' | 'stderr', seq: number): OutputChunk {
   return {
     id: `chunk-${blockId}-${seq}`,
     blockId,

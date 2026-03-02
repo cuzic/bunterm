@@ -2,8 +2,8 @@
  * Tests for BlockStore
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { BlockStore, createBlockStore } from './block-store.js';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { type BlockStore, createBlockStore } from './block-store.js';
 import { createRedactor } from './output-redactor.js';
 import type { RetentionPolicy } from './types.js';
 

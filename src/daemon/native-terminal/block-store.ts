@@ -8,6 +8,7 @@
  * - Automatic compression of old blocks
  */
 
+import { type OutputRedactor, createRedactor } from './output-redactor.js';
 import {
   DEFAULT_RETENTION_POLICY,
   type ExtendedBlock,
@@ -15,7 +16,6 @@ import {
   type OutputChunk,
   type RetentionPolicy
 } from './types.js';
-import { type OutputRedactor, createRedactor } from './output-redactor.js';
 
 /** Preview size in characters */
 const PREVIEW_SIZE = 500;
@@ -145,11 +145,7 @@ export class BlockStore {
   /**
    * Complete a block
    */
-  completeBlock(
-    blockId: string,
-    exitCode: number,
-    errorType?: ExtendedBlock['errorType']
-  ): void {
+  completeBlock(blockId: string, exitCode: number, errorType?: ExtendedBlock['errorType']): void {
     const metadata = this.blocks.get(blockId);
     if (!metadata) return;
 
@@ -178,11 +174,7 @@ export class BlockStore {
    * Append output to a block
    * Returns the created chunks with sequence numbers
    */
-  appendOutput(
-    blockId: string,
-    stream: 'stdout' | 'stderr',
-    data: string
-  ): OutputChunk[] {
+  appendOutput(blockId: string, stream: 'stdout' | 'stderr', data: string): OutputChunk[] {
     const metadata = this.blocks.get(blockId);
     if (!metadata) return [];
 

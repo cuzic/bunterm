@@ -37,11 +37,7 @@ export class BlockEventEmitter {
   /**
    * Emit a block event
    */
-  emit(
-    type: BlockEventType,
-    blockId: string,
-    data: Record<string, unknown>
-  ): BlockEvent {
+  emit(type: BlockEventType, blockId: string, data: Record<string, unknown>): BlockEvent {
     const event: BlockEvent = {
       type,
       blockId,
@@ -212,10 +208,7 @@ export class BlockEventEmitter {
   /**
    * Get event history for a block
    */
-  getHistory(
-    blockId: string,
-    options?: { fromSeq?: number; limit?: number }
-  ): BlockEvent[] {
+  getHistory(blockId: string, options?: { fromSeq?: number; limit?: number }): BlockEvent[] {
     const history = this.eventHistory.get(blockId) ?? [];
     let filtered = history;
 
