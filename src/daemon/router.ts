@@ -129,12 +129,13 @@ export function setSecurityHeaders(res: ServerResponse, sentryEnabled = false): 
 
   // Content Security Policy - allow inline scripts for terminal UI functionality
   // If Sentry is enabled, allow Sentry CDN scripts and connections
+  // Note: https: is allowed for general API calls (e.g., Caddy forward_auth, AI services)
   const sentryScriptSrc = sentryEnabled ? ' https://js.sentry-cdn.com' : '';
   const sentryConnectSrc = sentryEnabled ? ' https://*.ingest.sentry.io' : '';
 
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; script-src 'self' 'unsafe-inline'${sentryScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss:${sentryConnectSrc}; frame-src 'self'`
+    `default-src 'self'; script-src 'self' 'unsafe-inline'${sentryScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: https:${sentryConnectSrc}; frame-src 'self'`
   );
   // Permissions Policy - disable unused browser features
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=()');

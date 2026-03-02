@@ -12,6 +12,7 @@ import type { ServerWebSocket } from 'bun';
 
 export interface InputMessage {
   type: 'input';
+  /** Base64 encoded input data (supports mouse escape sequences with binary data) */
   data: string;
 }
 
@@ -351,6 +352,17 @@ export interface AIRunStartedMessage {
 
 export type AIMessage = AIStreamMessage | AIFinalMessage | AIErrorMessage | AIRunStartedMessage;
 
+// Re-export Claude Watcher types
+export type {
+  ClaudeAssistantTextWS,
+  ClaudeSessionStartWS,
+  ClaudeThinkingWS,
+  ClaudeToolResultWS,
+  ClaudeToolUseWS,
+  ClaudeUserMessageWS,
+  ClaudeWatcherMessage
+} from './claude-watcher/types.js';
+
 export type ServerMessage =
   | OutputMessage
   | TitleMessage
@@ -365,7 +377,9 @@ export type ServerMessage =
   | AIStreamMessage
   | AIFinalMessage
   | AIErrorMessage
-  | AIRunStartedMessage;
+  | AIRunStartedMessage
+  // Claude Watcher messages
+  | import('./claude-watcher/types.js').ClaudeWatcherMessage;
 
 // === Session Types ===
 

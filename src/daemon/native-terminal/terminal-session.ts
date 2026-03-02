@@ -9,6 +9,7 @@
  */
 
 import { BlockModel } from './block-model.js';
+import { ClaudeSessionWatcher } from './claude-watcher/index.js';
 import {
   type Block,
   type NativeTerminalWebSocket,
@@ -73,6 +74,9 @@ export class TerminalSession {
   private pendingCommand: string | null = null;
   private blockUIEnabled = true;
 
+  // Claude Session Watcher
+  private readonly claudeWatcher: ClaudeSessionWatcher;
+
   // OSC sequence buffer (for partial sequences across chunks)
   private oscBuffer = '';
 
@@ -89,6 +93,15 @@ export class TerminalSession {
     this.maxOutputBuffer = options.outputBufferSize ?? DEFAULT_OUTPUT_BUFFER_SIZE;
     this.startedAt = new Date().toISOString();
     this.blockModel = new BlockModel(options.cwd);
+
+    // Initialize Claude Session Watcher
+    this.claudeWatcher = new ClaudeSessionWatcher({ cwd: options.cwd });
+    this.claudeWatcher.on('message', (msg) => {
+      this.broadcast(msg);
+    });
+    this.claudeWatcher.on('error', (err) => {
+      console.error(`[TerminalSession:${this.name}] ClaudeWatcher error:`, err);
+    });
   }
 
   /**
@@ -133,6 +146,11 @@ export class TerminalSession {
       this.exitCode = code;
       this.broadcast(createExitMessage(code));
       this.cleanup();
+    });
+
+    // Start Claude Session Watcher
+    this.claudeWatcher.start().catch((err) => {
+      console.error(`[TerminalSession:${this.name}] Failed to start ClaudeWatcher:`, err);
     });
   }
 
@@ -327,9 +345,25 @@ export class TerminalSession {
   }
 
   /**
-   * Write data to the PTY
+   * Write string data to the PTY (legacy method)
    */
   write(data: string): void {
+    this.writeString(data);
+  }
+
+  /**
+   * Write string data to the PTY
+   */
+  writeString(data: string): void {
+    if (this.terminal && !this.terminal.closed) {
+      this.terminal.write(data);
+    }
+  }
+
+  /**
+   * Write binary data to the PTY (for mouse events and other binary sequences)
+   */
+  writeBytes(data: Uint8Array | Buffer): void {
     if (this.terminal && !this.terminal.closed) {
       this.terminal.write(data);
     }
@@ -365,7 +399,14 @@ export class TerminalSession {
 
     switch (message.type) {
       case 'input':
-        this.write(message.data);
+        // Decode Base64 input data and write to PTY
+        try {
+          const bytes = Buffer.from(message.data, 'base64');
+          this.writeBytes(bytes);
+        } catch {
+          // Fallback to string write if Base64 decoding fails
+          this.writeString(message.data);
+        }
         break;
       case 'resize':
         this.resize(message.cols, message.rows);
@@ -528,6 +569,9 @@ export class TerminalSession {
    * Cleanup resources
    */
   private cleanup(): void {
+    // Stop Claude Session Watcher
+    this.claudeWatcher.stop();
+
     // Close all client connections
     for (const ws of this.clients) {
       try {

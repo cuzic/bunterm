@@ -158,7 +158,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
 
   <!-- Terminal UI -->
   ${terminalUiHtml}
-  ${onboardingHtml}
+  ${onboardingHtml.replace('id="tui-onboarding"', 'id="tui-onboarding" style="display:none"')}
 
   <!-- Configuration (must be before terminal-ui.js) -->
   <script>
