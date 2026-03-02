@@ -64,7 +64,12 @@ export { handleHttpRequest } from './http-handler.js';
 
 // === Command Block API ===
 
-export { OutputRedactor, createRedactor, redactSensitive, BUILTIN_PATTERNS } from './output-redactor.js';
+export {
+  OutputRedactor,
+  createRedactor,
+  redactSensitive,
+  BUILTIN_PATTERNS
+} from './output-redactor.js';
 export type { RedactionPattern, RedactionConfig, RedactionStats } from './output-redactor.js';
 
 export { BlockStore, createBlockStore } from './block-store.js';
@@ -73,7 +78,10 @@ export { EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor
 export type { ExecutorEvent, ExecutorEventCallback } from './ephemeral-executor.js';
 
 export { PersistentExecutor, createPersistentExecutor } from './persistent-executor.js';
-export type { PersistentExecutorEvent, PersistentExecutorEventCallback } from './persistent-executor.js';
+export type {
+  PersistentExecutorEvent,
+  PersistentExecutorEventCallback
+} from './persistent-executor.js';
 
 export {
   BlockEventEmitter,
@@ -83,7 +91,10 @@ export {
 } from './block-event-emitter.js';
 export type { BlockEventListener } from './block-event-emitter.js';
 
-export { CommandExecutorManager, createCommandExecutorManager } from './command-executor-manager.js';
+export {
+  CommandExecutorManager,
+  createCommandExecutorManager
+} from './command-executor-manager.js';
 
 export type {
   ExtendedBlock,

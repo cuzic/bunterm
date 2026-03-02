@@ -61,6 +61,9 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     defaultWidth: config.preview.default_width
   });
 
+  // Check if AI chat is enabled (optional config)
+  const aiChatEnabled = config.ai_chat?.enabled !== false;
+
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -122,6 +125,27 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     #error.hidden {
       display: none;
     }
+    /* AI Chat toggle button */
+    #ai-chat-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+      background-color: #3a86ff;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #ai-chat-toggle:hover {
+      background-color: #2a76ef;
+    }
     /* Terminal UI styles */
     ${terminalUiStyles}
   </style>
@@ -130,6 +154,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   <div id="terminal"></div>
   <div id="loading">Connecting...</div>
   <div id="error" class="hidden"></div>
+  ${aiChatEnabled ? '<div id="ai-chat-app"></div>' : ''}
 
   <!-- Terminal UI -->
   ${terminalUiHtml}
@@ -148,6 +173,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   <script src="${basePath}/xterm-bundle.js"></script>
   <script src="${basePath}/terminal-client.js"></script>
   <script src="${basePath}/terminal-ui.js"></script>
+  ${aiChatEnabled ? `<script src="${basePath}/ai-chat.js"></script>` : ''}
 
   <script>
     (function() {

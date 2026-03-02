@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { BUILTIN_PATTERNS, OutputRedactor, createRedactor, redactSensitive } from './output-redactor.js';
+import { BUILTIN_PATTERNS, createRedactor, redactSensitive } from './output-redactor.js';
 
 describe('OutputRedactor', () => {
   describe('BUILTIN_PATTERNS', () => {
@@ -35,7 +35,8 @@ describe('OutputRedactor', () => {
     it('should redact JWT tokens', () => {
       const redactor = createRedactor();
       // Simplified JWT structure
-      const input = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const input =
+        'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
       const result = redactor.redact(input);
       expect(result).toBe('Authorization: Bearer [REDACTED]');
     });
@@ -121,7 +122,8 @@ AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE`;
   describe('redactWithStats', () => {
     it('should return redaction statistics', () => {
       const redactor = createRedactor();
-      const input = 'GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nAWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE';
+      const input =
+        'GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nAWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE';
       const { result, stats } = redactor.redactWithStats(input);
 
       expect(result).not.toContain('ghp_');

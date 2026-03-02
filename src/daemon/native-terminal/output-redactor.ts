@@ -73,7 +73,8 @@ export const BUILTIN_PATTERNS: RedactionPattern[] = [
   // Private keys (PEM format)
   {
     name: 'private_key',
-    pattern: /-----BEGIN\s+(RSA\s+|EC\s+|DSA\s+|ENCRYPTED\s+)?PRIVATE KEY-----[\s\S]*?-----END\s+(RSA\s+|EC\s+|DSA\s+|ENCRYPTED\s+)?PRIVATE KEY-----/g,
+    pattern:
+      /-----BEGIN\s+(RSA\s+|EC\s+|DSA\s+|ENCRYPTED\s+)?PRIVATE KEY-----[\s\S]*?-----END\s+(RSA\s+|EC\s+|DSA\s+|ENCRYPTED\s+)?PRIVATE KEY-----/g,
     replacement: '-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----'
   },
   // Basic Auth in URLs (user:password@host)
@@ -120,7 +121,8 @@ export const BUILTIN_PATTERNS: RedactionPattern[] = [
   // Generic password patterns (key=value, password=value, etc.)
   {
     name: 'password_assignment',
-    pattern: /(password|passwd|secret|token|api_key|apikey|auth|credential)[=:]\s*['"]?([^\s'"]{8,})['"]?/gi,
+    pattern:
+      /(password|passwd|secret|token|api_key|apikey|auth|credential)[=:]\s*['"]?([^\s'"]{8,})['"]?/gi,
     replacement: '$1=[REDACTED]'
   }
 ];
