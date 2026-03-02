@@ -52,11 +52,7 @@ export class EphemeralExecutor {
   private readonly runningCommands: Map<string, RunningCommand> = new Map();
   private readonly eventListeners: Set<ExecutorEventCallback> = new Set();
 
-  constructor(
-    sessionName: string,
-    defaultCwd: string,
-    blockStore?: BlockStore
-  ) {
+  constructor(sessionName: string, defaultCwd: string, blockStore?: BlockStore) {
     this.sessionName = sessionName;
     this.defaultCwd = defaultCwd;
     this.blockStore = blockStore ?? createBlockStore();
@@ -95,7 +91,7 @@ export class EphemeralExecutor {
 
     // Build environment
     const env: Record<string, string> = {
-      ...process.env as Record<string, string>,
+      ...(process.env as Record<string, string>),
       ...request.env,
       // Prevent interactive prompts
       DEBIAN_FRONTEND: 'noninteractive',
@@ -148,11 +144,7 @@ export class EphemeralExecutor {
     if (running.aborted) {
       // Already handled by cancelCommand
     } else {
-      this.blockStore.completeBlock(
-        block.id,
-        exitCode,
-        exitCode !== 0 ? 'nonzero' : undefined
-      );
+      this.blockStore.completeBlock(block.id, exitCode, exitCode !== 0 ? 'nonzero' : undefined);
     }
 
     const finalBlock = this.blockStore.getBlock(block.id)!;
@@ -241,11 +233,7 @@ export class EphemeralExecutor {
     }
 
     // Update block status
-    this.blockStore.completeBlock(
-      blockId,
-      -1,
-      reason === 'timeout' ? 'timeout' : 'canceled'
-    );
+    this.blockStore.completeBlock(blockId, -1, reason === 'timeout' ? 'timeout' : 'canceled');
 
     return true;
   }
@@ -256,30 +244,20 @@ export class EphemeralExecutor {
   private async captureGitInfo(cwd: string): Promise<GitInfo | undefined> {
     try {
       // Check if in git repo
-      const isGitRepo = await this.runQuietCommand(
-        cwd,
-        'git rev-parse --is-inside-work-tree'
-      );
+      const isGitRepo = await this.runQuietCommand(cwd, 'git rev-parse --is-inside-work-tree');
       if (isGitRepo.trim() !== 'true') {
         return undefined;
       }
 
       // Get commit hash
-      const head = (
-        await this.runQuietCommand(cwd, 'git rev-parse HEAD')
-      ).trim();
+      const head = (await this.runQuietCommand(cwd, 'git rev-parse HEAD')).trim();
 
       // Check for uncommitted changes
-      const status = await this.runQuietCommand(
-        cwd,
-        'git status --porcelain'
-      );
+      const status = await this.runQuietCommand(cwd, 'git status --porcelain');
       const dirty = status.trim().length > 0;
 
       // Get repo root
-      const repoRoot = (
-        await this.runQuietCommand(cwd, 'git rev-parse --show-toplevel')
-      ).trim();
+      const repoRoot = (await this.runQuietCommand(cwd, 'git rev-parse --show-toplevel')).trim();
 
       return { head, dirty, repoRoot };
     } catch {

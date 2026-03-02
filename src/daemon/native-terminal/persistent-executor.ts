@@ -73,10 +73,7 @@ export class PersistentExecutor {
   // Track block output from OSC 633
   private currentBlockId: string | null = null;
 
-  constructor(
-    session: TerminalSession,
-    blockStore?: BlockStore
-  ) {
+  constructor(session: TerminalSession, blockStore?: BlockStore) {
     this.session = session;
     this.sessionName = session.name;
     this.blockStore = blockStore ?? createBlockStore();
@@ -306,7 +303,10 @@ export class PersistentExecutor {
       setTimeout(() => {
         clearInterval(checkCompletion);
         const currentBlock = this.blockStore.getBlock(block.id);
-        if (currentBlock && (currentBlock.status === 'running' || currentBlock.status === 'queued')) {
+        if (
+          currentBlock &&
+          (currentBlock.status === 'running' || currentBlock.status === 'queued')
+        ) {
           this.handleTimeout(block.id);
           resolve({
             blockId: block.id,
@@ -349,11 +349,7 @@ export class PersistentExecutor {
   onBlockCompleted(blockId: string, exitCode: number): void {
     if (this.currentBlockId !== blockId) return;
 
-    this.blockStore.completeBlock(
-      blockId,
-      exitCode,
-      exitCode !== 0 ? 'nonzero' : undefined
-    );
+    this.blockStore.completeBlock(blockId, exitCode, exitCode !== 0 ? 'nonzero' : undefined);
 
     const block = this.blockStore.getBlock(blockId);
     if (block) {

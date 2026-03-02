@@ -3,9 +3,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
-import type { ExecutorEvent } from './ephemeral-executor.js';
 import { createBlockStore } from './block-store.js';
+import { type EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
+import type { ExecutorEvent } from './ephemeral-executor.js';
 
 describe('EphemeralExecutor', () => {
   let executor: EphemeralExecutor;

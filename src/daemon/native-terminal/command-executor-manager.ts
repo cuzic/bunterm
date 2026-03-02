@@ -10,12 +10,9 @@
 
 import { type BlockEventEmitter, createBlockEventEmitter } from './block-event-emitter.js';
 import { type BlockStore, createBlockStore } from './block-store.js';
-import { EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
+import { type EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
 import { type OutputRedactor, createRedactor } from './output-redactor.js';
-import {
-  PersistentExecutor,
-  createPersistentExecutor
-} from './persistent-executor.js';
+import { type PersistentExecutor, createPersistentExecutor } from './persistent-executor.js';
 import type { NativeSessionManager } from './session-manager.js';
 import type { TerminalSession } from './terminal-session.js';
 import type {
@@ -62,10 +59,7 @@ export class CommandExecutorManager {
   /**
    * Execute a command in a session
    */
-  async executeCommand(
-    sessionName: string,
-    request: CommandRequest
-  ): Promise<CommandResponse> {
+  async executeCommand(sessionName: string, request: CommandRequest): Promise<CommandResponse> {
     const mode = request.mode ?? 'ephemeral';
     const executors = this.getOrCreateExecutors(sessionName);
 
