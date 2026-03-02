@@ -4,7 +4,7 @@
  * Renders block boundaries and selection UI over the terminal.
  */
 
-import { type FC, useCallback, useMemo } from 'react';
+import { type FC, useCallback, useMemo, useState } from 'react';
 import type { Block } from '@/daemon/native-terminal/client/BlockManager.js';
 import { useBlockSelection } from '@/daemon/native-terminal/client/app/hooks/useBlockSelection.js';
 import { useBlockStore } from '@/daemon/native-terminal/client/app/stores/blockStore.js';
@@ -15,6 +15,9 @@ export interface BlockOverlayProps {
 }
 
 export const BlockOverlay: FC<BlockOverlayProps> = ({ terminalElement }) => {
+  // Visibility state - collapsed by default
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // Block state
   const blocks = useBlockStore((s) => s.blocks);
   const filter = useBlockStore((s) => s.filter);
@@ -55,10 +58,35 @@ export const BlockOverlay: FC<BlockOverlayProps> = ({ terminalElement }) => {
     return null;
   }
 
+  // Collapsed view - just show a toggle button
+  if (!isExpanded) {
+    return (
+      <div style={styles.overlay}>
+        <button
+          type="button"
+          style={styles.toggleButton}
+          onClick={() => setIsExpanded(true)}
+          title="Show block list"
+        >
+          📋 {counts.all}
+          {counts.error > 0 && <span style={styles.errorBadge}>{counts.error}</span>}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.overlay}>
       {/* Filter toolbar */}
       <div style={styles.filterBar}>
+        <button
+          type="button"
+          style={styles.collapseButton}
+          onClick={() => setIsExpanded(false)}
+          title="Hide block list"
+        >
+          ✕
+        </button>
         <FilterButton
           label="All"
           count={counts.all}
@@ -343,5 +371,35 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '3px',
     cursor: 'pointer'
+  },
+  toggleButton: {
+    padding: '4px 8px',
+    fontSize: '12px',
+    color: '#ccc',
+    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+    border: '1px solid #444',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+    margin: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  },
+  collapseButton: {
+    padding: '2px 6px',
+    fontSize: '12px',
+    color: '#888',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer'
+  },
+  errorBadge: {
+    fontSize: '10px',
+    backgroundColor: '#f44336',
+    color: '#fff',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    marginLeft: '4px'
   }
 };
