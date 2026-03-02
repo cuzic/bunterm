@@ -235,8 +235,8 @@ interface SessionState {
 - ttyd への外部依存なし
 - JSON ベースの WebSocket プロトコル
 - xterm.js によるブラウザ側ターミナル描画
-- **依存**: Bun 1.3.5 以上（POSIX のみ）
-- **設定**: `session_backend: native` を config.yaml に追加
+- **依存**: Bun 1.3.5 以上が必須（POSIX のみ、Windows 非対応）
+- **設定**: `session_backend: native` と `tmux_mode: none` を config.yaml に追加
 
 ```yaml
 # config.yaml
@@ -282,6 +282,7 @@ native_terminal:
 ## 注意事項
 
 - **ttyd モード**: ttyd と tmux がシステムにインストールされている必要があります
-- **native モード**: Bun 1.3.5 以上が必要です（ttyd/tmux 不要）
+- **native モード**: **Bun 1.3.5 以上**が必須です（ttyd/tmux 不要、POSIX のみ）
+  - `bun upgrade` でアップグレード可能
 - bun 1.0 以上が必要です
 - `ttyd-mux doctor` で問題を診断できます
