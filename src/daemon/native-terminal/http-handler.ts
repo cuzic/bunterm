@@ -9,8 +9,15 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync
+} from 'node:fs';
+import { homedir } from 'node:os';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addShare, getAllShares, getShare, getStateDir, removeShare } from '@/config/state.js';
 import type { Config } from '@/config/types.js';
@@ -1059,6 +1066,184 @@ async function handleApiRequest(
     }
   }
 
+  // === Context Files API ===
+
+  // GET /api/context-files/recent - List recent .md files from plans and project
+  if (apiPath.startsWith('/context-files/recent') && method === 'GET') {
+    const params = new URL(req.url).searchParams;
+    const sessionName = params.get('session');
+    const count = Math.min(Number.parseInt(params.get('count') ?? '10', 10), 20);
+
+    if (!sessionName) {
+      return new Response(JSON.stringify({ error: 'session parameter is required' }), {
+        status: 400,
+        headers
+      });
+    }
+
+    const session = sessionManager.getSession(sessionName);
+    if (!session) {
+      return new Response(JSON.stringify({ error: `Session "${sessionName}" not found` }), {
+        status: 404,
+        headers
+      });
+    }
+
+    try {
+      const files: Array<{
+        source: 'plans' | 'project';
+        path: string;
+        name: string;
+        size: number;
+        modifiedAt: string;
+      }> = [];
+
+      // 1. Get plans files from ~/.claude/plans/
+      const plansDir = join(homedir(), '.claude', 'plans');
+      if (existsSync(plansDir)) {
+        const planFiles = collectMdFiles(plansDir, plansDir);
+        for (const file of planFiles) {
+          files.push({
+            source: 'plans',
+            path: file.path,
+            name: file.name,
+            size: file.size,
+            modifiedAt: file.modifiedAt
+          });
+        }
+      }
+
+      // 2. Get project files from session working directory
+      const projectDir = session.cwd;
+      if (existsSync(projectDir)) {
+        const projectFiles = collectMdFiles(projectDir, projectDir, {
+          excludeDirs: ['node_modules', '.git', 'dist', 'build', '.next', 'coverage', 'vendor']
+        });
+        for (const file of projectFiles) {
+          files.push({
+            source: 'project',
+            path: file.path,
+            name: file.name,
+            size: file.size,
+            modifiedAt: file.modifiedAt
+          });
+        }
+      }
+
+      // Sort by modifiedAt descending
+      files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+
+      // Limit to count
+      const limitedFiles = files.slice(0, count);
+
+      return new Response(JSON.stringify({ files: limitedFiles }), { headers });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: String(error) }), {
+        status: 500,
+        headers
+      });
+    }
+  }
+
+  // GET /api/context-files/content - Get file content
+  if (apiPath.startsWith('/context-files/content') && method === 'GET') {
+    const params = new URL(req.url).searchParams;
+    const source = params.get('source') as 'plans' | 'project' | null;
+    const sessionName = params.get('session');
+    const filePath = params.get('path');
+
+    if (!source || !filePath) {
+      return new Response(JSON.stringify({ error: 'source and path parameters are required' }), {
+        status: 400,
+        headers
+      });
+    }
+
+    if (source !== 'plans' && source !== 'project') {
+      return new Response(JSON.stringify({ error: 'source must be "plans" or "project"' }), {
+        status: 400,
+        headers
+      });
+    }
+
+    // For project files, session is required
+    if (source === 'project' && !sessionName) {
+      return new Response(JSON.stringify({ error: 'session parameter is required for project files' }), {
+        status: 400,
+        headers
+      });
+    }
+
+    try {
+      let baseDir: string;
+      if (source === 'plans') {
+        baseDir = join(homedir(), '.claude', 'plans');
+      } else {
+        // sessionName is guaranteed to be non-null here (checked above for project source)
+        const sessionId = sessionName as string;
+        const session = sessionManager.getSession(sessionId);
+        if (!session) {
+          return new Response(JSON.stringify({ error: `Session "${sessionId}" not found` }), {
+            status: 404,
+            headers
+          });
+        }
+        baseDir = session.cwd;
+      }
+
+      const targetPath = resolve(baseDir, filePath);
+
+      // Security: ensure path is within base directory
+      if (!targetPath.startsWith(baseDir)) {
+        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+          status: 400,
+          headers
+        });
+      }
+
+      if (!existsSync(targetPath)) {
+        return new Response(JSON.stringify({ error: 'File not found' }), {
+          status: 404,
+          headers
+        });
+      }
+
+      const stat = statSync(targetPath);
+
+      // Check file size limit (100KB)
+      const MAX_FILE_SIZE = 100 * 1024;
+      if (stat.size > MAX_FILE_SIZE) {
+        return new Response(
+          JSON.stringify({ error: `File too large (max ${MAX_FILE_SIZE / 1024}KB)` }),
+          {
+            status: 413,
+            headers
+          }
+        );
+      }
+
+      const content = readFileSync(targetPath, 'utf-8');
+      const name = basename(targetPath);
+
+      return new Response(
+        JSON.stringify({
+          source,
+          path: filePath,
+          name,
+          content,
+          size: stat.size,
+          modifiedAt: stat.mtime.toISOString()
+        }),
+        { headers }
+      );
+    } catch (error) {
+      return new Response(JSON.stringify({ error: String(error) }), {
+        status: 500,
+        headers
+      });
+    }
+  }
+
   // === AI API ===
 
   // GET /api/ai/runners - List available AI runners
@@ -1077,6 +1262,13 @@ async function handleApiRequest(
         context: {
           sessionId: string;
           blocks: string[];
+          inlineBlocks?: Array<{
+            id: string;
+            type: 'command' | 'claude';
+            content: string;
+            metadata?: Record<string, unknown>;
+          }>;
+          files?: Array<{ source: 'plans' | 'project'; path: string }>;
           renderMode?: 'full' | 'errorOnly' | 'preview' | 'commandOnly';
         };
         runner?: 'claude' | 'codex' | 'gemini' | 'auto';
@@ -1145,18 +1337,73 @@ async function handleApiRequest(
         }
       }
 
+      // Load file contexts if specified
+      const fileContexts: import('./ai/types.js').FileContext[] = [];
+      if (body.context.files && Array.isArray(body.context.files)) {
+        const session = sessionManager.getSession(body.context.sessionId);
+        const sessionCwd = session?.cwd ?? process.cwd();
+
+        for (const fileRef of body.context.files) {
+          try {
+            let baseDir: string;
+            if (fileRef.source === 'plans') {
+              baseDir = join(homedir(), '.claude', 'plans');
+            } else {
+              baseDir = sessionCwd;
+            }
+
+            const targetPath = resolve(baseDir, fileRef.path);
+
+            // Security: ensure path is within base directory
+            if (!targetPath.startsWith(baseDir)) {
+              continue;
+            }
+
+            if (!existsSync(targetPath)) {
+              continue;
+            }
+
+            const stat = statSync(targetPath);
+
+            // Skip files larger than 100KB
+            if (stat.size > 100 * 1024) {
+              continue;
+            }
+
+            const content = readFileSync(targetPath, 'utf-8');
+            const name = basename(targetPath);
+
+            fileContexts.push({
+              source: fileRef.source,
+              path: fileRef.path,
+              name,
+              content,
+              size: stat.size,
+              modifiedAt: stat.mtime.toISOString()
+            });
+          } catch {
+            // Skip files that can't be read
+          }
+        }
+      }
+
       const response = await aiService.chat(
         {
           question: body.question,
           context: {
             sessionId: body.context.sessionId,
             blocks: body.context.blocks,
+            inlineBlocks: body.context.inlineBlocks,
+            files: body.context.files,
             renderMode: body.context.renderMode ?? 'full'
           },
           runner: body.runner,
           conversationId: body.conversationId
         },
-        blockContexts
+        blockContexts,
+        fileContexts,
+        undefined, // userId
+        body.context.inlineBlocks // Pass inline blocks directly
       );
 
       return new Response(JSON.stringify(response), { headers });
@@ -1287,4 +1534,71 @@ async function handleApiRequest(
     status: 404,
     headers
   });
+}
+
+/**
+ * Collect .md files from a directory recursively
+ */
+interface CollectOptions {
+  excludeDirs?: string[];
+  maxDepth?: number;
+}
+
+interface CollectedFile {
+  path: string;
+  name: string;
+  size: number;
+  modifiedAt: string;
+}
+
+function collectMdFiles(
+  dir: string,
+  baseDir: string,
+  options: CollectOptions = {},
+  currentDepth = 0
+): CollectedFile[] {
+  const { excludeDirs = [], maxDepth = 5 } = options;
+  const files: CollectedFile[] = [];
+
+  if (currentDepth > maxDepth) {
+    return files;
+  }
+
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        // Skip excluded directories
+        if (excludeDirs.includes(entry.name)) {
+          continue;
+        }
+        // Skip hidden directories
+        if (entry.name.startsWith('.')) {
+          continue;
+        }
+        // Recurse into subdirectory
+        const subFiles = collectMdFiles(entryPath, baseDir, options, currentDepth + 1);
+        files.push(...subFiles);
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        try {
+          const stat = statSync(entryPath);
+          files.push({
+            path: relative(baseDir, entryPath),
+            name: entry.name,
+            size: stat.size,
+            modifiedAt: stat.mtime.toISOString()
+          });
+        } catch {
+          // Skip files that can't be stat'd
+        }
+      }
+    }
+  } catch {
+    // Skip directories that can't be read
+  }
+
+  return files;
 }
