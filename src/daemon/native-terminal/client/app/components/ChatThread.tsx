@@ -5,8 +5,8 @@
  */
 
 import { type FC, useEffect, useRef } from 'react';
-import type { Citation, NextCommand } from '../../../ai/types.js';
-import { type ChatMessage, useChatStore } from '../stores/chatStore.js';
+import type { Citation, NextCommand } from '@/daemon/native-terminal/ai/types.js';
+import { type ChatMessage, useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 
 export interface ChatThreadProps {
   onCitationClick?: (blockId: string) => void;

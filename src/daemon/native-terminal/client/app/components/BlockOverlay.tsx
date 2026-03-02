@@ -5,10 +5,10 @@
  */
 
 import { type FC, useCallback, useMemo } from 'react';
-import type { Block } from '../../BlockManager.js';
-import { useBlockSelection } from '../hooks/useBlockSelection.js';
-import { useBlockStore } from '../stores/blockStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import type { Block } from '@/daemon/native-terminal/client/BlockManager.js';
+import { useBlockSelection } from '@/daemon/native-terminal/client/app/hooks/useBlockSelection.js';
+import { useBlockStore } from '@/daemon/native-terminal/client/app/stores/blockStore.js';
+import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 
 export interface BlockOverlayProps {
   terminalElement: HTMLElement | null;

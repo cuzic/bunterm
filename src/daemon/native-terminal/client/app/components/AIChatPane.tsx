@@ -5,7 +5,7 @@
  */
 
 import { type FC, useCallback } from 'react';
-import { useChatStore } from '../stores/chatStore.js';
+import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 import { ChatInput } from './ChatInput.js';
 import { ChatThread } from './ChatThread.js';
 import { ContextTray } from './ContextTray.js';

@@ -9,6 +9,7 @@ import { type FC, useCallback, useEffect, useState } from 'react';
 import { AIChatPane } from './components/AIChatPane.js';
 import { SplitPane } from './components/SplitPane.js';
 import { TerminalPane } from './components/TerminalPane.js';
+import { useBlockContextBridge } from './hooks/useBlockContextBridge.js';
 import { useBlockStore } from './stores/blockStore.js';
 import { useChatStore } from './stores/chatStore.js';
 
@@ -36,10 +37,16 @@ export interface AppProps {
   aiPaneVisible?: boolean;
 }
 
+// Detect mobile device
+const isMobileDevice = (): boolean => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.innerWidth < 768;
+};
+
 export const App: FC<AppProps> = ({
   sessionName: propSessionName,
   wsUrl: propWsUrl,
-  aiPaneVisible: initialAiPaneVisible = true
+  aiPaneVisible: initialAiPaneVisible
 }) => {
   // Get config from window
   const config = window.__TERMINAL_UI_CONFIG__ ?? {};
@@ -55,9 +62,12 @@ export const App: FC<AppProps> = ({
       return `${protocol}//${loc.host}${sessionPath}/ws`;
     })();
 
+  // Default: hide AI pane on mobile
+  const defaultAiPaneVisible = initialAiPaneVisible ?? !isMobileDevice();
+
   // State
-  const [aiPaneVisible, setAiPaneVisible] = useState(initialAiPaneVisible);
-  const [leftPaneSize, setLeftPaneSize] = useState(70);
+  const [aiPaneVisible, setAiPaneVisible] = useState(defaultAiPaneVisible);
+  const [leftPaneSize, setLeftPaneSize] = useState(isMobileDevice() ? 100 : 70);
 
   // Block store
   const focusBlock = useBlockStore((s) => s.focusBlock);
@@ -65,6 +75,9 @@ export const App: FC<AppProps> = ({
   // Chat store
   const isOpen = useChatStore((s) => s.isOpen);
   const setOpen = useChatStore((s) => s.setOpen);
+
+  // Bridge for terminal-client block context events
+  useBlockContextBridge();
 
   // Sync AI pane visibility with chat store
   useEffect(() => {

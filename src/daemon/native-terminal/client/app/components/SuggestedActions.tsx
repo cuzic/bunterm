@@ -5,7 +5,7 @@
  */
 
 import { type FC, useCallback } from 'react';
-import { useChatStore } from '../stores/chatStore.js';
+import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 
 export interface SuggestedActionsProps {
   sessionId: string;

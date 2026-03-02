@@ -5,8 +5,8 @@
  */
 
 import { type FC, useCallback, useEffect, useState } from 'react';
-import type { RunnerName, RunnerStatus } from '../../../ai/types.js';
-import { useChatStore } from '../stores/chatStore.js';
+import type { RunnerName, RunnerStatus } from '@/daemon/native-terminal/ai/types.js';
+import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 
 export interface RunnerSelectorProps {
   disabled?: boolean;
