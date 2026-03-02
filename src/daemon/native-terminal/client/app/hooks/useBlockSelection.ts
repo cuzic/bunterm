@@ -5,9 +5,9 @@
  */
 
 import { useCallback } from 'react';
-import type { Block } from '../../BlockManager.js';
-import { useBlockStore } from '../stores/blockStore.js';
-import { useChatStore } from '../stores/chatStore.js';
+import type { Block } from '@/daemon/native-terminal/client/BlockManager.js';
+import { useBlockStore } from '@/daemon/native-terminal/client/app/stores/blockStore.js';
+import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
 
 export interface UseBlockSelectionReturn {
   selectedBlockIds: Set<string>;

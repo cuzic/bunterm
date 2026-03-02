@@ -5,8 +5,9 @@
  */
 
 import type { FitAddon } from '@xterm/addon-fit';
+import type { SearchAddon } from '@xterm/addon-search';
 import type { SerializeAddon } from '@xterm/addon-serialize';
-import type { Terminal } from '@xterm/xterm';
+import type { IDisposable, Terminal } from '@xterm/xterm';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 declare global {
@@ -21,9 +22,14 @@ declare global {
         terminal: Terminal;
         fitAddon: FitAddon;
         serializeAddon: SerializeAddon;
+        searchAddon: SearchAddon;
         webLinksAddon: unknown;
         unicode11Addon: unknown;
+        clipboardAddon: unknown;
       };
+      setupSelectionAutoCopy?: (terminal: Terminal) => void;
+      setupRightClickPaste?: (terminal: Terminal, sendInput: (data: string) => void) => void;
+      setupSelectionHighlight?: (terminal: Terminal, searchAddon: SearchAddon) => IDisposable;
     };
   }
 }
@@ -83,12 +89,29 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     }
   }, []);
 
+  // Encode input string to Base64 for binary-safe transmission
+  // IMPORTANT: Do NOT use TextEncoder - it does UTF-8 encoding which corrupts
+  // characters with code points > 127 (used in X10 mouse mode)
+  const encodeInput = useCallback((data: string): string => {
+    // Use btoa directly - it treats each character code point as a byte (Latin-1 encoding)
+    try {
+      return btoa(data);
+    } catch {
+      // Fallback for characters > 255 (shouldn't happen for terminal input)
+      const bytes = new Uint8Array(data.length);
+      for (let i = 0; i < data.length; i++) {
+        bytes[i] = data.charCodeAt(i) & 0xff;
+      }
+      return btoa(String.fromCharCode(...bytes));
+    }
+  }, []);
+
   // Send input to terminal
   const sendInput = useCallback(
     (data: string) => {
-      send({ type: 'input', data });
+      send({ type: 'input', data: encodeInput(data) });
     },
-    [send]
+    [send, encodeInput]
   );
 
   // Fit terminal to container
@@ -174,7 +197,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
 
     // Create terminal if not exists
     if (!terminalRef.current && containerRef.current) {
-      const { terminal, fitAddon, serializeAddon } = window.XtermBundle.createTerminal({
+      const { terminal, fitAddon, serializeAddon, searchAddon } = window.XtermBundle.createTerminal({
         fontSize,
         fontFamily,
         scrollback
@@ -187,9 +210,44 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
       terminal.open(containerRef.current);
       fitAddon.fit();
 
-      // Handle terminal input
+      // Setup auto-copy selection to clipboard on mouseup
+      if (window.XtermBundle.setupSelectionAutoCopy) {
+        window.XtermBundle.setupSelectionAutoCopy(terminal);
+      }
+
+      // Helper to encode input (Latin-1, not UTF-8)
+      const encode = (data: string): string => {
+        try {
+          return btoa(data);
+        } catch {
+          const bytes = new Uint8Array(data.length);
+          for (let i = 0; i < data.length; i++) {
+            bytes[i] = data.charCodeAt(i) & 0xff;
+          }
+          return btoa(String.fromCharCode(...bytes));
+        }
+      };
+
+      // Setup right-click to paste from clipboard
+      if (window.XtermBundle.setupRightClickPaste) {
+        window.XtermBundle.setupRightClickPaste(terminal, (text) => {
+          send({ type: 'input', data: encode(text) });
+        });
+      }
+
+      // Setup selection highlight - highlight all occurrences of selected text
+      if (window.XtermBundle.setupSelectionHighlight && searchAddon) {
+        window.XtermBundle.setupSelectionHighlight(terminal, searchAddon);
+      }
+
+      // Handle terminal input (Base64 encode for binary safety)
       terminal.onData((data) => {
-        send({ type: 'input', data });
+        send({ type: 'input', data: encode(data) });
+      });
+
+      // Handle binary input (for non-UTF-8 compatible sequences like X10 mouse mode)
+      terminal.onBinary((data) => {
+        send({ type: 'input', data: encode(data) });
       });
 
       // Handle terminal resize
