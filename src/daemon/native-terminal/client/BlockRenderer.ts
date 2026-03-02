@@ -34,7 +34,7 @@ const DANGEROUS_PATTERNS = [
   /\bdd\s+if=/i, // dd command
   /\b:()\{\s*:\|\:\s*&\s*\};:/i, // fork bomb
   /\bchmod\s+-R\s+777\s+\//i, // chmod 777 root
-  />\s*\/dev\/sd/i, // write to block device
+  />\s*\/dev\/sd/i // write to block device
 ];
 
 interface BlockElement {

@@ -1075,8 +1075,8 @@ export class BlockManager {
 
       results.push({
         path: pathStr,
-        line: lineStr ? parseInt(lineStr, 10) : undefined,
-        column: columnStr ? parseInt(columnStr, 10) : undefined,
+        line: lineStr ? Number.parseInt(lineStr, 10) : undefined,
+        column: columnStr ? Number.parseInt(columnStr, 10) : undefined,
         startIndex: actualStartIndex,
         endIndex
       });

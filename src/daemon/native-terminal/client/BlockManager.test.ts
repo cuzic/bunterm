@@ -4,8 +4,8 @@
  * Tests for client-side block state management, including search functionality.
  */
 
-import { describe, expect, test, beforeEach, mock } from 'bun:test';
-import { BlockManager, type Block } from './BlockManager.js';
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { type Block, BlockManager } from './BlockManager.js';
 
 // Mock navigator.clipboard for tests
 const mockClipboard = {
