@@ -176,7 +176,7 @@ export class TerminalClient {
     // Setup right-click to paste from clipboard
     if (window.XtermBundle.setupRightClickPaste) {
       window.XtermBundle.setupRightClickPaste(terminal, (text) => {
-        this.send({ type: 'input', data: this.encodeInput(text) });
+        this.send({ type: 'input', data: this.encodeTextInput(text) });
       });
     }
 
@@ -185,15 +185,15 @@ export class TerminalClient {
       window.XtermBundle.setupSelectionHighlight(terminal, searchAddonRef);
     }
 
-    // Handle terminal input (Base64 encode for binary safety)
+    // Handle terminal input (UTF-8 text including IME input like Japanese)
     terminal.onData((data) => {
-      this.send({ type: 'input', data: this.encodeInput(data) });
+      this.send({ type: 'input', data: this.encodeTextInput(data) });
     });
 
     // Handle binary input (for non-UTF-8 compatible sequences like X10 mouse mode)
     // xterm.js provides this separate event specifically for binary data
     terminal.onBinary((data) => {
-      this.send({ type: 'input', data: this.encodeInput(data) });
+      this.send({ type: 'input', data: this.encodeBinaryInput(data) });
     });
 
     // Handle terminal resize
@@ -699,32 +699,37 @@ export class TerminalClient {
   }
 
   /**
-   * Encode input string to Base64 for binary-safe transmission
-   * This handles mouse escape sequences that contain raw bytes (X10 mode).
+   * Encode text input (UTF-8) to Base64 for transmission.
+   * Used for keyboard text input including IME (Japanese, Chinese, etc.)
+   */
+  private encodeTextInput(data: string): string {
+    // Use TextEncoder for proper UTF-8 encoding of multi-byte characters
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(data);
+    // Convert Uint8Array to Base64 using spread to avoid undefined issues
+    return btoa(String.fromCharCode(...bytes));
+  }
+
+  /**
+   * Encode binary input to Base64 for transmission.
+   * Used for terminal escape sequences (mouse X10 mode, etc.) where each
+   * character code point should be treated as a single byte.
    *
    * IMPORTANT: Do NOT use TextEncoder here! TextEncoder does UTF-8 encoding,
    * which converts characters with code points > 127 to multi-byte sequences.
-   * For terminal escape sequences (especially X10 mouse mode), each character
-   * code point should be treated as a single byte.
    *
    * Example: X10 mouse at position (100, 50) sends character code 132 (100+32).
    * - TextEncoder: 132 -> 0xC2 0x84 (2 bytes, WRONG!)
    * - charCodeAt:  132 -> 0x84 (1 byte, CORRECT!)
    */
-  private encodeInput(data: string): string {
-    // Use btoa directly - it treats each character code point as a byte (Latin-1 encoding)
-    // This is exactly what we need for terminal escape sequences
-    try {
-      return btoa(data);
-    } catch {
-      // If data contains characters > 255 (shouldn't happen for terminal input),
-      // fall back to byte-by-byte encoding
-      const bytes = new Uint8Array(data.length);
-      for (let i = 0; i < data.length; i++) {
-        bytes[i] = data.charCodeAt(i) & 0xff;
-      }
-      return btoa(String.fromCharCode(...bytes));
+  private encodeBinaryInput(data: string): string {
+    // Each character code point is treated as a single byte (Latin-1 style)
+    const bytes = new Uint8Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      bytes[i] = data.charCodeAt(i) & 0xff;
     }
+    // Convert Uint8Array to Base64 using spread to avoid undefined issues
+    return btoa(String.fromCharCode(...bytes));
   }
 
   /**
@@ -732,7 +737,7 @@ export class TerminalClient {
    * This sends the input through the WebSocket to the PTY
    */
   sendInput(data: string): void {
-    this.send({ type: 'input', data: this.encodeInput(data) });
+    this.send({ type: 'input', data: this.encodeTextInput(data) });
   }
 
   /**
