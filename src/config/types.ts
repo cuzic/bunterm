@@ -259,6 +259,46 @@ export const DEFAULT_NATIVE_TERMINAL_CONFIG: NativeTerminalConfig = {
   output_buffer_size: 1000
 };
 
+export const AIChatConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  default_runner: z.enum(['claude', 'codex', 'gemini', 'auto']).default('auto'),
+  cache_enabled: z.boolean().default(true),
+  cache_ttl_ms: z.number().int().min(0).default(3600000), // 1 hour
+  rate_limit_enabled: z.boolean().default(true),
+  rate_limit_max_requests: z.number().int().min(1).max(100).default(20),
+  rate_limit_window_ms: z.number().int().min(1000).default(60000) // 1 minute
+});
+
+export type AIChatConfig = z.infer<typeof AIChatConfigSchema>;
+
+/** Default AI chat configuration */
+export const DEFAULT_AI_CHAT_CONFIG: AIChatConfig = {
+  enabled: true,
+  default_runner: 'auto',
+  cache_enabled: true,
+  cache_ttl_ms: 3600000,
+  rate_limit_enabled: true,
+  rate_limit_max_requests: 20,
+  rate_limit_window_ms: 60000
+};
+
+export const SecurityConfigSchema = z.object({
+  dev_mode: z.boolean().default(false),
+  allowed_origins: z.array(z.string()).default([]),
+  enable_ws_token_auth: z.boolean().default(false),
+  ws_token_ttl_seconds: z.number().int().min(10).max(300).default(30)
+});
+
+export type SecurityConfig = z.infer<typeof SecurityConfigSchema>;
+
+/** Default security configuration */
+export const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
+  dev_mode: false,
+  allowed_origins: [],
+  enable_ws_token_auth: false,
+  ws_token_ttl_seconds: 30
+};
+
 export const ConfigSchema = z.object({
   base_path: z.string().startsWith('/').default('/ttyd-mux'),
   base_port: z.number().int().min(1024).max(65535).default(7600),
@@ -279,7 +319,9 @@ export const ConfigSchema = z.object({
   preview: PreviewConfigSchema.default(DEFAULT_PREVIEW_CONFIG),
   directory_browser: DirectoryBrowserConfigSchema.default(DEFAULT_DIRECTORY_BROWSER_CONFIG),
   sentry: SentryConfigSchema.default(DEFAULT_SENTRY_CONFIG),
-  native_terminal: NativeTerminalConfigSchema.default(DEFAULT_NATIVE_TERMINAL_CONFIG)
+  native_terminal: NativeTerminalConfigSchema.default(DEFAULT_NATIVE_TERMINAL_CONFIG),
+  ai_chat: AIChatConfigSchema.default(DEFAULT_AI_CHAT_CONFIG),
+  security: SecurityConfigSchema.default(DEFAULT_SECURITY_CONFIG)
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
