@@ -8,21 +8,41 @@
  * - WebSocket protocol handling
  */
 
+import { BlockModel } from './block-model.js';
 import {
+  type Block,
   type NativeTerminalWebSocket,
   type ServerMessage,
   type TerminalSessionInfo,
   type TerminalSessionOptions,
   createBellMessage,
+  createBlockEndMessage,
+  createBlockListMessage,
+  createBlockOutputMessage,
+  createBlockStartMessage,
   createExitMessage,
   createOutputMessage,
   createPongMessage,
   parseClientMessage,
-  serializeServerMessage,
+  serializeServerMessage
 } from './types.js';
 
 // Bell character (ASCII 7)
 const BELL_CHAR = 0x07;
+
+// OSC 633 control sequence markers
+// Format: ESC ] 633 ; <type> [; <data>] BEL
+// ESC = 0x1b, ] = 0x5d, BEL = 0x07
+const OSC_START = '\x1b]633;';
+const OSC_END = '\x07';
+
+// OSC 633 sequence types
+type OSC633Type = 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
+
+interface OSC633Sequence {
+  type: OSC633Type;
+  data?: string;
+}
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
@@ -47,6 +67,15 @@ export class TerminalSession {
   private currentRows: number;
   private exitCode: number | null = null;
 
+  // Block UI state
+  private readonly blockModel: BlockModel;
+  private currentLine = 0;
+  private pendingCommand: string | null = null;
+  private blockUIEnabled = true;
+
+  // OSC sequence buffer (for partial sequences across chunks)
+  private oscBuffer = '';
+
   readonly name: string;
   readonly cwd: string;
   readonly command: string[];
@@ -59,6 +88,7 @@ export class TerminalSession {
     this.currentRows = options.rows ?? DEFAULT_ROWS;
     this.maxOutputBuffer = options.outputBufferSize ?? DEFAULT_OUTPUT_BUFFER_SIZE;
     this.startedAt = new Date().toISOString();
+    this.blockModel = new BlockModel(options.cwd);
   }
 
   /**
@@ -76,6 +106,8 @@ export class TerminalSession {
         ...process.env,
         ...this.options.env,
         TERM: 'xterm-256color',
+        // Enable shell integration for block UI
+        TTYD_MUX_NATIVE: '1'
       },
       terminal: {
         cols: this.currentCols,
@@ -85,8 +117,8 @@ export class TerminalSession {
         },
         exit: (_terminal: BunTerminal, code: number) => {
           console.log(`[TerminalSession:${this.name}] Terminal exit callback: ${code}`);
-        },
-      },
+        }
+      }
     });
 
     // Get terminal reference
@@ -108,18 +140,45 @@ export class TerminalSession {
    * Handle output data from PTY
    */
   private handleOutput(data: Uint8Array): void {
-    const message = createOutputMessage(data);
-    const serialized = serializeServerMessage(message);
-
     // Check for bell character and send bell message
     if (data.includes(BELL_CHAR)) {
       this.broadcast(createBellMessage());
     }
 
+    // Convert to string for OSC parsing
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(data);
+
+    // Parse OSC 633 sequences and get filtered output
+    const { filteredOutput, sequences } = this.parseOSC633(text);
+
+    // Process OSC 633 sequences for block management
+    for (const seq of sequences) {
+      this.handleOSC633Sequence(seq);
+    }
+
+    // Count newlines to track current line
+    for (const char of filteredOutput) {
+      if (char === '\n') {
+        this.currentLine++;
+      }
+    }
+
+    // Create output message from filtered output (without OSC sequences)
+    const filteredData = new TextEncoder().encode(filteredOutput);
+    const message = createOutputMessage(filteredData);
+    const serialized = serializeServerMessage(message);
+
     // Buffer for AI features
     this.outputBuffer.push(message.data);
     if (this.outputBuffer.length > this.maxOutputBuffer) {
       this.outputBuffer.shift();
+    }
+
+    // Append to active block if exists
+    const activeBlockId = this.blockModel.getActiveBlockId();
+    if (activeBlockId && this.blockUIEnabled) {
+      this.blockModel.appendOutput(activeBlockId, message.data);
+      this.broadcast(createBlockOutputMessage(activeBlockId, message.data));
     }
 
     // Broadcast to all clients
@@ -129,6 +188,127 @@ export class TerminalSession {
       } catch (error) {
         console.error(`[TerminalSession:${this.name}] Send error:`, error);
       }
+    }
+  }
+
+  /**
+   * Parse OSC 633 sequences from output text
+   * Returns filtered output (without OSC sequences) and parsed sequences
+   */
+  private parseOSC633(text: string): { filteredOutput: string; sequences: OSC633Sequence[] } {
+    const sequences: OSC633Sequence[] = [];
+    let filteredOutput = '';
+    let i = 0;
+
+    // Add any pending OSC buffer from previous chunk
+    const fullText = this.oscBuffer + text;
+    this.oscBuffer = '';
+
+    while (i < fullText.length) {
+      // Look for OSC 633 start sequence
+      if (fullText.slice(i).startsWith(OSC_START)) {
+        const startIndex = i + OSC_START.length;
+        const endIndex = fullText.indexOf(OSC_END, startIndex);
+
+        if (endIndex === -1) {
+          // Incomplete sequence, buffer it for next chunk
+          this.oscBuffer = fullText.slice(i);
+          break;
+        }
+
+        // Parse the sequence content
+        const content = fullText.slice(startIndex, endIndex);
+        const seq = this.parseOSC633Content(content);
+        if (seq) {
+          sequences.push(seq);
+        }
+
+        i = endIndex + OSC_END.length;
+      } else {
+        filteredOutput += fullText[i];
+        i++;
+      }
+    }
+
+    return { filteredOutput, sequences };
+  }
+
+  /**
+   * Parse OSC 633 sequence content (after "633;")
+   */
+  private parseOSC633Content(content: string): OSC633Sequence | null {
+    if (content.length === 0) return null;
+
+    const type = content[0] as OSC633Type;
+    const validTypes: OSC633Type[] = ['A', 'B', 'C', 'D', 'E', 'P'];
+
+    if (!validTypes.includes(type)) return null;
+
+    // Check for data after the type (separated by ";")
+    const dataStart = content.indexOf(';');
+    const data = dataStart !== -1 ? content.slice(dataStart + 1) : undefined;
+
+    return { type, data };
+  }
+
+  /**
+   * Handle an OSC 633 sequence for block management
+   */
+  private handleOSC633Sequence(seq: OSC633Sequence): void {
+    if (!this.blockUIEnabled) return;
+
+    switch (seq.type) {
+      case 'A':
+        // Prompt start - nothing to do here
+        break;
+
+      case 'B':
+        // Prompt end / command start - nothing to do here
+        // Command will be captured by 'E' sequence
+        break;
+
+      case 'C':
+        // Pre-execution - start a new block
+        if (this.pendingCommand) {
+          const block = this.blockModel.startBlock(this.pendingCommand, this.currentLine);
+          this.broadcast(createBlockStartMessage(block));
+          this.pendingCommand = null;
+        }
+        break;
+
+      case 'D':
+        // Command finished - end the current block
+        {
+          const exitCode = seq.data ? Number.parseInt(seq.data, 10) : 0;
+          const activeBlockId = this.blockModel.getActiveBlockId();
+          if (activeBlockId) {
+            const endedAt = new Date().toISOString();
+            this.blockModel.endBlock(activeBlockId, exitCode, this.currentLine);
+            this.broadcast(
+              createBlockEndMessage(activeBlockId, exitCode, endedAt, this.currentLine)
+            );
+          }
+        }
+        break;
+
+      case 'E':
+        // Explicit command line - store for 'C' sequence
+        if (seq.data) {
+          // Unescape the command
+          this.pendingCommand = seq.data
+            .replace(/\\n/g, '\n')
+            .replace(/\\;/g, ';')
+            .replace(/\\\\/g, '\\');
+        }
+        break;
+
+      case 'P':
+        // Property - handle Cwd
+        if (seq.data?.startsWith('Cwd=')) {
+          const cwd = seq.data.slice(4);
+          this.blockModel.setCwd(cwd);
+        }
+        break;
     }
   }
 
@@ -215,6 +395,18 @@ export class TerminalSession {
         }
       }
     }
+
+    // Send block list for reconnection
+    if (this.blockUIEnabled) {
+      const blocks = this.blockModel.getRecentBlocks(20);
+      if (blocks.length > 0) {
+        try {
+          ws.send(serializeServerMessage(createBlockListMessage(blocks)));
+        } catch {
+          // Client may have disconnected
+        }
+      }
+    }
   }
 
   /**
@@ -256,7 +448,7 @@ export class TerminalSession {
       cols: this.currentCols,
       rows: this.currentRows,
       clientCount: this.clients.size,
-      startedAt: this.startedAt,
+      startedAt: this.startedAt
     };
   }
 
@@ -275,6 +467,41 @@ export class TerminalSession {
   }
 
   /**
+   * Get all blocks
+   */
+  getBlocks(): Block[] {
+    return this.blockModel.getAllBlocks();
+  }
+
+  /**
+   * Get a specific block by ID
+   */
+  getBlock(blockId: string): Block | undefined {
+    return this.blockModel.getBlock(blockId);
+  }
+
+  /**
+   * Get the active (running) block
+   */
+  getActiveBlock(): Block | null {
+    return this.blockModel.getActiveBlock();
+  }
+
+  /**
+   * Enable or disable block UI
+   */
+  setBlockUIEnabled(enabled: boolean): void {
+    this.blockUIEnabled = enabled;
+  }
+
+  /**
+   * Check if block UI is enabled
+   */
+  isBlockUIEnabled(): boolean {
+    return this.blockUIEnabled;
+  }
+
+  /**
    * Stop the session
    */
   async stop(): Promise<void> {
@@ -288,10 +515,7 @@ export class TerminalSession {
       try {
         this.proc.kill();
         // Wait a bit for process to exit
-        await Promise.race([
-          this.proc.exited,
-          new Promise((resolve) => setTimeout(resolve, 1000)),
-        ]);
+        await Promise.race([this.proc.exited, new Promise((resolve) => setTimeout(resolve, 1000))]);
       } catch {
         // Process may already be dead
       }

@@ -4,12 +4,15 @@
  * Note: Some tests require actual PTY support (POSIX only).
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { TerminalSession } from './terminal-session.js';
 import type { NativeTerminalWebSocket } from './types.js';
 
 // Mock WebSocket for testing
-function createMockWebSocket(): NativeTerminalWebSocket & { sentMessages: string[]; closed: boolean } {
+function createMockWebSocket(): NativeTerminalWebSocket & {
+  sentMessages: string[];
+  closed: boolean;
+} {
   const ws = {
     sentMessages: [] as string[],
     closed: false,
@@ -19,7 +22,7 @@ function createMockWebSocket(): NativeTerminalWebSocket & { sentMessages: string
     },
     close() {
       this.closed = true;
-    },
+    }
   };
   return ws as NativeTerminalWebSocket & { sentMessages: string[]; closed: boolean };
 }
@@ -40,7 +43,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'test-session',
       command: ['echo', 'hello'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     expect(session.name).toBe('test-session');
@@ -55,7 +58,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
       cwd: '/tmp',
       cols: 120,
       rows: 40,
-      outputBufferSize: 500,
+      outputBufferSize: 500
     });
 
     const info = session.getInfo();
@@ -67,7 +70,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'double-start',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     await session.start();
@@ -79,7 +82,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'running-check',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     expect(session.isRunning).toBe(false);
@@ -97,7 +100,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
       command: ['cat'],
       cwd: process.cwd(),
       cols: 100,
-      rows: 30,
+      rows: 30
     });
 
     await session.start();
@@ -115,7 +118,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'client-test',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     await session.start();
@@ -142,7 +145,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'ping-test',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     await session.start();
@@ -159,7 +162,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     session = new TerminalSession({
       name: 'error-test',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     await session.start();
@@ -177,7 +180,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
       name: 'buffer-test',
       command: ['echo', 'test output'],
       cwd: process.cwd(),
-      outputBufferSize: 100,
+      outputBufferSize: 100
     });
 
     await session.start();
@@ -198,7 +201,7 @@ describe('TerminalSession message handling (no PTY)', () => {
     const session = new TerminalSession({
       name: 'resize-validation',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     const ws = createMockWebSocket();
@@ -214,7 +217,7 @@ describe('TerminalSession message handling (no PTY)', () => {
     const session = new TerminalSession({
       name: 'input-validation',
       command: ['cat'],
-      cwd: process.cwd(),
+      cwd: process.cwd()
     });
 
     const ws = createMockWebSocket();
