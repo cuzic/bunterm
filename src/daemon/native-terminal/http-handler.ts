@@ -18,7 +18,7 @@ import {
   writeFileSync
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { addShare, getAllShares, getShare, getStateDir, removeShare } from '@/config/state.js';
 import type { Config } from '@/config/types.js';
@@ -47,6 +47,7 @@ import {
   parseTurnByUuidFromSessionFile,
   parseTurnsFromSessionFile
 } from './claude-quotes/parsing.js';
+import { validateSecurePath } from './utils/path-security.js';
 
 const log = createLogger('native-http');
 
@@ -876,15 +877,14 @@ async function handleApiRequest(
 
     try {
       const baseDir = session.cwd;
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security: ensure path is within base directory
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       if (!existsSync(targetPath)) {
         return new Response(JSON.stringify({ error: 'Path not found' }), {
@@ -940,15 +940,14 @@ async function handleApiRequest(
 
     try {
       const baseDir = session.cwd;
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security: ensure path is within base directory
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       if (!existsSync(targetPath)) {
         return new Response(JSON.stringify({ error: 'File not found' }), {
@@ -997,15 +996,14 @@ async function handleApiRequest(
 
     try {
       const baseDir = session.cwd;
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security: ensure path is within base directory
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       const content = await req.arrayBuffer();
       writeFileSync(targetPath, Buffer.from(content));
@@ -1047,15 +1045,14 @@ async function handleApiRequest(
 
     try {
       const baseDir = session.cwd;
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security: ensure path is within base directory
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       if (!existsSync(targetPath)) {
         return new Response(JSON.stringify({ error: 'File not found' }), {
@@ -1203,15 +1200,14 @@ async function handleApiRequest(
         baseDir = session.cwd;
       }
 
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security: ensure path is within base directory
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       if (!existsSync(targetPath)) {
         return new Response(JSON.stringify({ error: 'File not found' }), {
@@ -1364,12 +1360,11 @@ async function handleApiRequest(
               baseDir = sessionCwd;
             }
 
-            const targetPath = resolve(baseDir, fileRef.path);
-
-            // Security: ensure path is within base directory
-            if (!targetPath.startsWith(baseDir)) {
+            const pathResult = validateSecurePath(baseDir, fileRef.path);
+            if (!pathResult.valid) {
               continue;
             }
+            const targetPath = pathResult.targetPath;
 
             if (!existsSync(targetPath)) {
               continue;
@@ -1778,15 +1773,14 @@ async function handleApiRequest(
         });
       }
 
-      const targetPath = resolve(baseDir, filePath);
-
-      // Security check
-      if (!targetPath.startsWith(baseDir)) {
-        return new Response(JSON.stringify({ error: 'Invalid path' }), {
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return new Response(JSON.stringify({ error: pathResult.error }), {
           status: 400,
           headers
         });
       }
+      const targetPath = pathResult.targetPath;
 
       if (!existsSync(targetPath)) {
         return new Response(JSON.stringify({ error: 'File not found' }), {
