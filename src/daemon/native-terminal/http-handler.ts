@@ -36,6 +36,13 @@ import { generateNativeTerminalHtml } from './html-template.js';
 import type { NativeSessionManager } from './session-manager.js';
 import type { CommandRequest } from './types.js';
 import { isNativeTerminalHtmlPath } from './ws-handler.js';
+import type {
+  ClaudeSessionInfo,
+  ClaudeTurnFull,
+  ClaudeTurnSummary,
+  GitDiffFile,
+  GitDiffResponse
+} from './claude-quotes/types.js';
 
 const log = createLogger('native-http');
 
@@ -1939,17 +1946,6 @@ function collectMdFiles(
 // === Claude Quotes Helper Functions ===
 
 /**
- * Claude session info from history.jsonl
- */
-interface ClaudeSessionInfo {
-  sessionId: string;
-  projectPath: string;
-  projectName: string;
-  lastMessage: string;
-  lastTimestamp: number;
-}
-
-/**
  * Get recent Claude sessions from ~/.claude/history.jsonl
  * This is the authoritative source for finding Claude sessions.
  */
@@ -2016,39 +2012,6 @@ function getClaudeSessionFilePath(projectPath: string, sessionId: string): strin
   }
 
   return null;
-}
-
-interface ClaudeTurnSummary {
-  uuid: string;
-  userContent: string;
-  assistantSummary: string;
-  timestamp: string;
-  hasToolUse: boolean;
-  editedFiles?: string[];
-}
-
-interface ClaudeTurnFull {
-  uuid: string;
-  userContent: string;
-  assistantContent: string;
-  timestamp: string;
-  toolUses: Array<{
-    name: string;
-    input: Record<string, unknown>;
-  }>;
-}
-
-interface GitDiffFile {
-  path: string;
-  status: 'M' | 'A' | 'D' | 'R';
-  additions: number;
-  deletions: number;
-}
-
-interface GitDiffResponse {
-  files: GitDiffFile[];
-  fullDiff: string;
-  summary: string;
 }
 
 /**

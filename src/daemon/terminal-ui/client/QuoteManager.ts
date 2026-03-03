@@ -6,61 +6,16 @@
  */
 
 import type { TerminalUiConfig } from './types.js';
+import type {
+  ClaudeSessionInfo,
+  ClaudeTurnFull,
+  ClaudeTurnSummary,
+  GitDiffResponse,
+  MarkdownFile
+} from '../../native-terminal/claude-quotes/types.js';
 
 // Types
 type QuoteTab = 'turns' | 'projectMd' | 'plans' | 'gitDiff';
-
-/**
- * Claude session info from history.jsonl
- */
-interface ClaudeSessionInfo {
-  sessionId: string;
-  projectPath: string;
-  projectName: string;
-  lastMessage: string;
-  lastTimestamp: number;
-}
-
-interface ClaudeTurnSummary {
-  uuid: string;
-  userContent: string;
-  assistantSummary: string;
-  timestamp: string;
-  hasToolUse: boolean;
-  editedFiles?: string[];
-}
-
-interface ClaudeTurnFull {
-  uuid: string;
-  userContent: string;
-  assistantContent: string;
-  timestamp: string;
-  toolUses: Array<{
-    name: string;
-    input: Record<string, unknown>;
-  }>;
-}
-
-interface MarkdownFile {
-  path: string;
-  relativePath?: string;
-  name: string;
-  modifiedAt: string;
-  size: number;
-}
-
-interface GitDiffFile {
-  path: string;
-  status: 'M' | 'A' | 'D' | 'R';
-  additions: number;
-  deletions: number;
-}
-
-interface GitDiffResponse {
-  files: GitDiffFile[];
-  fullDiff: string;
-  summary: string;
-}
 
 interface QuoteElements {
   modal: HTMLElement;
