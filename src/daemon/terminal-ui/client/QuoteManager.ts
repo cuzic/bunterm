@@ -263,7 +263,7 @@ export class QuoteManager {
 
     // Fetch all in parallel
     await Promise.all([
-      this.fetchTurns(basePath, sessionName),
+      this.fetchTurns(basePath),
       this.fetchProjectMarkdown(basePath, sessionName),
       this.fetchPlans(basePath),
       this.fetchGitDiff(basePath, sessionName)
@@ -307,31 +307,21 @@ export class QuoteManager {
   /**
    * Fetch Claude turns
    */
-  private async fetchTurns(basePath: string, sessionName: string): Promise<void> {
-    // Use new approach if we have a selected Claude session
-    if (this.selectedClaudeSession) {
-      try {
-        const response = await fetch(
-          `${basePath}/api/claude-quotes/recent?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}&count=20`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          this.turns = data.turns || [];
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to fetch Claude turns (new approach):', error);
-      }
+  private async fetchTurns(basePath: string): Promise<void> {
+    if (!this.selectedClaudeSession) {
+      this.turns = [];
+      return;
     }
 
-    // Fallback to legacy approach
     try {
       const response = await fetch(
-        `${basePath}/api/claude-quotes/recent?session=${encodeURIComponent(sessionName)}&count=20`
+        `${basePath}/api/claude-quotes/recent?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}&count=20`
       );
       if (response.ok) {
         const data = await response.json();
         this.turns = data.turns || [];
+      } else {
+        this.turns = [];
       }
     } catch (error) {
       console.error('Failed to fetch Claude turns:', error);
@@ -449,7 +439,7 @@ export class QuoteManager {
         if (newSession) {
           this.selectedClaudeSession = newSession;
           this.selectedTurnUuids.clear();
-          await this.fetchTurns(this.config.base_path, this.getSessionName());
+          await this.fetchTurns(this.config.base_path);
           this.renderList();
         }
       });
@@ -777,22 +767,14 @@ export class QuoteManager {
 
     try {
       // Collect Claude turns
-      if (this.selectedTurnUuids.size > 0) {
+      if (this.selectedTurnUuids.size > 0 && this.selectedClaudeSession) {
         parts.push('## Claude Code Conversation\n');
 
         for (const uuid of this.selectedTurnUuids) {
           try {
-            // Use new approach if we have a selected Claude session
-            let response: Response;
-            if (this.selectedClaudeSession) {
-              response = await fetch(
-                `${basePath}/api/claude-quotes/turn/${encodeURIComponent(uuid)}?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}`
-              );
-            } else {
-              response = await fetch(
-                `${basePath}/api/claude-quotes/turn/${encodeURIComponent(uuid)}?session=${encodeURIComponent(sessionName)}`
-              );
-            }
+            const response = await fetch(
+              `${basePath}/api/claude-quotes/turn/${encodeURIComponent(uuid)}?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}`
+            );
             if (response.ok) {
               const turn: ClaudeTurnFull = await response.json();
               const date = new Date(turn.timestamp);
