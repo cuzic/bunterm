@@ -54,7 +54,6 @@ class ToolbarApp {
   private touch: TouchGestureHandler;
   private fontSizeManager: FontSizeManager;
   private autoRun: AutoRunManager;
-  private previewPane: PreviewPane;
   private fileWatcher: FileWatcherClient;
   private preview: PreviewManager;
   private sessionSwitcher: SessionSwitcher;
@@ -84,10 +83,10 @@ class ToolbarApp {
     this.touch = new TouchGestureHandler(config, this.terminal, this.input, this.modifiers);
     this.fontSizeManager = new FontSizeManager(config);
     this.autoRun = new AutoRunManager();
-    this.previewPane = new PreviewPane();
     this.fileWatcher = new FileWatcherClient(config);
+    const previewPane = new PreviewPane();
     this.preview = new PreviewManager(config, {
-      pane: this.previewPane,
+      pane: previewPane,
       watcher: this.fileWatcher
     });
     this.sessionSwitcher = new SessionSwitcher(config);

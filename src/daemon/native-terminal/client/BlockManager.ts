@@ -5,20 +5,9 @@
  * Works with BlockRenderer for UI display.
  */
 
-export type BlockStatus = 'running' | 'success' | 'error';
+import type { Block, BlockStatus } from '../types.js';
 
-export interface Block {
-  id: string;
-  command: string;
-  output: string; // Base64 encoded
-  startedAt: string;
-  endedAt?: string;
-  exitCode?: number;
-  cwd?: string;
-  status: BlockStatus;
-  startLine: number;
-  endLine?: number;
-}
+export type { Block, BlockStatus };
 
 export interface BlockEventHandlers {
   onBlockStart?: (block: Block) => void;

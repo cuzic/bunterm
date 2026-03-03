@@ -79,3 +79,15 @@ export function isPreviewable(filename: string, allowedExtensions?: string[]): b
   const lowerName = filename.toLowerCase();
   return extensions.some((ext) => lowerName.endsWith(ext.toLowerCase()));
 }
+
+/**
+ * Convert a Blob to base64 string
+ * @param blob - The blob to convert
+ * @returns Base64 encoded string
+ */
+export async function blobToBase64(blob: Blob): Promise<string> {
+  const arrayBuffer = await blob.arrayBuffer();
+  return btoa(
+    new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+  );
+}

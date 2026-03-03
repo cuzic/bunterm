@@ -20,7 +20,7 @@ import {
   smartPasteMachine
 } from './smartPasteMachine.js';
 import type { SmartPasteElements, TerminalUiConfig } from './types.js';
-import { getSessionNameFromURL } from './utils.js';
+import { blobToBase64, getSessionNameFromURL } from './utils.js';
 
 // Re-export PendingUpload from state machine
 export type { PendingUpload } from './smartPasteMachine.js';
@@ -552,18 +552,11 @@ export class SmartPasteManager {
 
       // Prepare images data
       const images = await Promise.all(
-        context.pendingUploads.map(async (upload) => {
-          // Convert blob to base64
-          const arrayBuffer = await upload.blob.arrayBuffer();
-          const base64 = btoa(
-            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
-          return {
-            data: base64,
-            mimeType: upload.mimeType,
-            name: upload.name
-          };
-        })
+        context.pendingUploads.map(async (upload) => ({
+          data: await blobToBase64(upload.blob),
+          mimeType: upload.mimeType,
+          name: upload.name
+        }))
       );
 
       // Upload to server
@@ -641,13 +634,8 @@ export class SmartPasteManager {
         return;
       }
 
-      // Convert blob to base64
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-      );
-
       // Upload to server
+      const base64 = await blobToBase64(blob);
       const response = await fetch(
         `${this.config.base_path}/api/clipboard-image?session=${encodeURIComponent(sessionName)}`,
         {

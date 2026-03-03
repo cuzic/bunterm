@@ -139,7 +139,7 @@ export class PersistentExecutor {
       };
 
       // Store original output handler and wrap it
-      const originalWrite = this.session.write.bind(this.session);
+      const originalWrite = this.session.writeString.bind(this.session);
 
       // Send test command
       originalWrite(`${testCommand}\n`);
@@ -264,7 +264,7 @@ export class PersistentExecutor {
 
     // If cwd was requested, change directory first
     if (request.cwd) {
-      this.session.write(`cd ${this.escapeShellArg(request.cwd)} && `);
+      this.session.writeString(`cd ${this.escapeShellArg(request.cwd)} && `);
     }
 
     // If env was requested, prefix with env vars
@@ -272,11 +272,11 @@ export class PersistentExecutor {
       const envPrefix = Object.entries(request.env)
         .map(([k, v]) => `${k}=${this.escapeShellArg(v)}`)
         .join(' ');
-      this.session.write(`${envPrefix} `);
+      this.session.writeString(`${envPrefix} `);
     }
 
     // Send the command
-    this.session.write(`${request.command}\n`);
+    this.session.writeString(`${request.command}\n`);
 
     // Update status to running
     this.blockStore.updateStatus(block.id, 'running');
@@ -325,7 +325,7 @@ export class PersistentExecutor {
     if (this.pendingCommand?.blockId !== blockId) return;
 
     // Send Ctrl+C to interrupt
-    this.session.write('\x03');
+    this.session.writeString('\x03');
 
     // Mark session as contaminated
     if (this.integrationStatus) {
@@ -399,9 +399,9 @@ export class PersistentExecutor {
 
     // Send appropriate signal
     if (signal === 'SIGINT') {
-      this.session.write('\x03'); // Ctrl+C
+      this.session.writeString('\x03'); // Ctrl+C
     } else if (signal === 'SIGKILL') {
-      this.session.write('\x03\x03\x03'); // Multiple Ctrl+C
+      this.session.writeString('\x03\x03\x03'); // Multiple Ctrl+C
     }
 
     // Mark session as contaminated

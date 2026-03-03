@@ -345,13 +345,6 @@ export class TerminalSession {
   }
 
   /**
-   * Write string data to the PTY (legacy method)
-   */
-  write(data: string): void {
-    this.writeString(data);
-  }
-
-  /**
    * Write string data to the PTY
    */
   writeString(data: string): void {

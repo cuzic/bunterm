@@ -23,6 +23,8 @@ export class SearchManager {
   private searchRegexBtn: HTMLElement | null = null;
 
   private findTerminal: () => Terminal | null;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly debounceMs = 150;
 
   constructor(findTerminal: () => Terminal | null) {
     this.findTerminal = findTerminal;
@@ -222,9 +224,21 @@ export class SearchManager {
   }
 
   /**
-   * Perform search with current settings
+   * Perform search with current settings (debounced for input events)
    */
   doSearch(): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
+    this.debounceTimer = setTimeout(() => {
+      this.doSearchImmediate();
+    }, this.debounceMs);
+  }
+
+  /**
+   * Perform search immediately (for toggle buttons)
+   */
+  private doSearchImmediate(): void {
     const searchTerm = this.searchInput?.value;
     if (!searchTerm) {
       this.updateMatchCount(0, 0);
@@ -244,7 +258,7 @@ export class SearchManager {
   toggleCaseSensitive(): boolean {
     this.caseSensitive = !this.caseSensitive;
     this.searchCaseBtn?.classList.toggle('active', this.caseSensitive);
-    this.doSearch();
+    this.doSearchImmediate();
     return this.caseSensitive;
   }
 
@@ -254,7 +268,7 @@ export class SearchManager {
   toggleRegex(): boolean {
     this.regex = !this.regex;
     this.searchRegexBtn?.classList.toggle('active', this.regex);
-    this.doSearch();
+    this.doSearchImmediate();
     return this.regex;
   }
 

@@ -85,23 +85,14 @@ export class CommandExecutorManager {
     executor: EphemeralExecutor,
     request: CommandRequest
   ): Promise<CommandResponse> {
-    // Hook up event emitter
-    const onEvent = (event: any) => {
-      switch (event.type) {
-        case 'started':
-          this.eventEmitter.emitStarted(event.block);
-          break;
-        case 'stdout':
-          this.eventEmitter.emitStdout(event.blockId, event.chunk);
-          break;
-        case 'stderr':
-          this.eventEmitter.emitStderr(event.blockId, event.chunk);
-          break;
-        case 'completed':
-          this.eventEmitter.emitCompleted(event.block);
-          break;
-      }
+    // Hook up event emitter using lookup table
+    const eventHandlers: Record<string, (event: any) => void> = {
+      started: (e) => this.eventEmitter.emitStarted(e.block),
+      stdout: (e) => this.eventEmitter.emitStdout(e.blockId, e.chunk),
+      stderr: (e) => this.eventEmitter.emitStderr(e.blockId, e.chunk),
+      completed: (e) => this.eventEmitter.emitCompleted(e.block)
     };
+    const onEvent = (event: any) => eventHandlers[event.type]?.(event);
 
     executor.addEventListener(onEvent);
     try {
@@ -118,20 +109,13 @@ export class CommandExecutorManager {
     executor: PersistentExecutor,
     request: CommandRequest
   ): Promise<CommandResponse> {
-    // Hook up event emitter
-    const onEvent = (event: any) => {
-      switch (event.type) {
-        case 'started':
-          this.eventEmitter.emitStarted(event.block);
-          break;
-        case 'output':
-          this.eventEmitter.emitStdout(event.blockId, event.chunk);
-          break;
-        case 'completed':
-          this.eventEmitter.emitCompleted(event.block);
-          break;
-      }
+    // Hook up event emitter using lookup table
+    const eventHandlers: Record<string, (event: any) => void> = {
+      started: (e) => this.eventEmitter.emitStarted(e.block),
+      output: (e) => this.eventEmitter.emitStdout(e.blockId, e.chunk),
+      completed: (e) => this.eventEmitter.emitCompleted(e.block)
     };
+    const onEvent = (event: any) => eventHandlers[event.type]?.(event);
 
     executor.addEventListener(onEvent);
     try {
