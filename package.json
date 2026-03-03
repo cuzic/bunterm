@@ -94,7 +94,9 @@
   "dependencies": {
     "@inquirer/prompts": "^8.2.1",
     "@sentry/bun": "^8.0.0",
+    "@xterm/addon-clipboard": "^0.2.0",
     "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.15.0",
     "@xterm/addon-serialize": "^0.13.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-web-links": "^0.11.0",
