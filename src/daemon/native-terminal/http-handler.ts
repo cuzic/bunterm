@@ -49,6 +49,7 @@ import {
 } from './claude-quotes/parsing.js';
 import { validateSecurePath } from './utils/path-security.js';
 import { readJsonlFile } from './utils/jsonl.js';
+import type { BlockContext, FileContext } from './ai/types.js';
 
 const log = createLogger('native-http');
 
@@ -1306,7 +1307,7 @@ async function handleApiRequest(
 
       // Get block data from executor manager
       const executor = getExecutorManager(sessionManager);
-      const blockContexts: import('./ai/types.js').BlockContext[] = [];
+      const blockContexts: BlockContext[] = [];
 
       for (const blockId of body.context.blocks) {
         const block = executor.getBlock(blockId);
@@ -1347,7 +1348,7 @@ async function handleApiRequest(
       }
 
       // Load file contexts if specified
-      const fileContexts: import('./ai/types.js').FileContext[] = [];
+      const fileContexts: FileContext[] = [];
       if (body.context.files && Array.isArray(body.context.files)) {
         const session = sessionManager.getSession(body.context.sessionId);
         const sessionCwd = session?.cwd ?? process.cwd();
