@@ -17,6 +17,7 @@ export interface Terminal {
   loadAddon(addon: unknown): void;
   onBell(callback: () => void): void;
   scrollLines(amount: number): void;
+  refresh(start: number, end: number): void;
 }
 
 /** Terminal buffer interface */

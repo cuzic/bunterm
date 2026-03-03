@@ -18,7 +18,8 @@ const SCROLL_THRESHOLD = 30; // Pixels to drag before triggering scroll
 const EDGE_SWIPE_THRESHOLD = 30; // Pixels from edge to start swipe detection
 const SWIPE_HORIZONTAL_THRESHOLD = 100; // Minimum horizontal distance for swipe
 const SWIPE_VERTICAL_LIMIT = 50; // Maximum vertical distance for swipe
-const ALT_SCROLL_THRESHOLD = 30; // Pixels to drag for one wheel tick
+const ALT_SCROLL_THRESHOLD = 10; // Pixels to drag for one wheel tick (smaller = faster)
+const ALT_SCROLL_MULTIPLIER = 3; // Send multiple wheel events per tick for faster scrolling
 
 export class TouchGestureHandler {
   private config: TerminalUiConfig;
@@ -42,9 +43,10 @@ export class TouchGestureHandler {
   private edgeSwipeStartY = 0;
   private edgeSwipeStartedFromEdge = false;
 
-  // Alt+swipe scroll state
-  private altScrollActive = false;
-  private altScrollLastY = 0;
+  // Modifier+swipe scroll state
+  private modifierScrollActive = false;
+  private modifierScrollLastY = 0;
+  private modifierScrollMode: 'alt' | 'ctrl' | null = null;
 
   constructor(
     config: TerminalUiConfig,
@@ -95,7 +97,7 @@ export class TouchGestureHandler {
     this.setupWheelZoom();
     this.setupDoubleTap();
     this.setupEdgeSwipe();
-    this.setupAltScroll();
+    this.setupModifierScroll();
     this.setupMobileKeyboardSuppress();
   }
 
@@ -488,10 +490,11 @@ export class TouchGestureHandler {
   }
 
   /**
-   * Setup Alt+swipe scroll gesture
-   * When Alt is active, vertical swipe sends mouse wheel events
+   * Setup modifier+swipe scroll gestures
+   * - Alt + swipe: Send mouse wheel events to PTY (for tmux with 'set -g mouse on')
+   * - Ctrl + swipe: Local xterm.js scrollback scroll (for non-tmux or tmux without mouse)
    */
-  private setupAltScroll(): void {
+  private setupModifierScroll(): void {
     document.addEventListener(
       'touchstart',
       (e: TouchEvent) => {
@@ -509,11 +512,19 @@ export class TouchGestureHandler {
           return;
         }
 
-        // Single finger touch with Alt active -> enable alt scroll mode
-        if (e.touches.length === 1 && this.modifiers.isAltActive()) {
-          this.altScrollActive = true;
-          this.altScrollLastY = e.touches[0].clientY;
-          e.preventDefault();
+        // Single finger touch with Alt or Ctrl active -> enable scroll mode
+        if (e.touches.length === 1) {
+          if (this.modifiers.isAltActive()) {
+            this.modifierScrollActive = true;
+            this.modifierScrollLastY = e.touches[0].clientY;
+            this.modifierScrollMode = 'alt';
+            e.preventDefault();
+          } else if (this.modifiers.isCtrlActive()) {
+            this.modifierScrollActive = true;
+            this.modifierScrollLastY = e.touches[0].clientY;
+            this.modifierScrollMode = 'ctrl';
+            e.preventDefault();
+          }
         }
       },
       { passive: false, capture: true }
@@ -522,38 +533,42 @@ export class TouchGestureHandler {
     document.addEventListener(
       'touchmove',
       (e: TouchEvent) => {
-        if (!this.altScrollActive || e.touches.length !== 1) {
+        if (!this.modifierScrollActive || e.touches.length !== 1) {
           return;
         }
 
         const touch = e.touches[0];
-        const deltaY = this.altScrollLastY - touch.clientY;
+        const deltaY = this.modifierScrollLastY - touch.clientY;
 
         if (Math.abs(deltaY) >= ALT_SCROLL_THRESHOLD) {
           const ticks = Math.floor(Math.abs(deltaY) / ALT_SCROLL_THRESHOLD);
-          // deltaY > 0 means finger moved up → scroll up (towards older content)
           const direction = deltaY > 0 ? 'up' : 'down';
 
-          if (this.config.tmuxMode && this.config.tmuxMode !== 'none') {
-            // tmux mode: send mouse wheel events to tmux
-            // Requires 'set -g mouse on' in tmux config
-            this.input.sendWheel(direction, ticks);
+          if (this.modifierScrollMode === 'alt') {
+            // Alt + swipe: Send mouse wheel to PTY (for tmux)
+            this.input.sendWheel(direction, ticks * ALT_SCROLL_MULTIPLIER);
           } else {
-            // Non-tmux mode: use xterm.js scrollLines
+            // Ctrl + swipe: Local xterm.js scroll
             const scrollAmount = deltaY > 0 ? -ticks : ticks;
             this.terminal.scrollLines(scrollAmount);
           }
-          this.altScrollLastY = touch.clientY;
+          this.modifierScrollLastY = touch.clientY;
         }
-        e.preventDefault();
+        // Note: Not calling preventDefault() here to allow browser repaints during touch
       },
-      { passive: false, capture: true }
+      { passive: true, capture: true }
     );
 
     document.addEventListener(
       'touchend',
       () => {
-        this.altScrollActive = false;
+        if (this.modifierScrollActive) {
+          // Force xterm.js refresh after touch ends
+          // Mobile browsers may pause rendering during touch operations
+          this.terminal.refresh();
+        }
+        this.modifierScrollActive = false;
+        this.modifierScrollMode = null;
       },
       { passive: true, capture: true }
     );
@@ -561,7 +576,8 @@ export class TouchGestureHandler {
     document.addEventListener(
       'touchcancel',
       () => {
-        this.altScrollActive = false;
+        this.modifierScrollActive = false;
+        this.modifierScrollMode = null;
       },
       { passive: true, capture: true }
     );

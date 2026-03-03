@@ -320,7 +320,8 @@ class ToolbarApp {
     this.setupVisibilityHandler();
 
     // Fit terminal after toolbar is visible (toolbar is shown by default)
-    setTimeout(() => this.terminal.fitTerminal(), 500);
+    // Use fitAfterToolbarChange to properly calculate height based on actual toolbar dimensions
+    setTimeout(() => this.fitAfterToolbarChange(), 500);
 
     // Show onboarding on mobile
     if (this.isMobile) {
@@ -390,7 +391,8 @@ class ToolbarApp {
       const isMinimized = elements.container.classList.contains('minimized');
       // Update title to show opposite action
       elements.minimizeBtn.title = isMinimized ? 'ツールバーを展開' : 'コンパクト表示';
-      setTimeout(() => this.terminal.fitTerminal(), 100);
+      // Fit terminal multiple times on mobile to ensure proper layout
+      this.fitAfterToolbarChange();
     });
 
     // Toggle button
@@ -597,15 +599,67 @@ class ToolbarApp {
         // On desktop, focus terminal for keyboard input
         terminal?.focus();
       }
-      setTimeout(() => this.terminal.fitTerminal(), 100);
     } else {
       if (!this.isMobile) {
         // On desktop, auto-focus input for immediate typing
         input.focus();
       }
       // On mobile, user must tap input to show keyboard
-      // Fit terminal after showing toolbar
-      setTimeout(() => this.terminal.fitTerminal(), 100);
+    }
+
+    // Fit terminal multiple times on mobile to ensure proper layout
+    this.fitAfterToolbarChange();
+  }
+
+  /**
+   * Fit terminal after toolbar visibility change
+   * Dynamically adjusts terminal container height based on actual toolbar height.
+   * Uses !important to override CSS rules that use hard-coded values.
+   */
+  private fitAfterToolbarChange(): void {
+    const adjustAndFit = () => {
+      // Get actual toolbar height (CSS assumes fixed values that may not match actual height)
+      const toolbar = this.elements.container;
+      const toolbarHeight = toolbar.classList.contains('hidden') ? 0 : toolbar.offsetHeight;
+
+      // Find terminal container and adjust its height
+      const terminalContainer = document.getElementById('terminal') ||
+                                document.querySelector('.terminal') ||
+                                document.querySelector('.terminal-pane');
+
+      if (terminalContainer) {
+        const viewportHeight = window.innerHeight;
+        const newHeight = viewportHeight - toolbarHeight;
+
+        // Use setProperty with 'important' to override CSS !important rules
+        (terminalContainer as HTMLElement).style.setProperty('height', `${newHeight}px`, 'important');
+
+        // Also update xterm internal elements for proper fit
+        const xterm = terminalContainer.querySelector('.xterm') as HTMLElement;
+        const xtermViewport = terminalContainer.querySelector('.xterm-viewport') as HTMLElement;
+        const xtermScreen = terminalContainer.querySelector('.xterm-screen') as HTMLElement;
+
+        if (xterm) {
+          xterm.style.setProperty('height', '100%', 'important');
+        }
+        if (xtermViewport) {
+          xtermViewport.style.setProperty('height', '100%', 'important');
+        }
+        if (xtermScreen) {
+          xtermScreen.style.setProperty('height', '100%', 'important');
+        }
+      }
+
+      this.terminal.fitTerminal();
+    };
+
+    adjustAndFit();
+    if (this.isMobile) {
+      setTimeout(adjustAndFit, 50);
+      setTimeout(adjustAndFit, 150);
+      setTimeout(adjustAndFit, 300);
+    } else {
+      setTimeout(adjustAndFit, 100);
     }
   }
 

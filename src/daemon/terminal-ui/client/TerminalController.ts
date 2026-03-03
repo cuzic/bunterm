@@ -200,6 +200,33 @@ export class TerminalController {
   }
 
   /**
+   * Force terminal refresh/repaint
+   * Useful when mobile browsers pause rendering during touch operations
+   */
+  refresh(): void {
+    const term = this.findTerminal() as Terminal & { rows?: number };
+    if (term && typeof term.refresh === 'function') {
+      const rows = term.rows ?? 24;
+      term.refresh(0, rows - 1);
+    }
+  }
+
+  /**
+   * Check if xterm.js has scrollback content beyond visible rows
+   * Returns false if buffer length equals rows (e.g., when tmux manages buffer)
+   */
+  hasScrollback(): boolean {
+    const term = this.findTerminal() as Terminal & { rows?: number };
+    if (!term?.buffer?.active) {
+      return false;
+    }
+    const bufferLength = term.buffer.active.length;
+    const rows = term.rows ?? 24;
+    // If buffer length is greater than visible rows, we have scrollback
+    return bufferLength > rows;
+  }
+
+  /**
    * Setup visual bell handler
    */
   setupBellHandler(onBell?: () => void): void {

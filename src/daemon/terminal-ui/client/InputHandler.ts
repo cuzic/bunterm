@@ -120,28 +120,4 @@ export class InputHandler {
     }
   }
 
-  /**
-   * Send tmux scroll command
-   * Enters copy mode and sends Page Up/Down
-   * @param direction - 'up' or 'down'
-   * @param count - number of pages (default: 1)
-   */
-  sendTmuxScroll(direction: 'up' | 'down', count = 1): void {
-
-    // Build the complete sequence: Ctrl+B [ PageUp/PageDown
-    // Ctrl+B = \x02, [ = \x5b
-    // Page Up: ESC [ 5 ~  -> \x1b \x5b \x35 \x7e
-    // Page Down: ESC [ 6 ~ -> \x1b \x5b \x36 \x7e
-    const pageKey = direction === 'up'
-      ? [0x1b, 0x5b, 0x35, 0x7e]  // Page Up
-      : [0x1b, 0x5b, 0x36, 0x7e]; // Page Down
-
-    // Send all keys in one message to ensure proper sequencing
-    const sequence: number[] = [0x02, 0x5b]; // Ctrl+B [
-    for (let i = 0; i < count; i++) {
-      sequence.push(...pageKey);
-    }
-
-    this.ws.sendBytes(sequence);
-  }
 }
