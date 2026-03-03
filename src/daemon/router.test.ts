@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { loadConfig } from '@/config/config.js';
-import { generateEtag, handleRequest, resetTerminalUiCache, setSecurityHeaders } from './router.js';
+import { handleRequest, resetAllCaches, setSecurityHeaders } from './router.js';
+import { generateEtag, staticFiles } from './static-file-server.js';
 
 // Get default config for tests
 const defaultConfig = loadConfig();
@@ -125,7 +126,7 @@ describe('setSecurityHeaders', () => {
 
 describe('handleRequest - terminal-ui.js', () => {
   afterEach(() => {
-    resetTerminalUiCache();
+    staticFiles.terminalUi.reset();
   });
 
   test('returns 200 with ETag on first request', () => {
