@@ -1,11 +1,12 @@
 {
-  "name": "ttyd-mux",
+  "name": "bunterm",
   "version": "0.6.0",
-  "description": "ttyd session multiplexer - manage multiple ttyd+tmux web terminal sessions / 複数の ttyd+tmux Web ターミナルセッションを管理する CLI ツール",
+  "description": "Web terminal with Bun.Terminal - browser-accessible terminal with mobile support and AI integration / Bun.Terminal ベースの Web ターミナル",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
+    "bunterm": "./dist/index.js",
     "ttyd-mux": "./dist/index.js"
   },
   "scripts": {
@@ -73,22 +74,23 @@
     "node": ">=18.0.0"
   },
   "keywords": [
-    "ttyd",
-    "tmux",
+    "bun",
     "terminal",
-    "multiplexer",
-    "cli",
     "web-terminal",
-    "session-manager"
+    "pty",
+    "cli",
+    "mobile",
+    "ai",
+    "xterm"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cuzic/ttyd-mux.git"
+    "url": "git+https://github.com/cuzic/bunterm.git"
   },
-  "homepage": "https://github.com/cuzic/ttyd-mux#readme",
+  "homepage": "https://github.com/cuzic/bunterm#readme",
   "bugs": {
-    "url": "https://github.com/cuzic/ttyd-mux/issues"
+    "url": "https://github.com/cuzic/bunterm/issues"
   },
   "author": "cuzic",
   "dependencies": {
