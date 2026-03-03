@@ -39,10 +39,11 @@ const OSC_END = '\x07';
 
 // CSI (Control Sequence Introducer) for terminal responses
 // These are responses FROM the terminal TO applications, not display content
-// DA1 response: CSI ? Ps ; Ps ; ... c
-// DA2 response: CSI > Ps ; Ps ; ... c
-// DA3 response: CSI = Ps ; Ps ; ... c
-const CSI_DA_RESPONSE_PATTERN = /\x1b\[[>?=][\d;]*c/g;
+// DA1 response: CSI ? Ps ; Ps ; ... c (e.g., ESC[?64;1;2;...c)
+// DA2 response: CSI > Ps ; Ps ; Ps c (e.g., ESC[>0;276;0c)
+// DA3 response: CSI = Ps c (e.g., ESC[=...c)
+// Note: DA queries (CSI > c or CSI > 0 c) have no semicolons, so we require at least one
+const CSI_DA_RESPONSE_PATTERN = /\x1b\[[>?=]\d*;\d+[;\d]*c/g;
 
 // OSC 633 sequence types
 type OSC633Type = 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
@@ -255,11 +256,6 @@ export class TerminalSession {
       }
     }
 
-    // Filter out terminal response sequences (DA1, DA2, DA3)
-    // These are responses from the terminal emulator that shouldn't be displayed
-    // e.g., [>0;276;0c (DA2 response from xterm.js)
-    filteredOutput = filteredOutput.replace(CSI_DA_RESPONSE_PATTERN, '');
-
     return { filteredOutput, sequences };
   }
 
@@ -360,6 +356,17 @@ export class TerminalSession {
    * Write string data to the PTY
    */
   writeString(data: string): void {
+    // Filter out DA responses from xterm.js before writing to PTY
+    if (CSI_DA_RESPONSE_PATTERN.test(data)) {
+      const filtered = data.replace(CSI_DA_RESPONSE_PATTERN, '');
+      if (!filtered) {
+        return;
+      }
+      if (this.terminal && !this.terminal.closed) {
+        this.terminal.write(filtered);
+      }
+      return;
+    }
     if (this.terminal && !this.terminal.closed) {
       this.terminal.write(data);
     }
@@ -369,6 +376,23 @@ export class TerminalSession {
    * Write binary data to the PTY (for mouse events and other binary sequences)
    */
   writeBytes(data: Uint8Array | Buffer): void {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(data);
+
+    // Filter out DA responses from xterm.js before writing to PTY
+    // These responses get echoed by PTY and appear on screen as garbage
+    // The application doesn't actually need them - xterm.js handles DA queries internally
+    if (CSI_DA_RESPONSE_PATTERN.test(text)) {
+      const filtered = text.replace(CSI_DA_RESPONSE_PATTERN, '');
+      if (!filtered) {
+        return; // All data was DA responses, nothing to write
+      }
+      // Write filtered data
+      if (this.terminal && !this.terminal.closed) {
+        this.terminal.write(filtered);
+      }
+      return;
+    }
+
     if (this.terminal && !this.terminal.closed) {
       this.terminal.write(data);
     }
