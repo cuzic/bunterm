@@ -5,12 +5,15 @@
  * all toolbar components.
  */
 
+import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
 import { AutoRunManager } from './AutoRunManager.js';
+import { DebugPanel } from './DebugPanel.js';
 import { ClipboardHistoryManager } from './ClipboardHistoryManager.js';
 import { FileTransferManager } from './FileTransferManager.js';
 import { FileWatcherClient } from './FileWatcherClient.js';
 import { FontSizeManager } from './FontSizeManager.js';
 import { InputHandler } from './InputHandler.js';
+import { LayoutManager } from './LayoutManager.js';
 import { LinkManager } from './LinkManager.js';
 import { ModifierKeyState } from './ModifierKeyState.js';
 import { NotificationManager } from './NotificationManager.js';
@@ -30,6 +33,7 @@ import { KeyPriority, KeyRouter } from './key-router.js';
 import { Scope, on, onBus } from './lifecycle.js';
 import type {
   SessionSwitcherElements,
+  ShareElements,
   SmartPasteElements,
   TerminalUiConfig,
   ToolbarElements
@@ -40,6 +44,7 @@ import { bindClickScoped, isMobileDevice } from './utils.js';
 class ToolbarApp {
   private config: TerminalUiConfig;
   private elements: ToolbarElements;
+  private apiClient: ToolbarApiClient;
 
   // Lifecycle management
   private scope = new Scope();
@@ -64,12 +69,14 @@ class ToolbarApp {
   private preview: PreviewManager;
   private sessionSwitcher: SessionSwitcher;
   private quote: QuoteManager;
+  private layout: LayoutManager;
 
   private isMobile: boolean;
 
   constructor(config: TerminalUiConfig) {
     this.config = config;
     this.isMobile = isMobileDevice();
+    this.apiClient = createApiClient({ basePath: config.base_path });
 
     // Get DOM elements
     this.elements = this.getElements();
@@ -97,6 +104,7 @@ class ToolbarApp {
     });
     this.sessionSwitcher = new SessionSwitcher(config);
     this.quote = new QuoteManager(config);
+    this.layout = new LayoutManager(this.elements.container, () => this.terminal.fitTerminal());
   }
 
   /**
@@ -150,6 +158,7 @@ class ToolbarApp {
       pasteBtn: document.getElementById('tui-paste') as HTMLButtonElement,
       autoBtn: document.getElementById('tui-auto') as HTMLButtonElement,
       minimizeBtn: document.getElementById('tui-minimize') as HTMLButtonElement,
+      buttonsToggleBtn: document.getElementById('tui-buttons-toggle') as HTMLButtonElement,
       notifyBtn: document.getElementById('tui-notify') as HTMLButtonElement,
       shareBtn: document.getElementById('tui-share') as HTMLButtonElement,
       snippetBtn: document.getElementById('tui-snippet') as HTMLButtonElement,
@@ -202,16 +211,17 @@ class ToolbarApp {
     this.notifications.bindElement(this.elements.notifyBtn);
 
     this.share = new ShareManager(this.config);
-    this.share.bindElements(
-      this.elements.shareBtn,
-      this.elements.shareModal,
-      this.elements.shareModalClose,
-      this.elements.shareCreate,
-      this.elements.shareResult,
-      this.elements.shareUrl,
-      this.elements.shareCopy,
-      this.elements.shareQr
-    );
+    const shareElements: ShareElements = {
+      shareBtn: this.elements.shareBtn,
+      modal: this.elements.shareModal,
+      modalClose: this.elements.shareModalClose,
+      createBtn: this.elements.shareCreate,
+      resultSection: this.elements.shareResult,
+      urlInput: this.elements.shareUrl,
+      copyBtn: this.elements.shareCopy,
+      qrBtn: this.elements.shareQr
+    };
+    this.share.bindElements(shareElements);
 
     this.snippet.bindElements(
       this.elements.snippetBtn,
@@ -317,6 +327,8 @@ class ToolbarApp {
     this.preview.mount(this.scope);
     this.quote.mount(this.scope);
     this.clipboardHistory.mount(this.scope);
+    this.smartPaste.mount(this.scope);
+    this.layout.mount(this.scope);
 
     // Setup bell handler (emits 'notification:bell' via EventBus)
     // and initialize link addon for clickable URLs
@@ -334,9 +346,8 @@ class ToolbarApp {
     // Setup visibility change handler
     this.setupVisibilityHandler();
 
-    // Fit terminal after toolbar is visible (toolbar is shown by default)
-    // Use fitAfterToolbarChange to properly calculate height based on actual toolbar dimensions
-    setTimeout(() => this.fitAfterToolbarChange(), 500);
+    // LayoutManager will handle initial fit after mount
+    // The layout.mount() above already calls forceUpdate() which fits the terminal
 
     // Show onboarding on mobile
     if (this.isMobile) {
@@ -375,7 +386,7 @@ class ToolbarApp {
       const success = this.terminal.reinitialize();
       if (success) {
         // After reinitialize, fit terminal to container
-        setTimeout(() => this.fitAfterToolbarChange(), 100);
+        setTimeout(() => this.layout.forceUpdate(), 100);
       } else {
         // Fall back to page reload if reinitialize not available
         this.terminal.forceReload();
@@ -423,8 +434,19 @@ class ToolbarApp {
       const isMinimized = elements.container.classList.contains('minimized');
       // Update title to show opposite action
       elements.minimizeBtn.title = isMinimized ? 'ツールバーを展開' : 'コンパクト表示';
-      // Fit terminal multiple times on mobile to ensure proper layout
-      this.fitAfterToolbarChange();
+      // LayoutManager's ResizeObserver will automatically detect height change
+      this.layout.scheduleUpdate();
+    });
+
+    // Buttons toggle button (collapse/expand buttons while keeping input)
+    bindClickScoped(scope, elements.buttonsToggleBtn, () => {
+      elements.container.classList.toggle('buttons-collapsed');
+      const isCollapsed = elements.container.classList.contains('buttons-collapsed');
+      // Update button icon and title
+      elements.buttonsToggleBtn.textContent = isCollapsed ? '▼' : '▲';
+      elements.buttonsToggleBtn.title = isCollapsed ? 'ボタンを表示' : 'ボタンを非表示';
+      // LayoutManager's ResizeObserver will automatically detect height change
+      this.layout.scheduleUpdate();
     });
 
     // Toggle button
@@ -522,9 +544,9 @@ class ToolbarApp {
       keyRouter.register((e) => {
         // Skip IME composition
         if (e.isComposing) return false;
-        if (e.key !== 'Escape' || !this.smartPaste.isPreviewVisible()) return false;
-        // SmartPasteManager handles this internally, but we consume the event here
-        // to prevent lower priority handlers from also triggering
+        if (e.key !== 'Escape' || !this.smartPaste.isVisible()) return false;
+        e.preventDefault();
+        this.smartPaste.cancel();
         return true;
       }, KeyPriority.CRITICAL)
     );
@@ -566,10 +588,7 @@ class ToolbarApp {
     scope.add(
       keyRouter.register((e) => {
         if (e.isComposing) return false;
-        if (e.key !== 'Escape') return false;
-        // Check if quote modal is open (accessed via private isOpen)
-        const quoteModal = document.getElementById('tui-quote-modal');
-        if (!quoteModal || quoteModal.classList.contains('hidden')) return false;
+        if (e.key !== 'Escape' || !this.quote.isVisible()) return false;
         e.preventDefault();
         this.quote.close();
         return true;
@@ -802,74 +821,8 @@ class ToolbarApp {
       // On mobile, user must tap input to show keyboard
     }
 
-    // Fit terminal multiple times on mobile to ensure proper layout
-    this.fitAfterToolbarChange();
-  }
-
-  /**
-   * Fit terminal after toolbar visibility change
-   * Dynamically adjusts terminal container size based on actual viewport and toolbar.
-   * Uses !important to override CSS rules that use hard-coded values.
-   */
-  private fitAfterToolbarChange(): void {
-    const adjustAndFit = () => {
-      // Get actual toolbar height (CSS assumes fixed values that may not match actual height)
-      const toolbar = this.elements.container;
-      const toolbarHeight = toolbar.classList.contains('hidden') ? 0 : toolbar.offsetHeight;
-
-      // Find terminal container and adjust its size
-      const terminalContainer =
-        document.getElementById('terminal') ||
-        document.querySelector('.terminal') ||
-        document.querySelector('.terminal-pane');
-
-      if (terminalContainer) {
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        const newHeight = viewportHeight - toolbarHeight;
-
-        // Use setProperty with 'important' to override CSS !important rules
-        (terminalContainer as HTMLElement).style.setProperty(
-          'height',
-          `${newHeight}px`,
-          'important'
-        );
-        (terminalContainer as HTMLElement).style.setProperty(
-          'width',
-          `${viewportWidth}px`,
-          'important'
-        );
-
-        // Also update xterm internal elements for proper fit
-        const xterm = terminalContainer.querySelector('.xterm') as HTMLElement;
-        const xtermViewport = terminalContainer.querySelector('.xterm-viewport') as HTMLElement;
-        const xtermScreen = terminalContainer.querySelector('.xterm-screen') as HTMLElement;
-
-        if (xterm) {
-          xterm.style.setProperty('height', '100%', 'important');
-          xterm.style.setProperty('width', '100%', 'important');
-        }
-        if (xtermViewport) {
-          xtermViewport.style.setProperty('height', '100%', 'important');
-          xtermViewport.style.setProperty('width', '100%', 'important');
-        }
-        if (xtermScreen) {
-          xtermScreen.style.setProperty('height', '100%', 'important');
-          xtermScreen.style.setProperty('width', '100%', 'important');
-        }
-      }
-
-      this.terminal.fitTerminal();
-    };
-
-    adjustAndFit();
-    if (this.isMobile) {
-      setTimeout(adjustAndFit, 50);
-      setTimeout(adjustAndFit, 150);
-      setTimeout(adjustAndFit, 300);
-    } else {
-      setTimeout(adjustAndFit, 100);
-    }
+    // LayoutManager's ResizeObserver will detect toolbar visibility change
+    this.layout.scheduleUpdate();
   }
 
   /**
@@ -898,6 +851,13 @@ class ToolbarApp {
 
     // Listen for bell events
     scope.add(onBus(toolbarEvents, 'notification:bell', () => {}));
+
+    // Listen for toast notifications
+    scope.add(
+      onBus(toolbarEvents, 'toast:show', ({ message, type }) => {
+        this.notifications.showToast(message, type || 'info');
+      })
+    );
 
     // Listen for font change events
     scope.add(
@@ -953,26 +913,22 @@ class ToolbarApp {
    * Handle reconnection with daemon health check and retries
    */
   private handleReconnect(attempt = 0): void {
-    const basePath = this.config.base_path;
     const maxRetries = this.config.reconnect_retries;
     const retryInterval = this.config.reconnect_interval;
 
     // Show retry status overlay
     this.showRetryStatus(attempt, maxRetries);
 
-    // Check if daemon is alive by fetching the sessions API
-    fetch(`${basePath}/api/sessions`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    })
-      .then((response) => {
-        if (response.ok) {
+    // Check if daemon is alive
+    this.apiClient
+      .checkHealth()
+      .then((isHealthy) => {
+        if (isHealthy) {
           // Daemon is alive, safe to reload
           this.hideRetryStatus();
           location.reload();
         } else {
-          // Daemon responded but with an error
-          throw new Error('Server error');
+          throw new Error('Server not healthy');
         }
       })
       .catch((_error) => {
@@ -1178,6 +1134,9 @@ function setupSentryErrorHandlers(config: TerminalUiConfig): void {
 // Initialize when DOM is ready
 const config = window.__TERMINAL_UI_CONFIG__;
 if (config) {
+  // Initialize debug panel if ?debug=1 is in URL
+  DebugPanel.init();
+
   // Setup Sentry error handlers first
   setupSentryErrorHandlers(config);
 
