@@ -227,6 +227,36 @@ export class TerminalController {
   }
 
   /**
+   * Reinitialize terminal by disposing and recreating xterm.js instance.
+   * This is useful for mobile browsers where the canvas/WebGL state gets corrupted
+   * during toolbar toggle operations.
+   *
+   * Returns true if reinitialization was successful, false if terminal client not available.
+   */
+  reinitialize(): boolean {
+    // This only works in native terminal mode where we have TerminalClient
+    const terminalClient = window.__TERMINAL_CLIENT__ as
+      | {
+          reinitialize?: () => Promise<void>;
+        }
+      | undefined;
+
+    if (!terminalClient?.reinitialize) {
+      return false;
+    }
+
+    terminalClient.reinitialize();
+    return true;
+  }
+
+  /**
+   * Force page reload - fallback for when reinitialize doesn't fix rendering
+   */
+  forceReload(): void {
+    location.reload();
+  }
+
+  /**
    * Setup visual bell handler
    */
   setupBellHandler(onBell?: () => void): void {
