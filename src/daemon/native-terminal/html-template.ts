@@ -12,9 +12,9 @@ import { onboardingHtml, terminalUiHtml } from '@/daemon/terminal-ui/template.js
 export interface NativeTerminalHtmlOptions {
   /** Session name */
   sessionName: string;
-  /** Base path (e.g., /ttyd-mux) */
+  /** Base path (e.g., /bunterm) */
   basePath: string;
-  /** Session path (e.g., /ttyd-mux/my-session) */
+  /** Session path (e.g., /bunterm/my-session) */
   sessionPath: string;
   /** Configuration */
   config: Config;
@@ -22,6 +22,8 @@ export interface NativeTerminalHtmlOptions {
   isShared?: boolean;
   /** Page title override */
   title?: string;
+  /** Current working directory of the session */
+  cwd?: string;
 }
 
 /**
@@ -34,7 +36,8 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     sessionPath,
     config,
     isShared = false,
-    title = `${sessionName} - ttyd-mux`
+    title = `${sessionName} - bunterm`,
+    cwd = ''
   } = options;
 
   const wsPath = `${sessionPath}/ws`;
@@ -47,7 +50,8 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     sessionPath,
     isShared,
     isNativeTerminal: true,
-    tmuxMode: config.tmux_mode
+    tmuxMode: config.tmux_mode,
+    cwd
   });
 
   // Notification config for push notifications
@@ -71,7 +75,6 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#1e1e1e">
   <title>${escapeHtml(title)}</title>
@@ -95,10 +98,15 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     #terminal {
       width: 100%;
       height: 100%;
+      overflow: hidden;
     }
     .xterm {
       height: 100%;
-      padding: 4px;
+      padding: 2px 0;
+      box-sizing: border-box;
+    }
+    .xterm-viewport {
+      overflow-x: hidden !important;
     }
     /* Loading indicator */
     #loading {
@@ -165,7 +173,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   <script>
     // Configuration for terminal-ui.js
     window.__TERMINAL_UI_CONFIG__ = ${terminalUiConfig};
-    window.__TTYD_MUX_CONFIG__ = window.__TERMINAL_UI_CONFIG__;
+    window.__BUNTERM_CONFIG__ = window.__TERMINAL_UI_CONFIG__;
     window.__NOTIFICATION_CONFIG__ = ${notificationConfig};
     window.__PREVIEW_CONFIG__ = ${previewConfig};
   </script>
@@ -179,6 +187,17 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   <script>
     (function() {
       'use strict';
+
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('${basePath}/sw.js')
+          .then(function(registration) {
+            console.log('[PWA] Service Worker registered:', registration.scope);
+          })
+          .catch(function(error) {
+            console.warn('[PWA] Service Worker registration failed:', error);
+          });
+      }
 
       var config = window.__TERMINAL_UI_CONFIG__;
 
@@ -196,6 +215,11 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
         autoReconnect: true,
         reconnectDelay: config.reconnect_interval || 2000,
         maxReconnectAttempts: config.reconnect_retries || 3,
+        // Path link options
+        sessionName: ${JSON.stringify(sessionName)},
+        basePath: ${JSON.stringify(basePath)},
+        cwd: config.cwd || '',
+        enablePathLinks: true
       });
 
       // Connect
