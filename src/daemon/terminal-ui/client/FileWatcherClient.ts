@@ -6,6 +6,25 @@
 
 import type { TerminalUiConfig } from './types.js';
 
+/** Preview config from server */
+interface PreviewConfig {
+  enabled: boolean;
+  defaultWidth: number;
+}
+
+declare global {
+  interface Window {
+    __PREVIEW_CONFIG__?: PreviewConfig;
+  }
+}
+
+/**
+ * Check if preview WebSocket is enabled
+ */
+function isPreviewEnabled(): boolean {
+  return window.__PREVIEW_CONFIG__?.enabled ?? false;
+}
+
 /** File change event from server */
 export interface FileChangeEvent {
   type: 'change';
@@ -41,9 +60,18 @@ export class FileWatcherClient {
 
   /**
    * Connect to the file watcher WebSocket
+   *
+   * Note: Preview WebSocket is not yet fully integrated with native-terminal mode.
+   * Connection will be skipped if preview is disabled in config.
    */
   connect(): void {
     if (this.state !== 'disconnected') {
+      return;
+    }
+
+    // Check if preview is enabled
+    if (!isPreviewEnabled()) {
+      // Preview is disabled, don't attempt connection
       return;
     }
 
@@ -120,6 +148,10 @@ export class FileWatcherClient {
    * Watch a file for changes
    */
   watch(session: string, path: string): void {
+    if (!isPreviewEnabled()) {
+      return;
+    }
+
     const key = `${session}:${path}`;
     this.watchedFiles.add(key);
 
@@ -146,6 +178,10 @@ export class FileWatcherClient {
    * Watch a directory recursively for changes
    */
   watchDir(session: string, path: string): void {
+    if (!isPreviewEnabled()) {
+      return;
+    }
+
     const key = `dir:${session}:${path}`;
     this.watchedFiles.add(key);
 
