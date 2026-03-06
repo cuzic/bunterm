@@ -4,20 +4,21 @@
 
 ## プロジェクト概要
 
-**ttyd-mux** は、複数の ttyd+tmux セッションを管理する CLI ツールです。
+**bunterm** は、ブラウザからアクセス可能なターミナルを提供する CLI ツールです。
 
 主な機能:
-- カレントディレクトリで `ttyd-mux up` するだけでブラウザアクセス可能なターミナルを起動
-- デーモンがポータルページとリバースプロキシを提供
-- tmux 風の自動デーモン起動
+- カレントディレクトリで `bunterm up` するだけでブラウザアクセス可能なターミナルを起動
+- デーモンがポータルページと WebSocket サーバーを提供
+- tmux 連携（オプション、tmux なしでも動作可能）
+- Bun.Terminal を使用したネイティブターミナル
 
 ## 技術スタック
 
-- **ランタイム**: Bun
+- **ランタイム**: Bun (1.3.5+)
 - **言語**: TypeScript (strict mode)
 - **テスト**: Bun test
 - **リンター**: Biome
-- **依存**: commander, yaml, http-proxy
+- **依存**: commander, yaml
 
 ## ディレクトリ構造
 
@@ -32,13 +33,9 @@ src/
 │   └── state-store.ts    # StateStore インターフェース（DI用）
 ├── daemon/
 │   ├── index.ts          # デーモンエントリ
-│   ├── server.ts         # HTTP サーバー作成
-│   ├── router.ts         # リクエストルーティング + 静的ファイル配信
-│   ├── api-handler.ts    # REST API ハンドラ
-│   ├── http-proxy.ts     # HTTP プロキシ + ツールバー注入
-│   ├── ws-proxy.ts       # WebSocket プロキシ
 │   ├── portal.ts         # ポータル HTML 生成
 │   ├── pwa.ts            # PWA マニフェスト、Service Worker
+│   ├── share-manager.ts  # 読み取り専用共有リンク管理
 │   ├── terminal-ui/      # ターミナルUI モジュール
 │   │   ├── index.ts      # エクスポート、inject 関数
 │   │   ├── config.ts     # 設定定数
@@ -56,15 +53,14 @@ src/
 │   │   ├── matcher.ts    # パターンマッチング
 │   │   ├── sender.ts     # Web Push 送信
 │   │   └── vapid.ts      # VAPID キー管理
-│   ├── share-manager.ts  # 読み取り専用共有リンク管理
-│   ├── session-manager.ts # ttyd プロセス管理（DI対応）
-│   ├── session-resolver.ts # セッション名解決
 │   └── native-terminal/  # ネイティブターミナル（Bun.Terminal）
 │       ├── index.ts      # モジュールエクスポート
+│       ├── server.ts     # Bun.serve サーバー
+│       ├── http-handler.ts # HTTP リクエストハンドラ
+│       ├── ws-handler.ts # WebSocket ハンドラ
 │       ├── types.ts      # WebSocket プロトコル型定義
 │       ├── terminal-session.ts # PTY セッション管理
 │       ├── session-manager.ts  # 複数セッション管理
-│       ├── ws-handler.ts # WebSocket ハンドラ
 │       ├── html-template.ts # HTML テンプレート
 │       └── client/       # ブラウザ側クライアント
 │           ├── xterm-bundle.ts # xterm.js バンドル
@@ -131,7 +127,7 @@ bun run build
 
 ### デーモンの自動起動
 
-`ttyd-mux up` などのコマンド実行時、デーモンが起動していなければ自動的にバックグラウンドで起動します（tmux と同様の動作）。
+`bunterm up` などのコマンド実行時、デーモンが起動していなければ自動的にバックグラウンドで起動します（tmux と同様の動作）。
 
 ```typescript
 // client/index.ts
@@ -140,21 +136,21 @@ await ensureDaemon();  // デーモンが未起動なら起動
 
 ### CLI ↔ デーモン通信
 
-- Unix socket (`~/.local/state/ttyd-mux/ttyd-mux.sock`) で生存確認
+- Unix socket (`~/.local/state/bunterm/bunterm.sock`) で生存確認
 - HTTP API でセッション操作
 
-### ttyd の起動パラメータ
+### ネイティブターミナル
 
-ttyd はリバースプロキシ経由でアクセスされるため、`-b` オプションでベースパスを指定:
-
-```bash
-ttyd -p 7601 -b /ttyd-mux/project-name tmux new -A -s project-name
-```
+Bun.Terminal API を使用した組み込み PTY 実装:
+- 外部依存なし（Bun のみ）
+- JSON ベースの WebSocket プロトコル
+- xterm.js によるブラウザ側ターミナル描画
+- **依存**: Bun 1.3.5 以上が必須（POSIX のみ、Windows 非対応）
 
 ### ファイル分離
 
-- `~/.config/ttyd-mux/config.yaml` - 設定（事前定義セッション等）
-- `~/.local/state/ttyd-mux/state.json` - 状態（実行中セッション、PID等）
+- `~/.config/bunterm/config.yaml` - 設定（事前定義セッション等）
+- `~/.local/state/bunterm/state.json` - 状態（実行中セッション、PID等）
 
 ## コーディング規約
 
@@ -162,6 +158,59 @@ ttyd -p 7601 -b /ttyd-mux/project-name tmux new -A -s project-name
 - ESM モジュール (`.js` 拡張子でインポート)
 - Node protocol imports (`node:fs`, `node:path` 等)
 - Biome でフォーマット・リント
+
+### イベント処理 (terminal-ui/client)
+
+ブラウザ側クライアントでは、イベントリスナーの管理に `lifecycle.ts` と `key-router.ts` を使用します。
+
+**原則:**
+- `addEventListener` を直接使わず、`on()` ユーティリティを使用
+- mitt の `on` も `onBus()` ユーティリティ経由で使用
+- すべてのリスナーは `Scope` に登録して自動クリーンアップ
+
+```typescript
+// lifecycle.ts をインポート
+import { Scope, on, onBus } from './lifecycle.js';
+
+// Scope を作成
+const scope = new Scope();
+
+// DOM イベントを登録（自動クリーンアップ）
+scope.add(on(document, 'click', handler));
+scope.add(on(element, 'input', handler, { passive: true }));
+
+// mitt イベントを登録（自動クリーンアップ）
+scope.add(onBus(toolbarEvents, 'font:change', handler));
+
+// コンポーネント終了時にまとめて解除
+scope.close();
+```
+
+**グローバルキーボードイベント:**
+
+複数箇所で `Escape` キーを処理する場合、`KeyRouter` で優先度を管理します。
+
+```typescript
+import { KeyRouter, KeyPriority } from './key-router.js';
+
+const keyRouter = new KeyRouter();
+keyRouter.mount(scope);
+
+// 優先度の高い順に処理（true を返すと下位に伝播しない）
+scope.add(keyRouter.register((e) => {
+  if (e.key !== 'Escape' || !modal.isVisible()) return false;
+  modal.hide();
+  return true;  // イベント消費
+}, KeyPriority.MODAL_HIGH));  // 優先度 100
+```
+
+優先度定数:
+- `CRITICAL (200)`: 最優先（画像プレビュー等）
+- `MODAL_HIGH (100)`: 高優先モーダル
+- `MODAL (80)`: 通常モーダル
+- `PANE (60)`: ペイン
+- `SEARCH (40)`: 検索バー
+- `GLOBAL (0)`: グローバルショートカット
 
 ## テスト
 
@@ -196,13 +245,11 @@ bun run test:coverage       # カバレッジ計測（現在約81%）
 ```typescript
 // 設定ファイル
 interface Config {
-  base_path: string;      // "/ttyd-mux"
+  base_path: string;      // "/bunterm"
   base_port: number;      // 7600
   daemon_port: number;    // 7680
   listen_addresses: string[];  // ["127.0.0.1", "::1"]
   listen_sockets: string[];    // Unix ソケットパス（オプション）
-  proxy_mode: 'proxy' | 'static';  // プロキシモード
-  session_backend: 'ttyd' | 'native'; // セッションバックエンド
   hostname?: string;      // Caddy 連携用ホスト名
   caddy_admin_api: string; // Caddy Admin API URL
   terminal_ui: TerminalUiConfig; // ターミナルUI設定
@@ -215,74 +262,65 @@ interface Config {
 interface SessionState {
   name: string;
   pid: number;
-  port: number;
   path: string;
   dir: string;
   started_at: string;
 }
 ```
 
-## セッションバックエンド
+## 機能
 
-### ttyd モード（デフォルト）
-- 外部プロセス ttyd を使用してターミナルセッションを提供
-- tmux と組み合わせてセッション永続化
-- バイナリ WebSocket プロトコル（ttyd 独自形式）
-- **依存**: ttyd, tmux がシステムにインストール済みであること
-
-### native モード（実験的）
-- Bun.Terminal API を使用した組み込み PTY 実装
-- ttyd への外部依存なし
-- JSON ベースの WebSocket プロトコル
-- xterm.js によるブラウザ側ターミナル描画
-- **依存**: Bun 1.3.5 以上が必須（POSIX のみ、Windows 非対応）
-- **設定**: `session_backend: native` と `tmux_mode: none` を config.yaml に追加
-
-```yaml
-# config.yaml
-session_backend: native
-native_terminal:
-  scrollback: 10000
-  output_buffer_size: 16384
-```
-
-詳細は `docs/adr/038-native-terminal-bun.md` を参照。
-
-## プロキシモード
-
-### proxy モード（デフォルト）
-- 全トラフィックが ttyd-mux daemon を経由
+### ターミナルUI
 - ツールバーによる入力支援:
   - モバイル: 日本語 IME 入力、タッチピンチズーム、ダブルタップ Enter、最小化モード
   - PC: Ctrl+スクロール / トラックパッドピンチでフォントサイズ変更、Ctrl+J でトグル
   - Ctrl+Shift+F でスクロールバック検索
   - 初回利用時のオンボーディングヒント
 - プッシュ通知（ターミナルベル `\a` で通知）
-- 読み取り専用共有リンク（`ttyd-mux share`）
-- シンプルな Caddy 設定（単一ルート）
+- 読み取り専用共有リンク（`bunterm share`）
 - Unix ソケット経由のリバースプロキシ対応 (`listen_sockets`)
 - terminal-ui.js は静的ファイルとして配信（ETag キャッシュ対応）
 
-### static モード
-- Caddy から ttyd に直接ルーティング
-- 低レイテンシ
-- `ttyd-mux deploy` で静的ポータルを生成
-- セッション変更後は `ttyd-mux caddy sync` でルート同期
-- ツールバー非対応
+### Block UI (Warp スタイル)
+- OSC 633 シェル統合によるコマンドブロック表示
+- AI 統合: コマンド実行、リスク評価、出力解析
+- Claude セッション監視: JSON パース、ターン検出
 
 ## 診断コマンド
 
-`ttyd-mux doctor` で依存関係と設定の問題を診断できます:
+`bunterm doctor` で依存関係と設定の問題を診断できます:
 
-- ttyd / tmux / bun のインストール確認
+- Bun バージョン確認 (1.3.5+ 必須)
 - 設定ファイルの検証
 - デーモンの状態確認
 - ポートの空き状況確認
 
+## tmux 連携（オプション）
+
+tmux はオプション機能です。デフォルトでは tmux なしで動作します。
+
+### tmux_mode 設定
+
+`config.yaml` で `tmux_mode` を設定できます:
+
+| モード | 説明 |
+|--------|------|
+| `none` | tmux を使用しない（デフォルト） |
+| `auto` | 既存の tmux セッションがあればアタッチ、なければ新規作成 |
+| `attach` | 既存の tmux セッションにアタッチのみ |
+| `new` | 常に新規 tmux セッションを作成 |
+
+```yaml
+# config.yaml
+tmux_mode: auto  # tmux を使用する場合
+```
+
+**注意**: `bunterm attach` コマンドは tmux が必要です。tmux がインストールされていない場合はエラーメッセージが表示されます。
+
 ## 注意事項
 
-- **ttyd モード**: ttyd と tmux がシステムにインストールされている必要があります
-- **native モード**: **Bun 1.3.5 以上**が必須です（ttyd/tmux 不要、POSIX のみ）
+- **Bun 1.3.5 以上**が必須です
   - `bun upgrade` でアップグレード可能
-- bun 1.0 以上が必要です
-- `ttyd-mux doctor` で問題を診断できます
+- POSIX のみ対応（Windows 非対応）
+- tmux はオプション（`bunterm attach` コマンドのみ必要）
+- `bunterm doctor` で問題を診断できます
