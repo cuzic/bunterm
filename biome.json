@@ -184,6 +184,19 @@
           }
         }
       }
+    },
+    {
+      "include": ["src/daemon/native-terminal/client/**/*.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "suspicious": {
+            "noAssignInExpressions": "off"
+          }
+        }
+      }
     }
   ]
 }
