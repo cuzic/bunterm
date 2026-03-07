@@ -1,9 +1,9 @@
-import { isAbsolute, resolve, dirname } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
+import { ensurePm2Config } from '@/config/pm2-config.js';
 import { type StateStore, defaultStateStore } from '@/config/state-store.js';
+import type { DaemonManager } from '@/config/types.js';
 import { type ProcessRunner, defaultProcessRunner } from '@/utils/process-runner.js';
 import { type SocketClient, defaultSocketClient } from '@/utils/socket-client.js';
-import type { DaemonManager } from '@/config/types.js';
-import { ensurePm2Config } from '@/config/pm2-config.js';
 
 const DAEMON_START_TIMEOUT = 5000;
 const DAEMON_STOP_TIMEOUT = 5000;
@@ -229,7 +229,10 @@ async function startWithPm2(configPath?: string): Promise<boolean> {
 /**
  * Ensure daemon is running, starting it if necessary
  */
-export async function ensureDaemon(configPath?: string, daemonManager?: DaemonManager): Promise<void> {
+export async function ensureDaemon(
+  configPath?: string,
+  daemonManager?: DaemonManager
+): Promise<void> {
   if (await isDaemonRunning()) {
     return;
   }
@@ -239,7 +242,7 @@ export async function ensureDaemon(configPath?: string, daemonManager?: DaemonMa
     if (!(await isPm2Available())) {
       throw new Error(
         'pm2 is not installed. Install with: npm install -g pm2\n' +
-        'Or change daemon_manager to "direct" in config.yaml'
+          'Or change daemon_manager to "direct" in config.yaml'
       );
     }
 
@@ -257,7 +260,7 @@ export async function ensureDaemon(configPath?: string, daemonManager?: DaemonMa
     if (!(await waitForDaemon())) {
       throw new Error(
         `Failed to start daemon via pm2: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n` +
-        'Check pm2 logs: pm2 logs bunterm'
+          'Check pm2 logs: pm2 logs bunterm'
       );
     }
     return;
@@ -276,7 +279,7 @@ export async function ensureDaemon(configPath?: string, daemonManager?: DaemonMa
 
   if (!(await waitForDaemon())) {
     throw new Error(
-      `Failed to start daemon: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n  Possible causes:\n    - Required commands (ttyd, tmux) not installed\n    - Port ${process.env['TTYD_MUX_DAEMON_PORT'] || 7680} already in use\n    - Permission issues with socket path\n  Run 'bunterm doctor' to diagnose the problem.\n  Or start manually: bunterm start -f`
+      `Failed to start daemon: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n  Possible causes:\n    - Required commands (ttyd, tmux) not installed\n    - Port ${process.env['BUNTERM_DAEMON_PORT'] || 7680} already in use\n    - Permission issues with socket path\n  Run 'bunterm doctor' to diagnose the problem.\n  Or start manually: bunterm start -f`
     );
   }
 }
