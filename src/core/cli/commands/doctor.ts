@@ -185,8 +185,10 @@ export async function doctorCommand(options: DoctorOptions): Promise<void> {
   // Display results
   let hasErrors = false;
   for (const result of results) {
-    const _icon = result.ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+    const icon = result.ok ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+    console.log(`${icon} ${result.name}: ${result.message}`);
     if (result.hint && !result.ok) {
+      console.log(`  Hint: ${result.hint}`);
     }
     if (!result.ok && result.name !== 'daemon') {
       hasErrors = true;
@@ -196,5 +198,6 @@ export async function doctorCommand(options: DoctorOptions): Promise<void> {
   if (hasErrors) {
     process.exit(1);
   } else {
+    console.log('\nAll checks passed.');
   }
 }

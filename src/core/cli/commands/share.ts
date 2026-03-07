@@ -51,7 +51,9 @@ export async function shareCommand(sessionName: string, options: ShareOptions): 
   // Generate URL
   const hostname = config.hostname ?? `localhost:${config.daemon_port}`;
   const protocol = config.hostname ? 'https' : 'http';
-  const _url = `${protocol}://${hostname}${config.base_path}/share/${share.token}`;
+  const url = `${protocol}://${hostname}${config.base_path}/share/${share.token}`;
+  console.log(`Share created for session '${sessionName}':`);
+  console.log(url);
 }
 
 /**
@@ -62,16 +64,20 @@ export function shareListCommand(options: ShareListOptions): void {
   const shares = manager.listShares();
 
   if (shares.length === 0) {
+    console.log('No active shares.');
     return;
   }
 
   if (options.json) {
+    console.log(JSON.stringify(shares, null, 2));
     return;
   }
 
+  console.log('Active shares:');
   for (const share of shares) {
     const expiresAt = new Date(share.expiresAt);
-    const _remaining = formatRemaining(expiresAt);
+    const remaining = formatRemaining(expiresAt);
+    console.log(`  ${share.token}: ${share.sessionName} (expires in ${remaining})`);
   }
 }
 

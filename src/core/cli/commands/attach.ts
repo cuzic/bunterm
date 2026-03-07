@@ -62,15 +62,19 @@ async function interactiveAttach(_options: AttachOptions): Promise<void> {
 
   if (allSessions.size === 0) {
     if (isTmuxInstalled()) {
+      console.log('No sessions available.');
     } else {
+      console.log('No sessions available. (tmux not installed)');
     }
     return;
   }
 
   // Simple selection UI
+  console.log('Available sessions:');
   const sessionList = Array.from(allSessions.entries());
-  sessionList.forEach(([_name, dir], _index) => {
-    const _dirInfo = dir ? ` (${dir})` : '';
+  sessionList.forEach(([name, dir], index) => {
+    const dirInfo = dir ? ` (${dir})` : '';
+    console.log(`  ${index + 1}. ${name}${dirInfo}`);
   });
 
   // Read user input

@@ -24,7 +24,8 @@ async function startSessions(config: Config, sessionDefs: SessionDefinition[]): 
         path: sessionDef.path
       });
 
-      const _fullPath = getFullPath(config, session.path);
+      const fullPath = getFullPath(config, session.path);
+      console.log(`Started session: ${session.name} (${fullPath})`);
     } catch (error) {
       handleCliError(`Failed to start "${sessionDef.name}"`, error);
     }

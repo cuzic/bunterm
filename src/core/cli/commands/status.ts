@@ -67,7 +67,7 @@ function getPm2Status(): Pm2ProcessInfo | null {
 /**
  * Format bytes to human readable string
  */
-function _formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;
   }
@@ -80,7 +80,7 @@ function _formatBytes(bytes: number): string {
 /**
  * Format uptime to human readable string
  */
-function _formatUptime(uptimeMs: number): string {
+function formatUptime(uptimeMs: number): string {
   const now = Date.now();
   const elapsed = now - uptimeMs;
 
@@ -110,22 +110,31 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
   if (config.daemon_manager === 'pm2') {
     const pm2Status = getPm2Status();
     if (pm2Status) {
+      console.log(
+        `pm2: ${pm2Status.status} (pid: ${pm2Status.pid}, memory: ${formatBytes(pm2Status.memory)}, uptime: ${formatUptime(pm2Status.uptime)})`
+      );
     } else {
+      console.log('pm2: not running');
     }
   }
 
   if (!running) {
+    console.log('Daemon is not running.');
     return;
   }
 
   try {
     const status = await getStatus(config);
     if (status.daemon) {
+      console.log(`Daemon: running (port: ${config.daemon_port})`);
     }
     if (status.sessions.length === 0) {
+      console.log('No active sessions.');
     } else {
+      console.log(`Sessions (${status.sessions.length}):`);
       for (const session of status.sessions) {
-        const _fullPath = getFullPath(config, session.path);
+        const fullPath = getFullPath(config, session.path);
+        console.log(`  ${session.name}: http://localhost:${config.daemon_port}${fullPath}/`);
       }
     }
   } catch (error) {

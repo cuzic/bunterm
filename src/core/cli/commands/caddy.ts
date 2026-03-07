@@ -31,8 +31,13 @@ function getAdminApi(options: CaddyOptions, config: Config): string {
 // Generate snippet for Caddyfile users
 export function caddySnippetCommand(options: CaddyOptions): void {
   const config = loadConfig(options.config);
-  const _basePath = config.base_path;
-  const _daemonPort = config.daemon_port;
+  const basePath = config.base_path;
+  const daemonPort = config.daemon_port;
+
+  console.log('# Add this to your Caddyfile:');
+  console.log(`handle_path ${basePath}/* {`);
+  console.log(`  reverse_proxy localhost:${daemonPort}`);
+  console.log('}');
 }
 
 // Setup route via Admin API

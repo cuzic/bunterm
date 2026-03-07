@@ -171,7 +171,7 @@ export function createNativeTerminalWebSocketHandlers(
        * Handle WebSocket connection opened
        */
       open(ws: ServerWebSocket<AuthenticatedWebSocketData>): void {
-        const { sessionName, authenticated, userId } = ws.data;
+        const { sessionName } = ws.data;
         const session = sessionManager.getSession(sessionName);
 
         if (!session) {
@@ -182,10 +182,6 @@ export function createNativeTerminalWebSocketHandlers(
 
         // Cast to base type for session manager compatibility
         session.addClient(ws as unknown as NativeTerminalWebSocket);
-
-        const _authInfo = authenticated
-          ? ` (authenticated${userId ? `, user: ${userId}` : ''})`
-          : '';
       },
 
       /**

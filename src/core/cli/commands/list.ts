@@ -19,12 +19,20 @@ export async function listCommand(options: ListOptions): Promise<void> {
   try {
     const sessions = await getSessions(config);
 
+    if (sessions.length === 0) {
+      console.log('No active sessions.');
+      return;
+    }
+
     for (const session of sessions) {
       if (options.url) {
         const fullPath = getFullPath(config, session.path);
-        const _url = `http://localhost:${config.daemon_port}${fullPath}/`;
+        const url = `http://localhost:${config.daemon_port}${fullPath}/`;
+        console.log(url);
       } else if (options.long) {
+        console.log(`${session.name}\t${session.dir}\t${session.path}`);
       } else {
+        console.log(session.name);
       }
     }
   } catch (error) {

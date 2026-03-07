@@ -28,7 +28,9 @@ export async function upCommand(options: UpOptions): Promise<void> {
     });
 
     const fullPath = getFullPath(config, session.path);
-    const _url = `http://localhost:${config.daemon_port}${fullPath}/`;
+    const url = `http://localhost:${config.daemon_port}${fullPath}/`;
+    console.log(`Session started: ${session.name}`);
+    console.log(`URL: ${url}`);
 
     if (shouldAttach) {
       await attachSession(session.name);
@@ -36,12 +38,13 @@ export async function upCommand(options: UpOptions): Promise<void> {
   } catch (error) {
     const message = getErrorMessage(error);
     if (message.includes('already running')) {
+      console.log(`Session '${name}' is already running.`);
       if (shouldAttach) {
         await attachSession(name);
-      } else {
       }
       return;
     }
+    console.error(`Failed to start session: ${message}`);
     process.exit(1);
   }
 }
