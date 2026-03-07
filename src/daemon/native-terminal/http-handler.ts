@@ -226,10 +226,6 @@ export async function handleHttpRequest(
     );
   }
 
-  if (pathname === `${basePath}/tabs.js`) {
-    return serveStaticFile(req, 'tabs.js', 'application/javascript', 'Run: bun run build:tabs');
-  }
-
   if (pathname === `${basePath}/xterm-bundle.js`) {
     return serveStaticFile(
       req,

@@ -120,7 +120,6 @@ export function createCssFileServer(filename: string, buildCommand?: string): St
 // Pre-configured static file servers
 export const staticFiles = {
   terminalUi: createJsFileServer('terminal-ui.js', 'bun run build:terminal-ui'),
-  tabs: createJsFileServer('tabs.js', 'bun run build:tabs'),
   xtermBundle: createJsFileServer('xterm-bundle.js', 'bun run build:xterm'),
   terminalClient: createJsFileServer('terminal-client.js', 'bun run build:terminal-client'),
   xtermCss: createCssFileServer('xterm.css', 'bun run build:xterm')

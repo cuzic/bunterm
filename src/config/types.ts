@@ -83,37 +83,6 @@ export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
   default_cooldown: 300
 };
 
-export const TabsOrientationSchema = z.enum(['horizontal', 'vertical']);
-export type TabsOrientation = z.infer<typeof TabsOrientationSchema>;
-
-export const TabsPositionSchema = z.enum(['left', 'right', 'top', 'bottom']);
-export type TabsPosition = z.infer<typeof TabsPositionSchema>;
-
-export const TabsConfigSchema = z.object({
-  enabled: z.boolean().default(true),
-  orientation: TabsOrientationSchema.default('vertical'),
-  position: TabsPositionSchema.default('left'),
-  tab_width: z.number().int().min(100).max(400).default(200),
-  tab_height: z.number().int().min(30).max(100).default(40),
-  auto_refresh_interval: z.number().int().min(1000).max(60000).default(5000),
-  preload_iframes: z.boolean().default(false),
-  show_session_info: z.boolean().default(true)
-});
-
-export type TabsConfig = z.infer<typeof TabsConfigSchema>;
-
-/** Default tabs configuration */
-export const DEFAULT_TABS_CONFIG: TabsConfig = {
-  enabled: true,
-  orientation: 'vertical',
-  position: 'left',
-  tab_width: 200,
-  tab_height: 40,
-  auto_refresh_interval: 5000,
-  preload_iframes: false,
-  show_session_info: true
-};
-
 export const StaticServingConfigSchema = z.object({
   enabled: z.boolean().default(true),
   allowed_extensions: z
@@ -312,7 +281,6 @@ export const ConfigSchema = z.object({
   terminal_ui: TerminalUiConfigSchema.default(DEFAULT_TERMINAL_UI_CONFIG),
   notifications: NotificationConfigSchema.default(DEFAULT_NOTIFICATION_CONFIG),
   file_transfer: FileTransferConfigSchema.default(DEFAULT_FILE_TRANSFER_CONFIG),
-  tabs: TabsConfigSchema.default(DEFAULT_TABS_CONFIG),
   preview: PreviewConfigSchema.default(DEFAULT_PREVIEW_CONFIG),
   directory_browser: DirectoryBrowserConfigSchema.default(DEFAULT_DIRECTORY_BROWSER_CONFIG),
   sentry: SentryConfigSchema.default(DEFAULT_SENTRY_CONFIG),
