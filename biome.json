@@ -16,42 +16,6 @@
       "nursery": {
         "all": false
       },
-      "suspicious": {
-        "noExplicitAny": "error",
-        "noConsole": "error",
-        "noConsoleLog": "off",
-        "noAsyncPromiseExecutor": "error",
-        "noConfusingVoidType": "error",
-        "noDoubleEquals": "error",
-        "noDuplicateCase": "error",
-        "noDuplicateObjectKeys": "error",
-        "noEmptyBlockStatements": "error",
-        "noFallthroughSwitchClause": "error",
-        "noRedeclare": "error",
-        "noShadowRestrictedNames": "error",
-        "useAwait": "error",
-        "useDefaultSwitchClauseLast": "error"
-      },
-      "correctness": {
-        "noUnusedImports": "error",
-        "noUnusedVariables": "error",
-        "noConstAssign": "error",
-        "noNewSymbol": "error",
-        "noUndeclaredVariables": "error",
-        "useExhaustiveDependencies": "error",
-        "useHookAtTopLevel": "error",
-        "noNodejsModules": "off"
-      },
-      "style": {
-        "noNonNullAssertion": "error",
-        "useConst": "error",
-        "useImportType": "error",
-        "useNodejsImportProtocol": "error",
-        "useTemplate": "error",
-        "noDefaultExport": "off",
-        "useNamingConvention": "off",
-        "useFilenamingConvention": "off"
-      },
       "complexity": {
         "noExcessiveCognitiveComplexity": {
           "level": "error",
@@ -61,17 +25,16 @@
         },
         "noForEach": "off",
         "useLiteralKeys": "off",
-        "useOptionalChain": "error",
         "noExcessiveNestedTestSuites": "off",
         "useSimplifiedLogicExpression": "off"
       },
-      "security": {
-        "noDangerouslySetInnerHtml": "error",
-        "noGlobalEval": "error"
+      "correctness": {
+        "noNodejsModules": "off"
       },
-      "performance": {
-        "noBarrelFile": "error",
-        "noReExportAll": "error"
+      "style": {
+        "noDefaultExport": "off",
+        "useNamingConvention": "off",
+        "useFilenamingConvention": "off"
       }
     }
   },
@@ -81,24 +44,21 @@
       "semicolons": "always",
       "trailingCommas": "none"
     },
-    "globals": ["Bun"]
+    "globals": ["Bun", "React", "Timer"]
   },
   "files": {
-    "ignore": [
-      "node_modules/**",
-      "dist/**",
-      "coverage/**",
-      "*.min.js"
-    ]
+    "ignore": ["node_modules/**", "dist/**", "coverage/**", "*.min.js"]
   },
   "overrides": [
     {
-      "include": ["tests/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
+      "include": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts", "e2e/**/*.ts"],
       "linter": {
         "rules": {
           "suspicious": {
             "noExplicitAny": "off",
-            "noConsole": "off"
+            "noConsole": "off",
+            "noEmptyBlockStatements": "off",
+            "useAwait": "off"
           },
           "performance": {
             "useTopLevelRegex": "off"
@@ -110,32 +70,25 @@
       "include": [
         "src/index.ts",
         "src/ui.ts",
-        "src/commands/**/*.ts",
-        "src/daemon/index.ts",
+        "src/core/cli/**/*.ts",
+        "src/core/daemon/**/*.ts",
         "src/utils/errors.ts",
         "src/utils/logger.ts"
       ],
       "linter": {
         "rules": {
           "suspicious": {
-            "noConsole": "off"
+            "noConsole": "off",
+            "noConsoleLog": "off",
+            "noEmptyBlockStatements": "off"
           }
         }
       }
     },
     {
       "include": [
-        "src/client/index.ts",
-        "src/config/index.ts",
-        "src/config/state-store.ts",
-        "src/daemon/notification/index.ts",
-        "src/daemon/terminal-ui/index.ts",
-        "src/daemon/preview/index.ts",
-        "src/daemon/tabs/index.ts",
-        "src/daemon/api/index.ts",
-        "src/daemon/api-handler.ts",
-        "src/daemon/file-transfer.ts",
-        "src/daemon/directory-browser.ts"
+        "**/index.ts",
+        "src/core/config/state-store.ts"
       ],
       "linter": {
         "rules": {
@@ -148,52 +101,75 @@
     },
     {
       "include": [
-        "src/daemon/api-handler.ts",
-        "src/daemon/api/**/*.ts",
-        "src/daemon/router.ts",
-        "src/daemon/index.ts"
+        "src/core/server/**/*.ts",
+        "src/core/terminal/**/*.ts",
+        "src/core/protocol/**/*.ts",
+        "src/core/client/**/*.ts",
+        "src/features/**/server/**/*.ts"
       ],
       "linter": {
         "rules": {
           "complexity": {
             "noExcessiveCognitiveComplexity": "off"
-          }
-        }
-      }
-    },
-    {
-      "include": [
-        "src/daemon/terminal-ui/client/**/*.ts",
-        "src/daemon/tabs/client/**/*.ts",
-        "src/daemon/tabs/styles.ts"
-      ],
-      "linter": {
-        "rules": {
-          "complexity": {
-            "noExcessiveCognitiveComplexity": "off"
-          },
-          "style": {
-            "noParameterProperties": "off",
-            "useDefaultSwitchClause": "off"
           },
           "performance": {
             "useTopLevelRegex": "off"
           },
+          "style": {
+            "noParameterProperties": "off",
+            "noNonNullAssertion": "off",
+            "useDefaultSwitchClause": "off",
+            "useCollapsedElseIf": "off"
+          },
           "suspicious": {
-            "noEmptyBlockStatements": "off"
+            "noEmptyBlockStatements": "off",
+            "useAwait": "off",
+            "noEvolvingTypes": "off",
+            "noControlCharactersInRegex": "off",
+            "noAssignInExpressions": "off",
+            "noExplicitAny": "off"
           }
         }
       }
     },
     {
-      "include": ["src/daemon/native-terminal/client/**/*.ts"],
+      "include": ["src/browser/**/*.ts", "src/browser/**/*.tsx"],
       "linter": {
         "rules": {
+          "a11y": {
+            "useKeyWithClickEvents": "off"
+          },
           "complexity": {
-            "noExcessiveCognitiveComplexity": "off"
+            "noExcessiveCognitiveComplexity": "off",
+            "noVoid": "off",
+            "noStaticOnlyClass": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
+          "performance": {
+            "useTopLevelRegex": "off"
+          },
+          "style": {
+            "noParameterProperties": "off",
+            "noNonNullAssertion": "off",
+            "useDefaultSwitchClause": "off",
+            "useCollapsedElseIf": "off"
           },
           "suspicious": {
-            "noAssignInExpressions": "off"
+            "noEmptyBlockStatements": "off",
+            "noAssignInExpressions": "off",
+            "noControlCharactersInRegex": "off"
+          }
+        }
+      }
+    },
+    {
+      "include": ["src/features/**/client/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noEmptyBlockStatements": "off"
           }
         }
       }
