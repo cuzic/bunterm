@@ -15,9 +15,9 @@ import type { CaddyServer } from './types.js';
 describe('route-builder', () => {
   describe('createProxyRoute', () => {
     test('creates a reverse proxy route', () => {
-      const route = createProxyRoute('example.com', '/ttyd-mux', 'localhost:7680');
+      const route = createProxyRoute('example.com', '/bunterm', 'localhost:7680');
 
-      expect(route.match).toEqual([{ host: ['example.com'], path: ['/ttyd-mux/*'] }]);
+      expect(route.match).toEqual([{ host: ['example.com'], path: ['/bunterm/*'] }]);
       expect(route.handle).toEqual([
         { handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7680' }] }
       ]);
@@ -26,9 +26,9 @@ describe('route-builder', () => {
 
   describe('createSessionRoute', () => {
     test('creates a session route', () => {
-      const route = createSessionRoute('example.com', '/ttyd-mux/my-session', 7601);
+      const route = createSessionRoute('example.com', '/bunterm/my-session', 7601);
 
-      expect(route.match).toEqual([{ host: ['example.com'], path: ['/ttyd-mux/my-session/*'] }]);
+      expect(route.match).toEqual([{ host: ['example.com'], path: ['/bunterm/my-session/*'] }]);
       expect(route.handle).toEqual([
         { handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7601' }] }
       ]);
@@ -37,12 +37,12 @@ describe('route-builder', () => {
 
   describe('createPortalRoute', () => {
     test('creates a portal route', () => {
-      const route = createPortalRoute('example.com', '/ttyd-mux', 7680);
+      const route = createPortalRoute('example.com', '/bunterm', 7680);
 
       expect(route.match).toEqual([
         {
           host: ['example.com'],
-          path: ['/ttyd-mux', '/ttyd-mux/', '/ttyd-mux/api/*']
+          path: ['/bunterm', '/bunterm/', '/bunterm/api/*']
         }
       ]);
       expect(route.handle).toEqual([
@@ -58,7 +58,7 @@ describe('route-builder', () => {
           routes: [{ match: [{ host: ['other.com'], path: ['/*'] }] }]
         },
         srv2: {
-          routes: [{ match: [{ host: ['example.com'], path: ['/ttyd-mux/*'] }] }]
+          routes: [{ match: [{ host: ['example.com'], path: ['/bunterm/*'] }] }]
         }
       };
 
@@ -90,10 +90,10 @@ describe('route-builder', () => {
   describe('routeExists', () => {
     test('returns true when route exists', () => {
       const server: CaddyServer = {
-        routes: [{ match: [{ host: ['example.com'], path: ['/ttyd-mux/*'] }] }]
+        routes: [{ match: [{ host: ['example.com'], path: ['/bunterm/*'] }] }]
       };
 
-      expect(routeExists(server, 'example.com', '/ttyd-mux')).toBe(true);
+      expect(routeExists(server, 'example.com', '/bunterm')).toBe(true);
     });
 
     test('returns false when route does not exist', () => {
@@ -101,31 +101,31 @@ describe('route-builder', () => {
         routes: [{ match: [{ host: ['example.com'], path: ['/other/*'] }] }]
       };
 
-      expect(routeExists(server, 'example.com', '/ttyd-mux')).toBe(false);
+      expect(routeExists(server, 'example.com', '/bunterm')).toBe(false);
     });
 
     test('returns false for empty routes', () => {
       const server: CaddyServer = { routes: [] };
 
-      expect(routeExists(server, 'example.com', '/ttyd-mux')).toBe(false);
+      expect(routeExists(server, 'example.com', '/bunterm')).toBe(false);
     });
   });
 
   describe('sessionRouteExists', () => {
     test('returns true when session route exists', () => {
       const server: CaddyServer = {
-        routes: [{ match: [{ host: ['example.com'], path: ['/ttyd-mux/my-session/*'] }] }]
+        routes: [{ match: [{ host: ['example.com'], path: ['/bunterm/my-session/*'] }] }]
       };
 
-      expect(sessionRouteExists(server, 'example.com', '/ttyd-mux/my-session')).toBe(true);
+      expect(sessionRouteExists(server, 'example.com', '/bunterm/my-session')).toBe(true);
     });
 
     test('returns false when session route does not exist', () => {
       const server: CaddyServer = {
-        routes: [{ match: [{ host: ['example.com'], path: ['/ttyd-mux/*'] }] }]
+        routes: [{ match: [{ host: ['example.com'], path: ['/bunterm/*'] }] }]
       };
 
-      expect(sessionRouteExists(server, 'example.com', '/ttyd-mux/my-session')).toBe(false);
+      expect(sessionRouteExists(server, 'example.com', '/bunterm/my-session')).toBe(false);
     });
   });
 
@@ -134,38 +134,38 @@ describe('route-builder', () => {
       const server: CaddyServer = {
         routes: [
           {
-            match: [{ host: ['example.com'], path: ['/ttyd-mux/session1/*'] }],
+            match: [{ host: ['example.com'], path: ['/bunterm/session1/*'] }],
             handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7601' }] }]
           },
           {
-            match: [{ host: ['example.com'], path: ['/ttyd-mux/session2/*'] }],
+            match: [{ host: ['example.com'], path: ['/bunterm/session2/*'] }],
             handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7602' }] }]
           },
           {
-            match: [{ host: ['example.com'], path: ['/ttyd-mux', '/ttyd-mux/'] }],
+            match: [{ host: ['example.com'], path: ['/bunterm', '/bunterm/'] }],
             handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7680' }] }]
           }
         ]
       };
 
-      const result = getSessionRoutes(server, 'example.com', '/ttyd-mux');
+      const result = getSessionRoutes(server, 'example.com', '/bunterm');
 
       expect(result).toHaveLength(2);
-      expect(result).toContainEqual({ path: '/ttyd-mux/session1', port: 7601 });
-      expect(result).toContainEqual({ path: '/ttyd-mux/session2', port: 7602 });
+      expect(result).toContainEqual({ path: '/bunterm/session1', port: 7601 });
+      expect(result).toContainEqual({ path: '/bunterm/session2', port: 7602 });
     });
 
     test('returns empty array for server without session routes', () => {
       const server: CaddyServer = {
         routes: [
           {
-            match: [{ host: ['example.com'], path: ['/ttyd-mux'] }],
+            match: [{ host: ['example.com'], path: ['/bunterm'] }],
             handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7680' }] }]
           }
         ]
       };
 
-      const result = getSessionRoutes(server, 'example.com', '/ttyd-mux');
+      const result = getSessionRoutes(server, 'example.com', '/bunterm');
 
       expect(result).toHaveLength(0);
     });
@@ -175,11 +175,11 @@ describe('route-builder', () => {
     test('filters out stale session routes', () => {
       const routes = [
         {
-          match: [{ host: ['example.com'], path: ['/ttyd-mux/keep/*'] }],
+          match: [{ host: ['example.com'], path: ['/bunterm/keep/*'] }],
           handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7601' }] }]
         },
         {
-          match: [{ host: ['example.com'], path: ['/ttyd-mux/remove/*'] }],
+          match: [{ host: ['example.com'], path: ['/bunterm/remove/*'] }],
           handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7602' }] }]
         },
         {
@@ -188,23 +188,23 @@ describe('route-builder', () => {
         }
       ];
 
-      const keepPaths = new Set(['/ttyd-mux/keep']);
-      const result = filterOutSessionRoutes(routes, 'example.com', '/ttyd-mux', keepPaths);
+      const keepPaths = new Set(['/bunterm/keep']);
+      const result = filterOutSessionRoutes(routes, 'example.com', '/bunterm', keepPaths);
 
       expect(result).toHaveLength(2);
-      expect(result.some((r) => r.match?.[0]?.path?.includes('/ttyd-mux/keep/*'))).toBe(true);
+      expect(result.some((r) => r.match?.[0]?.path?.includes('/bunterm/keep/*'))).toBe(true);
       expect(result.some((r) => r.match?.[0]?.path?.includes('/other/*'))).toBe(true);
-      expect(result.some((r) => r.match?.[0]?.path?.includes('/ttyd-mux/remove/*'))).toBe(false);
+      expect(result.some((r) => r.match?.[0]?.path?.includes('/bunterm/remove/*'))).toBe(false);
     });
   });
 
   describe('findTtydMuxRoutes', () => {
-    test('finds ttyd-mux routes across all servers', () => {
+    test('finds bunterm routes across all servers', () => {
       const servers = {
         srv1: {
           routes: [
             {
-              match: [{ host: ['example.com'], path: ['/ttyd-mux/*'] }],
+              match: [{ host: ['example.com'], path: ['/bunterm/*'] }],
               handle: [{ handler: 'reverse_proxy', upstreams: [{ dial: 'localhost:7680' }] }]
             }
           ]
@@ -219,18 +219,18 @@ describe('route-builder', () => {
         }
       };
 
-      const result = findTtydMuxRoutes(servers, '/ttyd-mux');
+      const result = findTtydMuxRoutes(servers, '/bunterm');
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
         serverName: 'srv1',
         hosts: ['example.com'],
-        paths: ['/ttyd-mux/*'],
+        paths: ['/bunterm/*'],
         upstream: 'localhost:7680'
       });
     });
 
-    test('returns empty array when no ttyd-mux routes exist', () => {
+    test('returns empty array when no bunterm routes exist', () => {
       const servers = {
         srv1: {
           routes: [
@@ -242,7 +242,7 @@ describe('route-builder', () => {
         }
       };
 
-      const result = findTtydMuxRoutes(servers, '/ttyd-mux');
+      const result = findTtydMuxRoutes(servers, '/bunterm');
 
       expect(result).toHaveLength(0);
     });

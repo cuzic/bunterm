@@ -167,7 +167,7 @@ function extractSessionRoutesFromMatch(
 }
 
 /**
- * Get all ttyd-mux session routes from a server
+ * Get all bunterm session routes from a server
  */
 export function getSessionRoutes(
   server: CaddyServer,
@@ -221,7 +221,7 @@ export function filterOutSessionRoutes(
 }
 
 /**
- * Find ttyd-mux routes in all servers
+ * Find bunterm routes in all servers
  */
 export function findTtydMuxRoutes(
   servers: Record<string, CaddyServer>,

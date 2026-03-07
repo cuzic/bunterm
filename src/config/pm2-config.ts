@@ -55,7 +55,7 @@ export function generatePm2Config(options?: {
   configPath?: string;
 }): string {
   const { interpreter, script } = detectBuntermPath();
-  const stateDir = process.env['HOME'] + '/.local/state/ttyd-mux';
+  const stateDir = `${process.env['HOME']}/.local/state/bunterm`;
 
   const args = ['start', '-f'];
   if (options?.configPath) {
