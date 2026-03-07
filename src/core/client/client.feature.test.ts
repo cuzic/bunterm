@@ -2,8 +2,8 @@
 import { cleanupTestState, resetTestState } from '@/test-setup.js';
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { setDaemonState } from '@/config/state.js';
-import type { Config } from '@/config/types.js';
+import { setDaemonState } from '@/core/config/state.js';
+import type { Config } from '@/core/config/types.js';
 import type { Server } from 'bun';
 import {
   apiRequest,

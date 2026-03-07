@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { TEST_CONFIG_DIR } from '../test-setup.js';
+import { TEST_CONFIG_DIR } from '@/test-setup.js';
 import { findSessionDefinition, getFullPath, loadConfig } from './config.js';
 
 // Top-level regex patterns for linter compliance

@@ -267,6 +267,19 @@ export const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
   ws_token_ttl_seconds: 30
 };
 
+export const StaticOffloadConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  internal_path_prefix: z.string().default('/_internal_files')
+});
+
+export type StaticOffloadConfig = z.infer<typeof StaticOffloadConfigSchema>;
+
+/** Default static offload configuration */
+export const DEFAULT_STATIC_OFFLOAD_CONFIG: StaticOffloadConfig = {
+  enabled: false,
+  internal_path_prefix: '/_internal_files'
+};
+
 export const ConfigSchema = z.object({
   base_path: z.string().startsWith('/').default('/bunterm'),
   daemon_port: z.number().int().min(1024).max(65535).default(7680),

@@ -3,7 +3,7 @@ import type {
   SessionResponse,
   StartSessionRequest,
   StatusResponse
-} from '@/config/types.js';
+} from '@/core/config/types.js';
 import { getDaemonClientDeps } from './daemon-client.js';
 
 /**

@@ -1,7 +1,7 @@
 import { isAbsolute, resolve } from 'node:path';
-import { ensurePm2Config } from '@/config/pm2-config.js';
-import { type StateStore, defaultStateStore } from '@/config/state-store.js';
-import type { DaemonManager } from '@/config/types.js';
+import { ensurePm2Config } from '@/core/config/pm2-config.js';
+import { type StateStore, defaultStateStore } from '@/core/config/state-store.js';
+import type { DaemonManager } from '@/core/config/types.js';
 import { type ProcessRunner, defaultProcessRunner } from '@/utils/process-runner.js';
 import { type SocketClient, defaultSocketClient } from '@/utils/socket-client.js';
 
@@ -200,7 +200,9 @@ async function isPm2Managing(): Promise<boolean> {
     const result = currentDeps.processRunner.spawnSync('pm2', ['jlist'], {
       stdio: 'pipe'
     });
-    if (result.status !== 0) return false;
+    if (result.status !== 0) {
+      return false;
+    }
     const output = result.stdout?.toString() || '';
     const processes = JSON.parse(output);
     return processes.some((p: { name: string }) => p.name === 'bunterm');
@@ -259,8 +261,7 @@ export async function ensureDaemon(
 
     if (!(await waitForDaemon())) {
       throw new Error(
-        `Failed to start daemon via pm2: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\n` +
-          'Check pm2 logs: pm2 logs bunterm'
+        `Failed to start daemon via pm2: timeout after ${DAEMON_START_TIMEOUT / 1000} seconds.\nCheck pm2 logs: pm2 logs bunterm`
       );
     }
     return;

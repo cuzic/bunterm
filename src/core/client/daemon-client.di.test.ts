@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { EventEmitter } from 'node:events';
 import type { Socket } from 'node:net';
-import { createInMemoryStateStore } from '@/config/state-store.js';
+import { createInMemoryStateStore } from '@/core/config/state-store.js';
 import { createMockProcessRunner } from '@/utils/process-runner.js';
 import { createMockSocketClient } from '@/utils/socket-client.js';
 import {
