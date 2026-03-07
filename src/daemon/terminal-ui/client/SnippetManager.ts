@@ -7,8 +7,8 @@
 
 import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
-import { type Mountable, type Scope, on } from './lifecycle.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
+import { type Mountable, type Scope, on } from './lifecycle.js';
 import type { Snippet, SnippetElements } from './types.js';
 import { STORAGE_KEYS } from './types.js';
 import { bindClickScoped } from './utils.js';

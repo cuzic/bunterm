@@ -1315,16 +1315,16 @@ body:has(#tui.hidden) .xterm-screen {
   color: #888;
 }
 
-.ttyd-breadcrumb-item {
+.bunterm-breadcrumb-item {
   cursor: pointer;
   color: #007acc;
 }
 
-.ttyd-breadcrumb-item:hover {
+.bunterm-breadcrumb-item:hover {
   text-decoration: underline;
 }
 
-.ttyd-breadcrumb-separator {
+.bunterm-breadcrumb-separator {
   color: #555;
 }
 

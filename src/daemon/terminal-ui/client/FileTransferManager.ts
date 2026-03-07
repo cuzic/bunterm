@@ -532,7 +532,7 @@ export class FileTransferManager implements Mountable {
 
     // Root
     const root = document.createElement('span');
-    root.className = 'ttyd-breadcrumb-item';
+    root.className = 'bunterm-breadcrumb-item';
     root.textContent = '\uD83C\uDFE0'; // 🏠
     root.addEventListener('click', async () => {
       this.currentPath = '.';
@@ -549,13 +549,13 @@ export class FileTransferManager implements Mountable {
     let path = '';
     for (const part of parts) {
       const separator = document.createElement('span');
-      separator.className = 'ttyd-breadcrumb-separator';
+      separator.className = 'bunterm-breadcrumb-separator';
       separator.textContent = ' / ';
       breadcrumb.appendChild(separator);
 
       path = path ? `${path}/${part}` : part;
       const item = document.createElement('span');
-      item.className = 'ttyd-breadcrumb-item';
+      item.className = 'bunterm-breadcrumb-item';
       item.textContent = part;
       const currentPath = path;
       item.addEventListener('click', async () => {

@@ -1,7 +1,7 @@
 /**
  * Terminal UI Module
  *
- * Provides enhanced UI for ttyd sessions with:
+ * Provides enhanced UI for terminal sessions with:
  * - IME input support for Japanese
  * - Font size zoom controls
  * - Copy/paste functionality
@@ -41,40 +41,6 @@ export { onboardingHtml, terminalUiHtml, terminalUiStyles };
 // Re-export type and default config
 export { DEFAULT_SENTRY_CONFIG, DEFAULT_TERMINAL_UI_CONFIG };
 export type { SentryConfig, TerminalUiConfig };
-
-/**
- * WebSocket interception script
- *
- * This must run BEFORE ttyd's script to intercept WebSocket creation.
- * Stores captured WebSocket in window.__TTYD_WS__ for later use.
- */
-const wsInterceptScript = `
-<script>
-(function() {
-  var OriginalWebSocket = window.WebSocket;
-  window.WebSocket = function(url, protocols) {
-    var socket = new OriginalWebSocket(url, protocols);
-    if (url && url.indexOf('/ws') !== -1) {
-      window.__TTYD_WS__ = socket;
-      // Monitor WebSocket close for reconnection
-      socket.addEventListener('close', function(event) {
-        // Only trigger reconnection for unexpected closes (not normal closure)
-        // Code 1000 = normal closure, 1001 = going away (page unload)
-        if (event.code !== 1000 && event.code !== 1001) {
-          window.dispatchEvent(new CustomEvent('ttyd-ws-close', { detail: { code: event.code, reason: event.reason } }));
-        }
-      });
-    }
-    return socket;
-  };
-  window.WebSocket.prototype = OriginalWebSocket.prototype;
-  window.WebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
-  window.WebSocket.OPEN = OriginalWebSocket.OPEN;
-  window.WebSocket.CLOSING = OriginalWebSocket.CLOSING;
-  window.WebSocket.CLOSED = OriginalWebSocket.CLOSED;
-})();
-</script>
-`;
 
 /**
  * Extract Sentry key from DSN for CDN loader URL
@@ -125,7 +91,6 @@ export interface InjectOptions {
  * Inject terminal UI into HTML response
  *
  * Injects:
- * - WebSocket interception script (in <head> BEFORE ttyd's scripts)
  * - Sentry CDN loader (if configured)
  * - CSS styles (inline for FOUC avoidance)
  * - HTML structure
@@ -134,7 +99,7 @@ export interface InjectOptions {
  * - Script tag referencing external terminal-ui.js (static file)
  *
  * @param html - Original HTML content
- * @param basePath - Base path for the ttyd-mux routes (e.g., "/ttyd-mux")
+ * @param basePath - Base path for the bunterm routes (e.g., "/bunterm")
  * @param config - Terminal UI configuration from config.yaml
  * @param options - Additional options (sentry, preview extensions)
  * @returns Modified HTML with terminal UI injected
@@ -172,8 +137,11 @@ export function injectTerminalUi(
   // Generate Sentry CDN script
   const sentryScript = generateSentryScript(sentryConfig);
 
-  // Inject WebSocket interception and Sentry in <head> BEFORE any other scripts
-  const modifiedHtml = html.replace('<head>', `<head>${wsInterceptScript}${sentryScript}`);
+  // Inject Sentry in <head> if configured
+  let modifiedHtml = html;
+  if (sentryScript) {
+    modifiedHtml = html.replace('<head>', `<head>${sentryScript}`);
+  }
 
   const bodyInjection = `
 <style>${terminalUiStyles}</style>

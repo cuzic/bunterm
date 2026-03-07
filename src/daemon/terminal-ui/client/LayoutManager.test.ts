@@ -13,21 +13,21 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 // Mock DOM environment
 const mockToolbarEl = {
   classList: {
-    contains: mock(() => false),
+    contains: mock(() => false)
   },
-  getBoundingClientRect: mock(() => ({ height: 100 })),
+  getBoundingClientRect: mock(() => ({ height: 100 }))
 };
 
 const mockVisualViewport = {
   height: 800,
   offsetTop: 0,
   addEventListener: mock(() => {}),
-  removeEventListener: mock(() => {}),
+  removeEventListener: mock(() => {})
 };
 
 const mockResizeObserver = mock(() => ({
   observe: mock(() => {}),
-  disconnect: mock(() => {}),
+  disconnect: mock(() => {})
 }));
 
 // Setup global mocks
@@ -35,24 +35,26 @@ const mockResizeObserver = mock(() => ({
   visualViewport: mockVisualViewport,
   innerHeight: 800,
   addEventListener: mock(() => {}),
-  removeEventListener: mock(() => {}),
+  removeEventListener: mock(() => {})
 };
 
 (globalThis as unknown as Record<string, unknown>).document = {
   documentElement: {
     style: {
-      setProperty: mock(() => {}),
-    },
+      setProperty: mock(() => {})
+    }
   },
   body: {
-    offsetHeight: 800, // Used for forced reflow
-  },
+    offsetHeight: 800 // Used for forced reflow
+  }
 };
 
-(globalThis as unknown as Record<string, unknown>).requestAnimationFrame = mock((cb: () => void) => {
-  cb();
-  return 1;
-});
+(globalThis as unknown as Record<string, unknown>).requestAnimationFrame = mock(
+  (cb: () => void) => {
+    cb();
+    return 1;
+  }
+);
 (globalThis as unknown as Record<string, unknown>).cancelAnimationFrame = mock(() => {});
 (globalThis as unknown as Record<string, unknown>).ResizeObserver = mockResizeObserver;
 

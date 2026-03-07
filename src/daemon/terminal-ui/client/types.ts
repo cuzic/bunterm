@@ -139,9 +139,9 @@ export const STORAGE_KEYS = {
   FONT_SIZE: 'tui-font-size',
   ONBOARDING_SHOWN: 'tui-onboarding-shown',
   AUTO_RUN: 'tui-auto-run',
-  NOTIFY_SUBSCRIPTION: 'ttyd-mux-notify-subscription',
-  SNIPPETS: 'ttyd-mux-snippets',
-  CLIPBOARD_HISTORY: 'ttyd-mux-clipboard-history'
+  NOTIFY_SUBSCRIPTION: 'bunterm-notify-subscription',
+  SNIPPETS: 'bunterm-snippets',
+  CLIPBOARD_HISTORY: 'bunterm-clipboard-history'
 } as const;
 
 /** Snippet definition */

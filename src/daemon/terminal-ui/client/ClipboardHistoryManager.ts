@@ -7,8 +7,8 @@
 
 import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
-import { type Mountable, type Scope, on } from './lifecycle.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
+import { type Mountable, type Scope, on } from './lifecycle.js';
 import type { ClipboardHistoryItem } from './types.js';
 import { STORAGE_KEYS } from './types.js';
 import { bindClickScoped } from './utils.js';
@@ -90,11 +90,7 @@ export class ClipboardHistoryManager implements Mountable {
     // Close on outside click
     scope.add(
       on(document, 'click', (e: Event) => {
-        if (
-          this.isPopupVisible() &&
-          !popup.contains(e.target as Node) &&
-          e.target !== pasteBtn
-        ) {
+        if (this.isPopupVisible() && !popup.contains(e.target as Node) && e.target !== pasteBtn) {
           this.hidePopup();
         }
       })

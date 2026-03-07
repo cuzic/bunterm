@@ -46,7 +46,7 @@ describe('ToolbarApiClient', () => {
   beforeEach(() => {
     mockFetch = createMockFetch();
     client = createApiClient({
-      basePath: '/ttyd-mux',
+      basePath: '/bunterm',
       fetch: mockFetch.fetch
     });
   });
@@ -60,7 +60,7 @@ describe('ToolbarApiClient', () => {
 
       expect(paths).toEqual(['/tmp/test.png']);
       expect(mockFetch.calls.length).toBe(1);
-      expect(mockFetch.calls[0].url).toBe('/ttyd-mux/api/clipboard-image?session=my-session');
+      expect(mockFetch.calls[0].url).toBe('/bunterm/api/clipboard-image?session=my-session');
       expect(mockFetch.calls[0].init?.method).toBe('POST');
     });
 
@@ -82,7 +82,7 @@ describe('ToolbarApiClient', () => {
 
       expect(result).toEqual(files);
       expect(mockFetch.calls[0].url).toBe(
-        '/ttyd-mux/api/files/list?session=my-session&path=%2Fhome'
+        '/bunterm/api/files/list?session=my-session&path=%2Fhome'
       );
     });
 
@@ -94,7 +94,7 @@ describe('ToolbarApiClient', () => {
 
       expect(result instanceof Blob).toBe(true);
       expect(mockFetch.calls[0].url).toBe(
-        '/ttyd-mux/api/files/download?session=my-session&path=%2Ffile.txt'
+        '/bunterm/api/files/download?session=my-session&path=%2Ffile.txt'
       );
     });
 
@@ -118,7 +118,7 @@ describe('ToolbarApiClient', () => {
       const key = await client.getVapidKey();
 
       expect(key).toBe('VAPID_PUBLIC_KEY_HERE');
-      expect(mockFetch.calls[0].url).toBe('/ttyd-mux/api/notifications/vapid-key');
+      expect(mockFetch.calls[0].url).toBe('/bunterm/api/notifications/vapid-key');
     });
 
     test('subscribe sends subscription data', async () => {
@@ -132,7 +132,7 @@ describe('ToolbarApiClient', () => {
 
       expect(id).toBe('sub-123');
       expect(mockFetch.calls[0].init?.method).toBe('POST');
-      expect(mockFetch.calls[0].url).toBe('/ttyd-mux/api/notifications/subscribe');
+      expect(mockFetch.calls[0].url).toBe('/bunterm/api/notifications/subscribe');
     });
 
     test('unsubscribe sends DELETE request', async () => {
@@ -141,7 +141,7 @@ describe('ToolbarApiClient', () => {
       await client.unsubscribe('sub-123');
 
       expect(mockFetch.calls[0].init?.method).toBe('DELETE');
-      expect(mockFetch.calls[0].url).toBe('/ttyd-mux/api/notifications/subscribe/sub-123');
+      expect(mockFetch.calls[0].url).toBe('/bunterm/api/notifications/subscribe/sub-123');
     });
   });
 
@@ -157,7 +157,7 @@ describe('ToolbarApiClient', () => {
 
       expect(share.token).toBe('abc123');
       expect(mockFetch.calls[0].init?.method).toBe('POST');
-      expect(mockFetch.calls[0].url).toBe('/ttyd-mux/api/shares');
+      expect(mockFetch.calls[0].url).toBe('/bunterm/api/shares');
     });
   });
 
@@ -193,7 +193,7 @@ describe('ToolbarApiClient', () => {
     test('supports AbortController', async () => {
       const controller = new AbortController();
       const clientWithSignal = createApiClient({
-        basePath: '/ttyd-mux',
+        basePath: '/bunterm',
         fetch: mockFetch.fetch,
         signal: controller.signal
       });

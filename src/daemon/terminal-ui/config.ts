@@ -15,7 +15,7 @@ export const ONBOARDING_SHOWN_KEY = 'tui-onboarding-shown';
 export const AUTO_RUN_KEY = 'tui-auto-run';
 
 /** localStorage key for snippets */
-export const SNIPPETS_KEY = 'ttyd-mux-snippets';
+export const SNIPPETS_KEY = 'bunterm-snippets';
 
 /** localStorage key for clipboard history */
-export const CLIPBOARD_HISTORY_KEY = 'ttyd-mux-clipboard-history';
+export const CLIPBOARD_HISTORY_KEY = 'bunterm-clipboard-history';

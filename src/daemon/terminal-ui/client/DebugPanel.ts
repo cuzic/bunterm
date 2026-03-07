@@ -166,16 +166,18 @@ export class DebugPanel {
    */
   private static addLog(args: unknown[]): void {
     const time = new Date().toLocaleTimeString('ja-JP', { hour12: false });
-    const message = args.map(arg => {
-      if (typeof arg === 'object') {
-        try {
-          return JSON.stringify(arg, null, 2);
-        } catch {
-          return String(arg);
+    const message = args
+      .map((arg) => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch {
+            return String(arg);
+          }
         }
-      }
-      return String(arg);
-    }).join(' ');
+        return String(arg);
+      })
+      .join(' ');
 
     const logEntry = `[${time}] ${message}`;
     this.logs.push(logEntry);
@@ -226,9 +228,6 @@ export class DebugPanel {
    * Escape HTML special characters
    */
   private static escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }

@@ -119,5 +119,4 @@ export class InputHandler {
       this.ws.sendText(releaseSeq);
     }
   }
-
 }

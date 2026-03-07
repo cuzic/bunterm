@@ -46,11 +46,11 @@ describe('toolbar/config', () => {
   });
 
   test('SNIPPETS_KEY is defined', () => {
-    expect(SNIPPETS_KEY).toBe('ttyd-mux-snippets');
+    expect(SNIPPETS_KEY).toBe('bunterm-snippets');
   });
 
   test('CLIPBOARD_HISTORY_KEY is defined', () => {
-    expect(CLIPBOARD_HISTORY_KEY).toBe('ttyd-mux-clipboard-history');
+    expect(CLIPBOARD_HISTORY_KEY).toBe('bunterm-clipboard-history');
   });
 });
 
@@ -144,30 +144,20 @@ describe('toolbar/onboarding', () => {
 });
 
 describe('injectTerminalUi', () => {
-  test('injects WebSocket interception script in <head>', () => {
-    const html = '<html><head></head><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
-
-    // WebSocket interception should be injected right after <head>
-    expect(result).toContain('<head>\n<script>');
-    expect(result).toContain('window.__TTYD_WS__');
-    expect(result).toContain('OriginalWebSocket');
-  });
-
   test('injects styles, HTML, config, and script tag before </body>', () => {
     const html = '<html><head></head><body><p>content</p></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     expect(result).toContain('<style>');
     expect(result).toContain('#tui');
     expect(result).toContain('window.__TERMINAL_UI_CONFIG__');
-    expect(result).toContain('<script src="/ttyd-mux/terminal-ui.js"></script>');
+    expect(result).toContain('<script src="/bunterm/terminal-ui.js"></script>');
     expect(result).toContain('</body>');
   });
 
   test('preserves original HTML content', () => {
     const html = '<html><head><title>Test</title></head><body><p>Hello World</p></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     expect(result).toContain('<title>Test</title>');
     expect(result).toContain('<p>Hello World</p>');
@@ -175,17 +165,15 @@ describe('injectTerminalUi', () => {
 
   test('handles HTML without body closing tag', () => {
     const html = '<html><head></head><body><p>content</p>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
-    // Should inject WebSocket interception in <head> even if </body> is missing
-    expect(result).toContain('window.__TTYD_WS__');
     // Body injection should not happen (no </body> to replace)
     expect(result).not.toContain('terminal-ui.js');
   });
 
   test('only replaces first </body> tag', () => {
     const html = '<html><body>content</body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     const bodyCloseCount = (result.match(/<\/body>/g) || []).length;
     expect(bodyCloseCount).toBe(1);
@@ -200,21 +188,21 @@ describe('injectTerminalUi', () => {
 
   test('includes onboarding HTML', () => {
     const html = '<html><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     expect(result).toContain('id="tui-onboarding"');
   });
 
   test('onboarding HTML is hidden by default', () => {
     const html = '<html><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     expect(result).toContain('style="display:none"');
   });
 
   test('script tag appears before </body>', () => {
     const html = '<html><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     const scriptIndex = result.indexOf('terminal-ui.js');
     const bodyIndex = result.indexOf('</body>');
@@ -223,7 +211,7 @@ describe('injectTerminalUi', () => {
 
   test('embeds default config as JSON when no config provided', () => {
     const html = '<html><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     expect(result).toContain(`"font_size_min":${DEFAULT_TERMINAL_UI_CONFIG.font_size_min}`);
     expect(result).toContain(`"font_size_max":${DEFAULT_TERMINAL_UI_CONFIG.font_size_max}`);
@@ -239,7 +227,7 @@ describe('injectTerminalUi', () => {
       font_size_default_pc: 16,
       double_tap_delay: 400
     };
-    const result = injectTerminalUi(html, '/ttyd-mux', customConfig);
+    const result = injectTerminalUi(html, '/bunterm', customConfig);
 
     expect(result).toContain('"font_size_min":12');
     expect(result).toContain('"font_size_max":64');
@@ -250,7 +238,7 @@ describe('injectTerminalUi', () => {
 
   test('config script appears before terminal-ui.js script', () => {
     const html = '<html><body></body></html>';
-    const result = injectTerminalUi(html, '/ttyd-mux');
+    const result = injectTerminalUi(html, '/bunterm');
 
     const configIndex = result.indexOf('__TERMINAL_UI_CONFIG__');
     const toolbarJsIndex = result.indexOf('terminal-ui.js');

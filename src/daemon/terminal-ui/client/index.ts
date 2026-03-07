@@ -7,8 +7,8 @@
 
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
 import { AutoRunManager } from './AutoRunManager.js';
-import { DebugPanel } from './DebugPanel.js';
 import { ClipboardHistoryManager } from './ClipboardHistoryManager.js';
+import { DebugPanel } from './DebugPanel.js';
 import { FileTransferManager } from './FileTransferManager.js';
 import { FileWatcherClient } from './FileWatcherClient.js';
 import { FontSizeManager } from './FontSizeManager.js';
@@ -898,7 +898,7 @@ class ToolbarApp {
 
     // Listen for WebSocket close events (dispatched by interception script)
     this.scope.add(
-      on(window, 'ttyd-ws-close', () => {
+      on(window, 'bunterm-ws-close', () => {
         // Small delay to avoid immediate reconnect on page unload
         setTimeout(() => {
           if (!this.ws.isConnected()) {
@@ -1140,17 +1140,10 @@ if (config) {
   // Setup Sentry error handlers first
   setupSentryErrorHandlers(config);
 
-  // In native terminal mode, wait for initTerminalUi() to be called
+  // Wait for initTerminalUi() to be called
   // because __TERMINAL_CLIENT__ is not yet available when this script loads
-  if (config.isNativeTerminal) {
-    // Export initialization function for native mode
-    window.initTerminalUi = () => {
-      const app = new ToolbarApp(config);
-      app.initialize();
-    };
-  } else {
-    // ttyd mode: initialize immediately
+  window.initTerminalUi = () => {
     const app = new ToolbarApp(config);
     app.initialize();
-  }
+  };
 }

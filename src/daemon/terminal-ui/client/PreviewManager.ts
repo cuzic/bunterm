@@ -6,10 +6,14 @@
  */
 
 import type { FileChangeEvent, FileWatcherClient } from './FileWatcherClient.js';
-import { type Mountable, type Scope, on } from './lifecycle.js';
 import type { PreviewError, PreviewPane, PreviewPaneElements } from './PreviewPane.js';
+import type { Mountable, Scope } from './lifecycle.js';
 import type { TerminalUiConfig } from './types.js';
-import { bindClickScoped, getSessionNameFromURL, isPreviewable as isPreviewableUtil } from './utils.js';
+import {
+  bindClickScoped,
+  getSessionNameFromURL,
+  isPreviewable as isPreviewableUtil
+} from './utils.js';
 
 export type PreviewErrorHandler = (error: PreviewError) => void;
 

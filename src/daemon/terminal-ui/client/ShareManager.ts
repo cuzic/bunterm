@@ -6,8 +6,8 @@
 
 import qrcode from 'qrcode-generator';
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
-import { type Mountable, type Scope, on } from './lifecycle.js';
 import { type ModalController, createModalController } from './ModalController.js';
+import type { Mountable, Scope } from './lifecycle.js';
 import type { TerminalUiConfig } from './types.js';
 import { bindClickScoped, getSessionNameFromURL } from './utils.js';
 
