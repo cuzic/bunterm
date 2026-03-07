@@ -260,7 +260,7 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
       return `      <li class="session">
         <a href="${fullPath}/" target="_blank">
           <span class="name">${escapeHtml(session.name)}</span>
-          <span class="info">:${session.port} - ${escapeHtml(session.dir)}</span>
+          <span class="info">${escapeHtml(session.dir)}</span>
         </a>
       </li>`;
     })
@@ -268,7 +268,7 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
 
   const noSessions =
     sessions.length === 0
-      ? '<p class="no-sessions">No active sessions. Use <code>ttyd-mux up</code> to start one.</p>'
+      ? '<p class="no-sessions">No active sessions. Use <code>bunterm up</code> to start one.</p>'
       : '';
 
   const dirBrowserEnabled = config.directory_browser.enabled;
@@ -284,7 +284,7 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ttyd-mux</title>${generatePwaHead(basePath)}
+  <title>bunterm</title>${generatePwaHead(basePath)}
   <style>${portalStyles}
     .refresh {
       margin-top: 2rem;
@@ -300,7 +300,7 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
   </style>
 </head>
 <body>
-  <h1>ttyd-mux</h1>
+  <h1>bunterm</h1>
   <p class="subtitle">Active Terminal Sessions</p>
   <ul>
 ${sessionItems}

@@ -22,7 +22,7 @@ export function generatePwaHead(basePath: string): string {
   <meta name="theme-color" content="#00d9ff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="ttyd-mux">
+  <meta name="apple-mobile-web-app-title" content="bunterm">
   <link rel="manifest" href="${basePath}/manifest.json">
   <link rel="apple-touch-icon" href="${basePath}/icon-192.png">
   <link rel="icon" type="image/svg+xml" href="${basePath}/icon.svg">`;
