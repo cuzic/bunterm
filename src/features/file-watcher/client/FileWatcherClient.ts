@@ -1,29 +1,12 @@
 /**
  * File Watcher Client
  *
- * WebSocket client for receiving file change notifications from the server.
+ * Client for receiving file change notifications through the terminal WebSocket.
+ * Uses the existing terminal connection instead of creating a separate WebSocket.
  */
 
-import type { TerminalUiConfig } from './types.js';
-
-/** Preview config from server */
-interface PreviewConfig {
-  enabled: boolean;
-  defaultWidth: number;
-}
-
-declare global {
-  interface Window {
-    __PREVIEW_CONFIG__?: PreviewConfig;
-  }
-}
-
-/**
- * Check if preview WebSocket is enabled
- */
-function isPreviewEnabled(): boolean {
-  return window.__PREVIEW_CONFIG__?.enabled ?? false;
-}
+import type { TerminalUiConfig } from '@/browser/shared/types.js';
+import { getSessionNameFromURL } from '@/browser/shared/utils.js';
 
 /** File change event from server */
 export interface FileChangeEvent {
@@ -33,174 +16,132 @@ export interface FileChangeEvent {
   timestamp: number;
 }
 
-/** Client → Server message */
-export type WatchMessage =
-  | { action: 'watch'; session: string; path: string }
-  | { action: 'unwatch'; session: string; path: string }
-  | { action: 'watchDir'; session: string; path: string }
-  | { action: 'unwatchDir'; session: string; path: string };
-
-/** Connection state */
-type ConnectionState = 'disconnected' | 'connecting' | 'connected';
-
 export class FileWatcherClient {
-  private config: TerminalUiConfig;
-  private ws: WebSocket | null = null;
-  private state: ConnectionState = 'disconnected';
+  private sessionName: string;
   private changeListeners: Array<(event: FileChangeEvent) => void> = [];
-  private reconnectTimer: number | null = null;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
   private watchedFiles: Set<string> = new Set();
+  private unsubscribe: (() => void) | null = null;
+  private isSetup = false;
 
   constructor(config: TerminalUiConfig) {
-    this.config = config;
+    this.sessionName = getSessionNameFromURL(config.base_path);
   }
 
   /**
-   * Connect to the file watcher WebSocket
-   *
-   * Note: Preview WebSocket is not yet fully integrated with native-terminal mode.
-   * Connection will be skipped if preview is disabled in config.
+   * Setup file change listener with the terminal client.
+   * This should be called after the terminal client is available.
+   */
+  private setup(): void {
+    if (this.isSetup) {
+      return;
+    }
+
+    const client = window.__TERMINAL_CLIENT__;
+    if (!client) {
+      return;
+    }
+
+    // Register file change listener with the terminal client
+    this.unsubscribe = client.onFileChange((path, timestamp) => {
+      this.handleFileChange(path, timestamp);
+    });
+
+    this.isSetup = true;
+
+    // Re-subscribe to any files that were requested before setup
+    for (const key of this.watchedFiles) {
+      if (key.startsWith('dir:')) {
+        const dirPath = key.slice(4);
+        client.watchDir(dirPath);
+      } else {
+        client.watchFile(key);
+      }
+    }
+  }
+
+  /**
+   * Connect to the file watcher.
+   * For backward compatibility - this now just ensures the terminal client listener is setup.
    */
   connect(): void {
-    if (this.state !== 'disconnected') {
-      return;
-    }
-
-    // Check if preview is enabled
-    if (!isPreviewEnabled()) {
-      // Preview is disabled, don't attempt connection
-      return;
-    }
-
-    this.state = 'connecting';
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}${this.config.base_path}/api/preview/ws`;
-
-    try {
-      this.ws = new WebSocket(url);
-
-      this.ws.onopen = () => {
-        this.state = 'connected';
-        this.reconnectAttempts = 0;
-
-        // Re-subscribe to previously watched files/directories
-        for (const key of this.watchedFiles) {
-          if (key.startsWith('dir:')) {
-            // Directory watch: "dir:session:path"
-            const parts = key.slice(4).split(':');
-            const session = parts[0];
-            const path = parts.slice(1).join(':') || '';
-            if (session) {
-              this.sendWatchDir(session, path);
-            }
-          } else {
-            // File watch: "session:path"
-            const [session, ...pathParts] = key.split(':');
-            const path = pathParts.join(':');
-            if (session && path) {
-              this.sendWatch(session, path);
-            }
-          }
-        }
-      };
-
-      this.ws.onmessage = (event) => {
-        this.handleMessage(event.data);
-      };
-
-      this.ws.onclose = () => {
-        this.state = 'disconnected';
-        this.ws = null;
-        this.scheduleReconnect();
-      };
-
-      this.ws.onerror = (_error) => {
-        this.ws?.close();
-      };
-    } catch (_error) {
-      this.state = 'disconnected';
-      this.scheduleReconnect();
-    }
+    this.setup();
   }
 
   /**
-   * Disconnect from the file watcher WebSocket
+   * Disconnect from the file watcher
    */
   disconnect(): void {
-    if (this.reconnectTimer !== null) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
     }
-
-    if (this.ws) {
-      this.ws.close(1000, 'Client disconnect');
-      this.ws = null;
-    }
-
-    this.state = 'disconnected';
+    this.isSetup = false;
     this.watchedFiles.clear();
   }
 
   /**
    * Watch a file for changes
+   * @param _session Session name (ignored, uses current session)
+   * @param path File path relative to session directory
    */
-  watch(session: string, path: string): void {
-    if (!isPreviewEnabled()) {
-      return;
-    }
+  watch(_session: string, path: string): void {
+    // Store in watchedFiles for reconnection
+    this.watchedFiles.add(path);
 
-    const key = `${session}:${path}`;
-    this.watchedFiles.add(key);
+    // Setup listener if not already done
+    this.setup();
 
-    if (this.state === 'connected') {
-      this.sendWatch(session, path);
-    } else if (this.state === 'disconnected') {
-      this.connect();
+    // Send watch message to server
+    const client = window.__TERMINAL_CLIENT__;
+    if (client?.isConnected) {
+      client.watchFile(path);
     }
   }
 
   /**
    * Stop watching a file
+   * @param _session Session name (ignored, uses current session)
+   * @param path File path relative to session directory
    */
-  unwatch(session: string, path: string): void {
-    const key = `${session}:${path}`;
-    this.watchedFiles.delete(key);
+  unwatch(_session: string, path: string): void {
+    this.watchedFiles.delete(path);
 
-    if (this.state === 'connected') {
-      this.sendUnwatch(session, path);
+    const client = window.__TERMINAL_CLIENT__;
+    if (client?.isConnected) {
+      client.unwatchFile(path);
     }
   }
 
   /**
    * Watch a directory recursively for changes
+   * @param _session Session name (ignored, uses current session)
+   * @param path Directory path relative to session directory
    */
-  watchDir(session: string, path: string): void {
-    if (!isPreviewEnabled()) {
-      return;
-    }
-
-    const key = `dir:${session}:${path}`;
+  watchDir(_session: string, path: string): void {
+    const key = `dir:${path}`;
     this.watchedFiles.add(key);
 
-    if (this.state === 'connected') {
-      this.sendWatchDir(session, path);
-    } else if (this.state === 'disconnected') {
-      this.connect();
+    // Setup listener if not already done
+    this.setup();
+
+    const client = window.__TERMINAL_CLIENT__;
+    if (client?.isConnected) {
+      client.watchDir(path);
     }
   }
 
   /**
    * Stop watching a directory
+   * @param _session Session name (ignored, uses current session)
+   * @param path Directory path relative to session directory
    */
-  unwatchDir(session: string, path: string): void {
-    const key = `dir:${session}:${path}`;
+  unwatchDir(_session: string, path: string): void {
+    const key = `dir:${path}`;
     this.watchedFiles.delete(key);
 
-    if (this.state === 'connected') {
-      this.sendUnwatchDir(session, path);
+    const client = window.__TERMINAL_CLIENT__;
+    if (client?.isConnected) {
+      client.unwatchDir(path);
     }
   }
 
@@ -208,10 +149,14 @@ export class FileWatcherClient {
    * Stop watching all files
    */
   unwatchAll(): void {
-    for (const key of this.watchedFiles) {
-      const [session, path] = key.split(':');
-      if (session && path && this.state === 'connected') {
-        this.sendUnwatch(session, path);
+    const client = window.__TERMINAL_CLIENT__;
+    if (client?.isConnected) {
+      for (const key of this.watchedFiles) {
+        if (key.startsWith('dir:')) {
+          client.unwatchDir(key.slice(4));
+        } else {
+          client.unwatchFile(key);
+        }
       }
     }
     this.watchedFiles.clear();
@@ -231,100 +176,39 @@ export class FileWatcherClient {
   }
 
   /**
-   * Check if connected
+   * Check if connected (terminal client is available and connected)
    */
   isConnected(): boolean {
-    return this.state === 'connected';
+    return window.__TERMINAL_CLIENT__?.isConnected ?? false;
   }
 
   /**
    * Get connection state
    */
-  getState(): ConnectionState {
-    return this.state;
-  }
-
-  /**
-   * Send watch message
-   */
-  private sendWatch(session: string, path: string): void {
-    const message: WatchMessage = { action: 'watch', session, path };
-    this.send(message);
-  }
-
-  /**
-   * Send unwatch message
-   */
-  private sendUnwatch(session: string, path: string): void {
-    const message: WatchMessage = { action: 'unwatch', session, path };
-    this.send(message);
-  }
-
-  /**
-   * Send watchDir message
-   */
-  private sendWatchDir(session: string, path: string): void {
-    const message: WatchMessage = { action: 'watchDir', session, path };
-    this.send(message);
-  }
-
-  /**
-   * Send unwatchDir message
-   */
-  private sendUnwatchDir(session: string, path: string): void {
-    const message: WatchMessage = { action: 'unwatchDir', session, path };
-    this.send(message);
-  }
-
-  /**
-   * Send message to server
-   */
-  private send(message: WatchMessage): void {
-    if (this.ws && this.state === 'connected') {
-      this.ws.send(JSON.stringify(message));
+  getState(): 'disconnected' | 'connecting' | 'connected' {
+    if (!window.__TERMINAL_CLIENT__) {
+      return 'disconnected';
     }
+    return window.__TERMINAL_CLIENT__.isConnected ? 'connected' : 'connecting';
   }
 
   /**
-   * Handle incoming message
+   * Handle file change from terminal client
    */
-  private handleMessage(data: string): void {
-    try {
-      const event = JSON.parse(data) as FileChangeEvent;
+  private handleFileChange(path: string, timestamp: number): void {
+    const event: FileChangeEvent = {
+      type: 'change',
+      session: this.sessionName,
+      path,
+      timestamp
+    };
 
-      if (event.type === 'change') {
-        for (const listener of this.changeListeners) {
-          try {
-            listener(event);
-          } catch (_error) {
-            // Listener error - silently ignore
-          }
-        }
+    for (const listener of this.changeListeners) {
+      try {
+        listener(event);
+      } catch {
+        // Listener error - silently ignore
       }
-    } catch (_error) {
-      // Message parse error - silently ignore
     }
-  }
-
-  /**
-   * Schedule reconnection
-   */
-  private scheduleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      return;
-    }
-
-    if (this.watchedFiles.size === 0) {
-      // No files to watch, don't reconnect
-      return;
-    }
-
-    const delay = this.reconnectDelay * 2 ** this.reconnectAttempts;
-    this.reconnectAttempts++;
-
-    this.reconnectTimer = window.setTimeout(() => {
-      this.reconnectTimer = null;
-      this.connect();
-    }, delay);
   }
 }

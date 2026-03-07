@@ -5,15 +5,18 @@
  * live reload, and pane visibility.
  */
 
-import type { FileChangeEvent, FileWatcherClient } from './FileWatcherClient.js';
-import type { PreviewError, PreviewPane, PreviewPaneElements } from './PreviewPane.js';
-import type { Mountable, Scope } from './lifecycle.js';
-import type { TerminalUiConfig } from './types.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
+import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import {
   bindClickScoped,
   getSessionNameFromURL,
   isPreviewable as isPreviewableUtil
-} from './utils.js';
+} from '@/browser/shared/utils.js';
+import type {
+  FileChangeEvent,
+  FileWatcherClient
+} from '@/features/file-watcher/client/FileWatcherClient.js';
+import type { PreviewError, PreviewPane, PreviewPaneElements } from './PreviewPane.js';
 
 export type PreviewErrorHandler = (error: PreviewError) => void;
 

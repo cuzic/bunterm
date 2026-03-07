@@ -5,13 +5,13 @@
  * Uses the file transfer API endpoints for secure file operations.
  */
 
-import { type Mountable, type Scope, on } from './lifecycle.js';
-import type { TerminalUiConfig } from './types.js';
+import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import {
   bindClickScoped,
   getSessionNameFromURL,
   isPreviewable as isPreviewableUtil
-} from './utils.js';
+} from '@/browser/shared/utils.js';
 
 export interface FileInfo {
   name: string;
