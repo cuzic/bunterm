@@ -11,6 +11,9 @@ import type { Handler } from 'mitt';
 /** Cleanup function type */
 export type Disposable = () => void;
 
+/** No-op disposable for already-closed scopes */
+const noop: Disposable = () => undefined;
+
 /**
  * Scope for managing multiple disposables.
  * Collects cleanup functions and disposes them in LIFO order.
@@ -27,7 +30,7 @@ export class Scope {
   add(d: Disposable): Disposable {
     if (this.closed) {
       d();
-      return () => {};
+      return noop;
     }
     this.disposables.push(d);
     return d;

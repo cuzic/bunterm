@@ -6,11 +6,13 @@
 
 import { type Scope, on } from './lifecycle.js';
 
+/** Mobile device detection regex (top-level for performance) */
+const MOBILE_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+
 /**
  * Check if the current device is a mobile device
  */
-export const isMobileDevice = (): boolean =>
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+export const isMobileDevice = (): boolean => MOBILE_REGEX.test(navigator.userAgent);
 
 /**
  * Extract session name from URL path
@@ -29,6 +31,9 @@ export function getSessionNameFromURL(basePath: string): string {
   return match?.[1] ?? '';
 }
 
+/** No-op function for null-safe returns */
+const noop = (): void => undefined;
+
 /**
  * Bind a click event handler to an element with preventDefault
  * @param element - The element to bind to (null-safe)
@@ -41,7 +46,7 @@ export function bindClick(
   handler: (e: MouseEvent) => void
 ): () => void {
   if (!element) {
-    return () => {};
+    return noop;
   }
 
   const wrappedHandler = (e: MouseEvent) => {
