@@ -24,7 +24,7 @@ import { NAME, VERSION } from './version.js';
 
 program
   .name(NAME)
-  .description('ttyd session multiplexer - manage multiple ttyd+tmux sessions')
+  .description('Browser-based terminal manager')
   .version(VERSION)
   .addHelpText(
     'after',
@@ -32,13 +32,13 @@ program
 Usage Patterns:
 
   Dynamic (ad-hoc sessions for development):
-    $ cd ~/my-project && ttyd-mux up
-    $ ttyd-mux down
+    $ cd ~/my-project && bunterm up
+    $ bunterm down
 
   Static (server deployment with predefined sessions):
-    $ ttyd-mux start --sessions    # Start daemon + all sessions
-    $ ttyd-mux start -s            # Start daemon + select sessions
-    $ ttyd-mux stop --stop-sessions
+    $ bunterm start --sessions    # Start daemon + all sessions
+    $ bunterm start -s            # Start daemon + select sessions
+    $ bunterm stop --stop-sessions
 `
   );
 
@@ -141,7 +141,7 @@ caddy
 
 caddy
   .command('setup')
-  .description('Add ttyd-mux route via Caddy Admin API')
+  .description('Add bunterm route via Caddy Admin API')
   .option('--hostname <hostname>', 'Server hostname (or set in config.yaml)')
   .option('--admin-api <url>', 'Caddy Admin API URL')
   .option('-c, --config <path>', 'Config file path')
@@ -149,7 +149,7 @@ caddy
 
 caddy
   .command('remove')
-  .description('Remove ttyd-mux route via Caddy Admin API')
+  .description('Remove bunterm route via Caddy Admin API')
   .option('--hostname <hostname>', 'Server hostname (or set in config.yaml)')
   .option('--admin-api <url>', 'Caddy Admin API URL')
   .option('-c, --config <path>', 'Config file path')
@@ -165,7 +165,7 @@ caddy
 
 caddy
   .command('status')
-  .description('Show ttyd-mux routes in Caddy')
+  .description('Show bunterm routes in Caddy')
   .option('--admin-api <url>', 'Caddy Admin API URL')
   .option('-c, --config <path>', 'Config file path')
   .action((options) => caddyStatusCommand(options));

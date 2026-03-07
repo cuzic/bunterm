@@ -18,7 +18,7 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
 };
 
 // Default log level (can be overridden by environment variable)
-let currentLevel: LogLevel = (process.env['TTYD_MUX_LOG_LEVEL'] as LogLevel) || 'info';
+let currentLevel: LogLevel = (process.env['BUNTERM_LOG_LEVEL'] as LogLevel) || 'info';
 
 function formatTimestamp(): string {
   return new Date().toISOString();
