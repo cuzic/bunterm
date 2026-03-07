@@ -26,79 +26,85 @@
 src/
 ├── index.ts              # CLI エントリポイント (Commander)
 ├── version.ts            # バージョン情報（自動生成）
-├── config/
-│   ├── types.ts          # 型定義
-│   ├── config.ts         # config.yaml 読み込み
-│   ├── state.ts          # state.json 読み書き
-│   └── state-store.ts    # StateStore インターフェース（DI用）
-├── daemon/
-│   ├── index.ts          # デーモンエントリ
-│   ├── portal.ts         # ポータル HTML 生成
-│   ├── pwa.ts            # PWA マニフェスト、Service Worker
-│   ├── share-manager.ts  # 読み取り専用共有リンク管理
-│   ├── terminal-ui/      # ターミナルUI モジュール
-│   │   ├── index.ts      # エクスポート、inject 関数
-│   │   ├── config.ts     # 設定定数
-│   │   ├── styles.ts     # CSS
-│   │   ├── template.ts   # HTML テンプレート
-│   │   └── client/       # ブラウザ側 TypeScript（esbuild でバンドル）
-│   │       ├── index.ts  # エントリポイント
-│   │       ├── FontSizeManager.ts
-│   │       ├── SearchManager.ts
-│   │       ├── NotificationManager.ts
-│   │       └── ...
-│   ├── notification/     # プッシュ通知
-│   │   ├── index.ts      # エクスポート
+├── core/                 # コアシステム
+│   ├── cli/              # CLI
+│   │   └── commands/     # CLI コマンド
+│   ├── config/           # 設定
 │   │   ├── types.ts      # 型定義
-│   │   ├── matcher.ts    # パターンマッチング
-│   │   ├── sender.ts     # Web Push 送信
-│   │   └── vapid.ts      # VAPID キー管理
-│   └── native-terminal/  # ネイティブターミナル（Bun.Terminal）
-│       ├── index.ts      # モジュールエクスポート
-│       ├── server.ts     # Bun.serve サーバー
-│       ├── http-handler.ts # HTTP リクエストハンドラ
-│       ├── ws-handler.ts # WebSocket ハンドラ
-│       ├── types.ts      # WebSocket プロトコル型定義
-│       ├── terminal-session.ts # PTY セッション管理
-│       ├── session-manager.ts  # 複数セッション管理
-│       ├── html-template.ts # HTML テンプレート
-│       └── client/       # ブラウザ側クライアント
-│           ├── xterm-bundle.ts # xterm.js バンドル
-│           └── terminal-client.ts # WebSocket クライアント
-├── client/
-│   ├── index.ts          # クライアント re-exports
-│   ├── api-client.ts     # HTTP API クライアント
-│   └── daemon-client.ts  # デーモンソケット通信
-├── caddy/
-│   ├── client.ts         # Caddy Admin API クライアント
-│   ├── route-builder.ts  # ルート構築関数
-│   └── types.ts          # Caddy API 型定義
-├── deploy/
-│   ├── static-portal.ts  # 静的ポータル HTML 生成
-│   ├── caddyfile.ts      # Caddyfile スニペット生成
-│   └── deploy-script.ts  # deploy.sh 生成
-├── utils/
-│   ├── logger.ts         # ロガー
-│   ├── errors.ts         # エラーユーティリティ
-│   ├── process-runner.ts # ProcessRunner インターフェース（DI用）
-│   ├── socket-client.ts  # SocketClient インターフェース（DI用）
-│   └── tmux-client.ts    # TmuxClient インターフェース（DI用）
-├── commands/
-│   ├── up.ts, down.ts    # メインコマンド
-│   ├── start.ts, stop.ts, status.ts
-│   ├── attach.ts
-│   ├── daemon.ts, shutdown.ts
-│   ├── doctor.ts         # 診断コマンド
-│   ├── caddy.ts          # Caddy 連携コマンド
-│   ├── share.ts          # 読み取り専用共有コマンド
-│   └── deploy.ts         # デプロイコマンド（static モード用）
-└── scripts/
-    ├── build-terminal-ui.mjs  # ターミナルUI JS バンドル生成
-    ├── build-xterm-bundle.mjs # xterm.js バンドル生成
-    └── build-terminal-client.mjs # ターミナルクライアントバンドル生成
+│   │   ├── config.ts     # config.yaml 読み込み
+│   │   ├── config-manager.ts # 設定マネージャ
+│   │   ├── state.ts      # state.json 読み書き
+│   │   └── state-store.ts # StateStore インターフェース（DI用）
+│   ├── client/           # CLI→デーモン通信
+│   │   ├── index.ts      # クライアント re-exports
+│   │   ├── api-client.ts # HTTP API クライアント
+│   │   └── daemon-client.ts # デーモンソケット通信
+│   ├── daemon/           # デーモンエントリ
+│   │   └── index.ts      # デーモン起動ロジック
+│   ├── protocol/         # 通信プロトコル
+│   │   ├── messages.ts   # WS メッセージ型
+│   │   ├── blocks.ts     # Block 関連型
+│   │   ├── ai.ts         # AI 関連型
+│   │   ├── helpers.ts    # パース/シリアライズ
+│   │   └── index.ts      # 全 re-export
+│   ├── server/           # サーバー基盤
+│   │   ├── server.ts     # Bun.serve サーバー
+│   │   ├── http-handler.ts
+│   │   ├── ws-handler.ts
+│   │   ├── session-manager.ts
+│   │   ├── html-template.ts # HTML テンプレート生成
+│   │   ├── portal.ts
+│   │   ├── pwa.ts
+│   │   ├── terminal-ui/  # ターミナルUI テンプレート
+│   │   └── ws/           # WebSocket ユーティリティ
+│   └── terminal/         # ターミナルコア
+│       ├── session.ts    # PTY セッション管理
+│       ├── broadcaster.ts # クライアントブロードキャスト
+│       ├── osc633-parser.ts # OSC 633 パーサー
+│       ├── command-executor-manager.ts
+│       ├── ephemeral-executor.ts
+│       ├── persistent-executor.ts
+│       └── shell-integration/ # シェル統合スクリプト
+├── features/             # 機能モジュール
+│   ├── ai/               # AI 統合
+│   │   └── server/       # AI ランナー、API、quotes
+│   ├── blocks/           # Block UI (Warp スタイル)
+│   │   └── server/       # BlockModel、BlockStore
+│   ├── claude-watcher/   # Claude Code 監視
+│   │   └── server/
+│   ├── file-watcher/     # ファイル監視
+│   │   ├── server/
+│   │   └── client/
+│   ├── file-transfer/    # ファイル転送
+│   │   ├── server/       # directory-browser 含む
+│   │   └── client/
+│   ├── notifications/    # プッシュ通知
+│   │   ├── server/
+│   │   └── client/
+│   ├── preview/          # HTML プレビュー
+│   │   └── client/
+│   └── share/            # 読み取り専用共有
+│       └── server/
+├── browser/              # ブラウザ共通
+│   ├── terminal/         # xterm.js 関連
+│   │   ├── terminal-client.ts # WebSocket クライアント
+│   │   ├── xterm-bundle.ts
+│   │   ├── BlockManager.ts
+│   │   └── app/          # React AI チャット
+│   ├── toolbar/          # ツールバー UI
+│   │   ├── index.ts
+│   │   ├── FontSizeManager.ts
+│   │   └── ...
+│   └── shared/           # 共通ユーティリティ
+│       ├── lifecycle.ts
+│       ├── key-router.ts
+│       └── events.ts
+├── caddy/                # Caddy 連携
+├── deploy/               # デプロイ
+└── utils/                # 共通ユーティリティ
 ```
 
-**パスエイリアス**: `@/` で `src/` ディレクトリを参照可能（例: `import { loadConfig } from "@/config/config.js"`）
+**パスエイリアス**: `@/` で `src/` ディレクトリを参照可能（例: `import { loadConfig } from "@/core/config/config.js"`）
 
 ## 開発コマンド
 
@@ -130,7 +136,7 @@ bun run build
 `bunterm up` などのコマンド実行時、デーモンが起動していなければ自動的にバックグラウンドで起動します（tmux と同様の動作）。
 
 ```typescript
-// client/index.ts
+// core/client/index.ts
 await ensureDaemon();  // デーモンが未起動なら起動
 ```
 
@@ -159,18 +165,22 @@ Bun.Terminal API を使用した組み込み PTY 実装:
 - Node protocol imports (`node:fs`, `node:path` 等)
 - Biome でフォーマット・リント
 
-### イベント処理 (terminal-ui/client)
+### ブラウザアーキテクチャ (browser/)
 
-ブラウザ側クライアントでは、イベントリスナーの管理に `lifecycle.ts` と `key-router.ts` を使用します。
+ブラウザ側コードは `browser/` ディレクトリに集約されています。
 
-**原則:**
+#### ライフサイクル管理 (lifecycle.ts)
+
+`Scope` と `Mountable` パターンにより、イベントリスナーのメモリリークを防止します。
+
+**基本原則:**
 - `addEventListener` を直接使わず、`on()` ユーティリティを使用
 - mitt の `on` も `onBus()` ユーティリティ経由で使用
 - すべてのリスナーは `Scope` に登録して自動クリーンアップ
 
 ```typescript
-// lifecycle.ts をインポート
-import { Scope, on, onBus } from './lifecycle.js';
+// browser/shared/lifecycle.ts をインポート
+import { type Mountable, type Scope, on, onBus } from '@/browser/shared/lifecycle.js';
 
 // Scope を作成
 const scope = new Scope();
@@ -186,12 +196,35 @@ scope.add(onBus(toolbarEvents, 'font:change', handler));
 scope.close();
 ```
 
-**グローバルキーボードイベント:**
+#### Mountable パターン
+
+マネージャークラスは `Mountable` インターフェースを実装し、`mount(scope)` でイベントリスナーを登録します。
+
+```typescript
+export class MyManager implements Mountable {
+  private elements: { btn: HTMLElement } | null = null;
+
+  // DOM 要素のバインド（参照のみ保存）
+  bindElements(elements: { btn: HTMLElement }): void {
+    this.elements = elements;
+  }
+
+  // イベントリスナー登録（Scope に追加）
+  mount(scope: Scope): void {
+    if (!this.elements) return;
+
+    scope.add(on(this.elements.btn, 'click', () => this.handleClick()));
+    scope.add(on(document, 'keydown', (e) => this.handleKey(e as KeyboardEvent)));
+  }
+}
+```
+
+#### KeyRouter（キーボード優先度管理）
 
 複数箇所で `Escape` キーを処理する場合、`KeyRouter` で優先度を管理します。
 
 ```typescript
-import { KeyRouter, KeyPriority } from './key-router.js';
+import { KeyRouter, KeyPriority } from '@/browser/shared/key-router.js';
 
 const keyRouter = new KeyRouter();
 keyRouter.mount(scope);
@@ -201,7 +234,7 @@ scope.add(keyRouter.register((e) => {
   if (e.key !== 'Escape' || !modal.isVisible()) return false;
   modal.hide();
   return true;  // イベント消費
-}, KeyPriority.MODAL_HIGH));  // 優先度 100
+}, KeyPriority.MODAL_HIGH));
 ```
 
 優先度定数:
@@ -212,6 +245,53 @@ scope.add(keyRouter.register((e) => {
 - `SEARCH (40)`: 検索バー
 - `GLOBAL (0)`: グローバルショートカット
 
+#### ToolbarApp 初期化シーケンス
+
+`browser/toolbar/index.ts` の `ToolbarApp` が各マネージャーを初期化します：
+
+1. **マネージャー生成**: コンストラクタで依存関係を注入
+2. **DOM 要素バインド**: `bindElements()` で DOM 参照を保存
+3. **マウント**: `mount(scope)` でイベントリスナーを Scope に登録
+4. **KeyRouter 登録**: 各モーダルのキー処理を優先度付きで登録
+
+```typescript
+// 初期化順序
+const scope = new Scope();
+
+// 1. マネージャー生成（依存関係注入）
+const shareManager = new ShareManager(config);
+const snippetManager = new SnippetManager(config);
+
+// 2. DOM バインド
+shareManager.bindElements({ shareBtn, modal, ... });
+snippetManager.bindElements({ snippetBtn, modal, ... });
+
+// 3. マウント（イベント登録）
+shareManager.mount(scope);
+snippetManager.mount(scope);
+
+// 4. KeyRouter 登録（優先度管理）
+scope.add(keyRouter.register((e) => {
+  if (e.key === 'Escape' && shareManager.isVisible()) {
+    shareManager.hide();
+    return true;
+  }
+  return false;
+}, KeyPriority.MODAL));
+
+// アプリ終了時
+scope.close(); // すべてのリスナーを解除
+```
+
+#### マネージャー分類
+
+| 種別 | 特徴 | Mountable | 例 |
+|------|------|-----------|-----|
+| UI マネージャー | モーダル・UI 操作 | ○ | ShareManager, SnippetManager |
+| データマネージャー | localStorage 等 | × | StorageManager, FontSizeManager |
+| アドオンマネージャー | xterm アドオン | × | SearchManager, LinkManager |
+| ハンドラー | イベント処理専用 | ○ | TouchGestureHandler, LayoutManager |
+
 ## テスト
 
 テストは `bun:test` を使用。各モジュールに対応するテストファイルがあります。
@@ -219,7 +299,7 @@ scope.add(keyRouter.register((e) => {
 ```bash
 bun test                    # 全テスト実行
 bun test --watch            # ウォッチモード
-bun test src/config/        # 特定ディレクトリのみ
+bun test src/core/config/   # 特定ディレクトリのみ
 bun run test:coverage       # カバレッジ計測（現在約81%）
 ```
 
