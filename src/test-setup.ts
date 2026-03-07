@@ -6,13 +6,13 @@
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 
 // Use a shared test state directory for all tests
-export const TEST_STATE_DIR = `/tmp/ttyd-mux-test-${process.pid}`;
+export const TEST_STATE_DIR = `/tmp/bunterm-test-${process.pid}`;
 
 // Use a shared test config directory for config tests
-export const TEST_CONFIG_DIR = `/tmp/ttyd-mux-test-config-${process.pid}`;
+export const TEST_CONFIG_DIR = `/tmp/bunterm-test-config-${process.pid}`;
 
 // Set test state directory immediately when this module is loaded
-process.env['TTYD_MUX_STATE_DIR'] = TEST_STATE_DIR;
+process.env['BUNTERM_STATE_DIR'] = TEST_STATE_DIR;
 
 /**
  * Reset test state directory - call in beforeEach
