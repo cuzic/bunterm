@@ -3,6 +3,7 @@ import { type StateStore, defaultStateStore } from '@/config/state-store.js';
 import { type ProcessRunner, defaultProcessRunner } from '@/utils/process-runner.js';
 import { type SocketClient, defaultSocketClient } from '@/utils/socket-client.js';
 import type { DaemonManager } from '@/config/types.js';
+import { ensurePm2Config } from '@/config/pm2-config.js';
 
 const DAEMON_START_TIMEOUT = 5000;
 const DAEMON_STOP_TIMEOUT = 5000;
@@ -178,31 +179,6 @@ async function waitForDaemon(): Promise<boolean> {
 }
 
 /**
- * Find the project root directory (where ecosystem.config.cjs is located)
- */
-function findProjectRoot(): string {
-  // Try to find from current script location
-  const scriptPath = process.argv[1];
-  if (scriptPath) {
-    // Go up from src/index.ts or dist/index.js to project root
-    let dir = dirname(resolve(scriptPath));
-    for (let i = 0; i < 5; i++) {
-      const ecosystemPath = resolve(dir, 'ecosystem.config.cjs');
-      try {
-        if (require('node:fs').existsSync(ecosystemPath)) {
-          return dir;
-        }
-      } catch {
-        // Ignore
-      }
-      dir = dirname(dir);
-    }
-  }
-  // Fallback to cwd
-  return process.cwd();
-}
-
-/**
  * Check if pm2 is available
  */
 async function isPm2Available(): Promise<boolean> {
@@ -236,14 +212,13 @@ async function isPm2Managing(): Promise<boolean> {
 /**
  * Start daemon via pm2
  */
-async function startWithPm2(): Promise<boolean> {
-  const projectRoot = findProjectRoot();
-  const ecosystemPath = resolve(projectRoot, 'ecosystem.config.cjs');
+async function startWithPm2(configPath?: string): Promise<boolean> {
+  // Ensure pm2 config exists in ~/.config/bunterm/
+  const ecosystemPath = ensurePm2Config({ configPath });
 
   try {
     const result = currentDeps.processRunner.spawnSync('pm2', ['start', ecosystemPath], {
-      stdio: 'pipe',
-      cwd: projectRoot
+      stdio: 'pipe'
     });
     return result.status === 0;
   } catch {
@@ -274,7 +249,7 @@ export async function ensureDaemon(configPath?: string, daemonManager?: DaemonMa
       currentDeps.processRunner.spawnSync('pm2', ['restart', 'bunterm'], { stdio: 'pipe' });
     } else {
       // Start fresh with pm2
-      if (!(await startWithPm2())) {
+      if (!(await startWithPm2(configPath))) {
         throw new Error('Failed to start daemon with pm2. Check pm2 logs: pm2 logs bunterm');
       }
     }

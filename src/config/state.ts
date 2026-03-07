@@ -12,6 +12,14 @@ import type {
 } from './types.js';
 
 /**
+ * Get config directory path.
+ * Can be overridden via BUNTERM_CONFIG_DIR environment variable.
+ */
+function getConfigDirPath(): string {
+  return process.env['BUNTERM_CONFIG_DIR'] ?? join(homedir(), '.config', 'bunterm');
+}
+
+/**
  * Get state directory path.
  * Can be overridden via TTYD_MUX_STATE_DIR environment variable for testing.
  */
@@ -25,6 +33,10 @@ function getStateFilePath(): string {
 
 function getSocketFilePath(): string {
   return join(getStateDirPath(), 'ttyd-mux.sock');
+}
+
+export function getConfigDir(): string {
+  return getConfigDirPath();
 }
 
 export function getStateDir(): string {
