@@ -1,11 +1,11 @@
-import { getFullPath, normalizeBasePath } from '@/config/config.js';
-import type { Config, SessionState } from '@/config/types.js';
+import { getFullPath, normalizeBasePath } from '@/core/config/config.js';
+import type { Config, SessionState } from '@/core/config/types.js';
 import {
   escapeHtml,
   generatePwaHead,
   generateSwRegistration,
   portalStyles
-} from '@/daemon/portal-utils.js';
+} from '@/core/server/portal-utils.js';
 
 export function generateStaticPortalHtml(config: Config, sessions: SessionState[]): string {
   const basePath = normalizeBasePath(config.base_path);

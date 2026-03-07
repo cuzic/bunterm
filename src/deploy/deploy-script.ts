@@ -1,4 +1,4 @@
-import type { Config } from '@/config/types.js';
+import type { Config } from '@/core/config/types.js';
 
 export interface DeployScriptOptions {
   hostname: string;

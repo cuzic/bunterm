@@ -1,4 +1,4 @@
-import type { Config, SessionState } from '@/config/types.js';
+import type { Config, SessionState } from '@/core/config/types.js';
 
 export interface CaddyfileOptions {
   hostname: string;
