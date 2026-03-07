@@ -12,8 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
+const srcDir = path.join(rootDir, 'src');
 
-const entryPoint = path.join(rootDir, 'src/daemon/native-terminal/client/xterm-bundle.ts');
+const entryPoint = path.join(rootDir, 'src/browser/terminal/xterm-bundle.ts');
 const outFile = path.join(rootDir, 'dist/xterm-bundle.js');
 const cssOutFile = path.join(rootDir, 'dist/xterm.css');
 
@@ -44,6 +45,10 @@ try {
     sourcemap: false,
     platform: 'browser',
     logLevel: 'info',
+    // Resolve path aliases (@/ -> src/)
+    alias: {
+      '@': srcDir,
+    },
     // Export Terminal and addons for use by terminal-client.js
     footer: {
       js: 'window.XtermBundle = XtermBundle;'

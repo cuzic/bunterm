@@ -1,7 +1,7 @@
 /**
  * Build script for terminal-ui client bundle
  *
- * Bundles src/daemon/terminal-ui/client/index.ts into dist/terminal-ui.js
+ * Bundles src/browser/toolbar/index.ts into dist/terminal-ui.js
  * using esbuild with IIFE format for browser execution.
  */
 
@@ -12,8 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
+const srcDir = path.join(rootDir, 'src');
 
-const entryPoint = path.join(rootDir, 'src/daemon/terminal-ui/client/index.ts');
+const entryPoint = path.join(rootDir, 'src/browser/toolbar/index.ts');
 const outFile = path.join(rootDir, 'dist/terminal-ui.js');
 
 // Ensure dist directory exists
@@ -43,6 +44,10 @@ try {
     platform: 'browser',
     // Log errors
     logLevel: 'info',
+    // Resolve path aliases (@/ -> src/)
+    alias: {
+      '@': srcDir,
+    },
   });
 
   const stats = fs.statSync(outFile);

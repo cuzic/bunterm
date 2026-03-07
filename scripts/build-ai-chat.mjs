@@ -11,10 +11,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
+const srcDir = join(projectRoot, 'src');
 
 const entryPoint = join(
   projectRoot,
-  'src/daemon/native-terminal/client/app/index.tsx'
+  'src/browser/terminal/app/index.tsx'
 );
 const outfile = join(projectRoot, 'dist/ai-chat.js');
 
@@ -50,9 +51,13 @@ const buildOptions = {
   },
   // Handle node_modules
   nodePaths: [join(projectRoot, 'node_modules')],
+  // Resolve path aliases (@/ -> src/)
+  alias: {
+    '@': srcDir,
+  },
   // Banner for IIFE
   banner: {
-    js: '/* AI Chat React App - ttyd-mux */'
+    js: '/* AI Chat React App - bunterm */'
   }
 };
 

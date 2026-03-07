@@ -1,7 +1,7 @@
 /**
  * Build script for terminal-client bundle
  *
- * Bundles src/daemon/native-terminal/client/terminal-client.ts into dist/terminal-client.js
+ * Bundles src/browser/terminal/terminal-client.ts into dist/terminal-client.js
  * for use with native terminal sessions.
  */
 
@@ -12,8 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, '..');
+const srcDir = path.join(rootDir, 'src');
 
-const entryPoint = path.join(rootDir, 'src/daemon/native-terminal/client/terminal-client.ts');
+const entryPoint = path.join(rootDir, 'src/browser/terminal/terminal-client.ts');
 const outFile = path.join(rootDir, 'dist/terminal-client.js');
 
 // Ensure dist directory exists
@@ -44,6 +45,10 @@ try {
     logLevel: 'info',
     // Externalize xterm since it's loaded separately via xterm-bundle.js
     external: ['@xterm/xterm', '@xterm/addon-fit', '@xterm/addon-serialize'],
+    // Resolve path aliases (@/ -> src/)
+    alias: {
+      '@': srcDir,
+    },
   });
 
   const stats = fs.statSync(outFile);
