@@ -39,5 +39,5 @@
     "isolatedModules": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/daemon/terminal-ui/client/**/*", "src/daemon/tabs/client/**/*", "src/daemon/native-terminal/client/app/**/*"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/browser/**/*", "src/features/*/client/**/*", "src/daemon/terminal-ui/client/**/*", "src/daemon/tabs/client/**/*", "src/daemon/native-terminal/client/**/*"]
 }

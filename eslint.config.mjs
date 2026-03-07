@@ -13,6 +13,7 @@
 
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -32,7 +33,8 @@ export default tseslint.config(
   {
     // Register custom local rules plugin
     plugins: {
-      'local-rules': localRules
+      'local-rules': localRules,
+      'import': importPlugin
     },
     // AI Development Anti-Pattern Rules
     rules: {
@@ -173,6 +175,12 @@ export default tseslint.config(
       'prefer-const': 'error',
 
       // ============================================
+      // 8. Import Rules
+      // ============================================
+      // Prefer path aliases (@/) over parent directory imports
+      'import/no-relative-parent-imports': 'error',
+
+      // ============================================
       // Disable rules handled by Biome
       // ============================================
       'no-unused-vars': 'off',
@@ -195,7 +203,9 @@ export default tseslint.config(
       'local-rules/require-error-cause': 'off',
       'local-rules/no-process-exit-in-lib': 'off',
       'local-rules/require-command-description': 'off',
-      'local-rules/no-hardcoded-credentials': 'off'
+      'local-rules/no-hardcoded-credentials': 'off',
+      // Allow parent imports in test files
+      'import/no-relative-parent-imports': 'off'
     }
   },
   {
