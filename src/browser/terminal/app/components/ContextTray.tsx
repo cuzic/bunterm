@@ -4,16 +4,16 @@
  * Shows selected blocks and files for AI context.
  */
 
-import type { FileSource } from '@/daemon/native-terminal/ai/types.js';
-import { useBlockStore } from '@/daemon/native-terminal/client/app/stores/blockStore.js';
-import { useChatStore } from '@/daemon/native-terminal/client/app/stores/chatStore.js';
+import { useBlockStore } from '@/browser/terminal/app/stores/blockStore.js';
+import { useChatStore } from '@/browser/terminal/app/stores/chatStore.js';
+import type { FileSource } from '@/features/ai/server/types.js';
 import { type FC, useMemo } from 'react';
 
 export interface ContextTrayProps {
   onClose?: () => void;
 }
 
-export const ContextTray: FC<ContextTrayProps> = ({ onClose }) => {
+export const ContextTray: FC<ContextTrayProps> = ({ onClose: _onClose }) => {
   // Block state
   const blocks = useBlockStore((s) => s.blocks);
 
@@ -154,22 +154,26 @@ function getStatusColor(status: string): string {
 }
 
 function truncateCommand(command: string, maxLength: number): string {
-  if (command.length <= maxLength) return command;
-  return command.slice(0, maxLength - 3) + '...';
+  if (command.length <= maxLength) {
+    return command;
+  }
+  return `${command.slice(0, maxLength - 3)}...`;
 }
 
 function truncateFilePath(path: string, maxLength: number): string {
-  if (path.length <= maxLength) return path;
+  if (path.length <= maxLength) {
+    return path;
+  }
   // Keep the filename and truncate the directory part
   const parts = path.split('/');
   const filename = parts.pop() ?? '';
   if (filename.length >= maxLength - 3) {
-    return '...' + filename.slice(-(maxLength - 3));
+    return `...${filename.slice(-(maxLength - 3))}`;
   }
   const remaining = maxLength - filename.length - 4; // ".../"
   const dir = parts.join('/');
   if (dir.length > remaining) {
-    return '...' + dir.slice(-remaining) + '/' + filename;
+    return `...${dir.slice(-remaining)}/${filename}`;
   }
   return path;
 }
@@ -179,8 +183,12 @@ function getFileIcon(source: FileSource): string {
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  if (bytes < 1024) {
+    return `${bytes}B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)}KB`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 

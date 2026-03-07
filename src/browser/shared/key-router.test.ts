@@ -40,7 +40,7 @@ describe('KeyRouter', () => {
     // Create a mock event and call the handlers directly via the internal handle method
     // We can test this by registering and then checking the order
     // Since handlers is private, we verify by registering a handler that checks the order
-    const checkOrder = mock((e: KeyboardEvent) => {
+    const checkOrder = mock((_e: KeyboardEvent) => {
       order.push(4);
       return false;
     });
