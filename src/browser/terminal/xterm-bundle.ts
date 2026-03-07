@@ -158,9 +158,6 @@ export function createTerminal(options?: {
  */
 export function setupSelectionAutoCopy(terminal: Terminal): void {
   if (!terminal.element) {
-    console.warn(
-      '[xterm-bundle] Cannot setup auto-copy: terminal.element is null (call after terminal.open())'
-    );
     return;
   }
 
@@ -181,7 +178,6 @@ export function setupSelectionAutoCopy(terminal: Terminal): void {
  */
 export function setupRightClickPaste(terminal: Terminal, sendInput: (data: string) => void): void {
   if (!terminal.element) {
-    console.warn('[xterm-bundle] Cannot setup right-click paste: terminal.element is null');
     return;
   }
 
@@ -201,9 +197,7 @@ export function setupRightClickPaste(terminal: Terminal, sendInput: (data: strin
         sendInput(text);
       }
     } catch {
-      // Clipboard read failed (permissions or empty)
-      // Show a brief visual indicator
-      console.log('[xterm-bundle] Clipboard read failed - check permissions');
+      // Clipboard API may fail due to permissions or focus
     }
   });
 }

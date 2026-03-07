@@ -4,7 +4,7 @@
  * Wraps xterm.js terminal with React integration.
  */
 
-import { useTerminal } from '@/daemon/native-terminal/client/app/hooks/useTerminal.js';
+import { useTerminal } from '@/browser/terminal/app/hooks/useTerminal.js';
 import { type FC, useEffect } from 'react';
 import { BlockOverlay } from './BlockOverlay.js';
 
@@ -27,18 +27,27 @@ export const TerminalPane: FC<TerminalPaneProps> = ({
   onDisconnected,
   onError
 }) => {
-  const { containerRef, terminal, isConnected, isLoading, error, connect, fit, sendInput, focus } =
-    useTerminal({
-      wsUrl,
-      fontSize,
-      scrollback,
-      autoReconnect: true
-    });
+  const {
+    containerRef,
+    terminal,
+    isConnected,
+    isLoading,
+    error,
+    connect,
+    fit,
+    sendInput: _sendInput,
+    focus
+  } = useTerminal({
+    wsUrl,
+    fontSize,
+    scrollback,
+    autoReconnect: true
+  });
 
   // Connect on mount
   useEffect(() => {
-    connect().catch((err) => {
-      console.error('[TerminalPane] Connection failed:', err);
+    connect().catch((_err) => {
+      // Connection errors are handled by the hook
     });
   }, [connect]);
 
@@ -60,7 +69,9 @@ export const TerminalPane: FC<TerminalPaneProps> = ({
   // Handle resize using ResizeObserver (works with SplitPane)
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     // Debounced fit function to avoid excessive calls
     let fitTimeout: number | null = null;

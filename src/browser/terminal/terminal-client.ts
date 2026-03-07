@@ -8,6 +8,7 @@
  * - Reconnection logic
  */
 
+import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import { type Block, BlockManager } from './BlockManager.js';
 import { BlockRenderer } from './BlockRenderer.js';
 import { ClaudeBlockManager } from './ClaudeBlockManager.js';
@@ -74,10 +75,11 @@ interface TerminalClientOptions {
 }
 
 interface ClientMessage {
-  type: 'input' | 'resize' | 'ping';
+  type: 'input' | 'resize' | 'ping' | 'watchFile' | 'unwatchFile' | 'watchDir' | 'unwatchDir';
   data?: string;
   cols?: number;
   rows?: number;
+  path?: string;
 }
 
 interface ServerMessage {
@@ -88,6 +90,7 @@ interface ServerMessage {
     | 'pong'
     | 'error'
     | 'bell'
+    | 'fileChange'
     | 'blockStart'
     | 'blockEnd'
     | 'blockOutput'
@@ -123,6 +126,27 @@ interface ServerMessage {
   sessionId?: string;
   project?: string;
   timestamp?: string;
+  // File watcher fields
+  path?: string;
+}
+
+/**
+ * Extended Terminal type with internal xterm.js APIs.
+ * These are private APIs and may change between versions.
+ */
+interface TerminalWithCore extends XtermTerminal {
+  _core?: {
+    _renderService?: {
+      dimensions?: {
+        css?: {
+          cell?: {
+            width?: number;
+            height?: number;
+          };
+        };
+      };
+    };
+  };
 }
 
 export class TerminalClient {
@@ -148,6 +172,9 @@ export class TerminalClient {
 
   // File operations sidebar
   private fileOpsSidebar: FileOpsSidebar | null = null;
+
+  // File watcher callbacks
+  private fileChangeListeners: Array<(path: string, timestamp: number) => void> = [];
 
   private readonly options: Required<TerminalClientOptions>;
 
@@ -263,7 +290,9 @@ export class TerminalClient {
       const token = fitPending;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (token !== fitPending) return; // Superseded by newer request
+          if (token !== fitPending) {
+            return; // Superseded by newer request
+          }
           this.fit();
           this.decorationManager?.handleResize();
         });
@@ -282,8 +311,8 @@ export class TerminalClient {
     }
 
     // Wait for fonts to load before fitting (font metrics can change)
-    if ((document as any).fonts?.ready) {
-      (document as any).fonts.ready.then(() => scheduleFit());
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(() => scheduleFit());
     }
 
     // Initialize Path Link detection if enabled (must be before initBlockUI for FileOpsSidebar)
@@ -369,13 +398,10 @@ export class TerminalClient {
         onCopyCommand: this.options.onBlockCopyCommand,
         onCopyOutput: this.options.onBlockCopyOutput,
         onSendToAI: this.options.onBlockSendToAI,
-        onFilterBlock: (blockId) => {
-          // Filter/search within block - can be implemented later
-          console.log('[BlockUI] Filter in block:', blockId);
-        },
+        onFilterBlock: (_blockId) => {},
         onRerunCommand: (command) => {
           // Send command to terminal with Enter
-          this.sendInput(command + '\n');
+          this.sendInput(`${command}\n`);
         },
         onEditAndRerun: (command) => {
           // Send command to terminal without Enter (for editing)
@@ -390,7 +416,6 @@ export class TerminalClient {
       this.decorationManager = new DecorationManager({
         terminal: this.terminal,
         onBlockClick: (blockId, event) => {
-          console.log('[DecorationManager] Block clicked:', blockId);
           // Single click selects, Cmd/Ctrl+click handled in DecorationManager
           if (!event.metaKey && !event.ctrlKey) {
             this.decorationManager?.selectBlock(blockId);
@@ -398,12 +423,9 @@ export class TerminalClient {
           }
         },
         onActionClick: (blockId, action, _event) => {
-          console.log('[DecorationManager] Action clicked:', blockId, action);
           this.handleDecorationAction(blockId, action);
         },
-        onBlockSelect: (blockId, selected) => {
-          console.log('[DecorationManager] Block selection changed:', blockId, selected);
-        }
+        onBlockSelect: (_blockId, _selected) => {}
       });
 
       // Add keyboard handler for block operations
@@ -427,7 +449,6 @@ export class TerminalClient {
     // Initialize ClaudeBlockManager
     this.claudeBlockManager = new ClaudeBlockManager({
       onTurnStart: (turn) => {
-        console.log('[ClaudeBlockManager] Turn started:', turn.id);
         // Add decoration for new Claude turn
         if (this.decorationManager && this.terminal) {
           const blockInfo: BlockInfo = {
@@ -447,14 +468,10 @@ export class TerminalClient {
         }
       },
       onTurnComplete: (turn) => {
-        console.log('[ClaudeBlockManager] Turn completed:', turn.id);
         this.decorationManager?.updateStatus(turn.id, 'success');
       },
-      onSessionStart: (sessionId) => {
-        console.log('[ClaudeBlockManager] Session started:', sessionId);
-      },
-      onSessionEnd: (sessionId) => {
-        console.log('[ClaudeBlockManager] Session ended:', sessionId);
+      onSessionStart: (_sessionId) => {},
+      onSessionEnd: (_sessionId) => {
         // Clear file operations sidebar when session ends
         this.fileOpsSidebar?.clear();
       },
@@ -515,8 +532,6 @@ export class TerminalClient {
           });
           break;
         case 'search':
-          // Search within turn - open search panel with turn content
-          console.log('[DecorationManager] Search in Claude turn:', blockId);
           break;
       }
       return;
@@ -527,12 +542,12 @@ export class TerminalClient {
     if (block) {
       switch (action) {
         case 'rerun':
-          this.sendInput(block.command + '\n');
+          this.sendInput(`${block.command}\n`);
           break;
         case 'copy':
           this.options.onBlockCopyCommand?.(block.command);
           break;
-        case 'ai':
+        case 'ai': {
           // Add command block to AI Chat context via custom event
           this.dispatchBlockContextEvent({
             type: 'command',
@@ -546,6 +561,7 @@ export class TerminalClient {
           });
           this.options.onBlockSendToAI?.(block);
           break;
+        }
       }
     }
   }
@@ -564,7 +580,6 @@ export class TerminalClient {
       bubbles: true
     });
     document.dispatchEvent(event);
-    console.log('[TerminalClient] Dispatched add-context event:', detail.blockId);
   }
 
   /**
@@ -591,9 +606,7 @@ export class TerminalClient {
 
     if (texts.length > 0) {
       const content = texts.join('\n\n---\n\n');
-      navigator.clipboard.writeText(content).then(() => {
-        console.log('[TerminalClient] Copied', blockIds.length, 'blocks to clipboard');
-      });
+      navigator.clipboard.writeText(content).then(() => {});
     }
   }
 
@@ -605,7 +618,6 @@ export class TerminalClient {
       this.ws = new WebSocket(this.options.wsUrl);
 
       this.ws.onopen = () => {
-        console.log('[TerminalClient] Connected');
         this.reconnectAttempts = 0;
 
         // Reset xterm.js mouse tracking state on connect/reconnect.
@@ -634,12 +646,10 @@ export class TerminalClient {
       };
 
       this.ws.onerror = (error) => {
-        console.error('[TerminalClient] WebSocket error:', error);
         reject(error);
       };
 
-      this.ws.onclose = (event) => {
-        console.log('[TerminalClient] Disconnected:', event.code, event.reason);
+      this.ws.onclose = (_event) => {
         this.stopPing();
 
         if (!this.isClosing && this.options.autoReconnect) {
@@ -673,25 +683,40 @@ export class TerminalClient {
           }
           break;
 
-        case 'exit':
-          console.log('[TerminalClient] Session exited with code:', message.code);
+        case 'exit': {
           this.terminal?.write(`\r\n\x1b[31m[Session exited with code ${message.code}]\x1b[0m\r\n`);
           break;
+        }
 
         case 'pong':
           // Keep-alive response
           break;
 
-        case 'error':
-          console.error('[TerminalClient] Server error:', message.message);
+        case 'error': {
           this.terminal?.write(`\r\n\x1b[31m[Error: ${message.message}]\x1b[0m\r\n`);
           break;
+        }
 
         case 'bell':
           // Trigger xterm.js bell (plays sound if configured, triggers onBell handlers)
           if (this.terminal) {
             // Write bell character to trigger xterm.js bell event
             this.terminal.write('\x07');
+          }
+          break;
+
+        case 'fileChange':
+          // Notify file change listeners
+          if (message.path) {
+            const timestamp =
+              typeof message.timestamp === 'number' ? message.timestamp : Date.now();
+            for (const listener of this.fileChangeListeners) {
+              try {
+                listener(message.path, timestamp);
+              } catch {
+                // Ignore listener errors
+              }
+            }
           }
           break;
 
@@ -743,9 +768,7 @@ export class TerminalClient {
           );
           break;
       }
-    } catch (error) {
-      console.error('[TerminalClient] Failed to parse message:', error);
-    }
+    } catch (_error) {}
   }
 
   /**
@@ -781,7 +804,6 @@ export class TerminalClient {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
-      console.log('[TerminalClient] Max reconnect attempts reached');
       this.terminal?.write(
         '\r\n\x1b[31m[Connection lost - max reconnect attempts reached]\x1b[0m\r\n'
       );
@@ -790,8 +812,6 @@ export class TerminalClient {
 
     this.reconnectAttempts++;
     const delay = this.options.reconnectDelay * this.reconnectAttempts;
-
-    console.log(`[TerminalClient] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
     this.terminal?.write(
       `\r\n\x1b[33m[Reconnecting... attempt ${this.reconnectAttempts}]\x1b[0m\r\n`
     );
@@ -854,9 +874,9 @@ export class TerminalClient {
     const SAFE_PX = 2; // Safety margin to prevent edge overflow
 
     // Get cell dimensions from xterm internal render service
-    const core = (this.terminal as any)._core;
-    const cellWidth = core?._renderService?.dimensions?.css?.cell?.width;
-    const cellHeight = core?._renderService?.dimensions?.css?.cell?.height;
+    const termWithCore = this.terminal as TerminalWithCore;
+    const cellWidth = termWithCore._core?._renderService?.dimensions?.css?.cell?.width;
+    const cellHeight = termWithCore._core?._renderService?.dimensions?.css?.cell?.height;
 
     if (!cellWidth || !cellHeight) {
       // Fallback if we can't get cell dimensions
@@ -905,7 +925,9 @@ export class TerminalClient {
    * tracking when they start (e.g., vim sends \x1b[?1006h on startup).
    */
   private resetMouseTracking(): void {
-    if (!this.terminal) return;
+    if (!this.terminal) {
+      return;
+    }
 
     // Send mouse tracking OFF sequences to xterm.js
     // These are written to xterm.js (not PTY) to reset its internal state
@@ -983,8 +1005,6 @@ export class TerminalClient {
    * The WebSocket connection is preserved - only the terminal UI is recreated.
    */
   async reinitialize(): Promise<void> {
-    console.log('[TerminalClient] Reinitializing terminal...');
-
     // Store current state
     const currentCols = this.terminal?.cols ?? 80;
     const currentRows = this.terminal?.rows ?? 24;
@@ -1062,7 +1082,9 @@ export class TerminalClient {
       let inputData = data;
       if (this.options.filterMouseReporting && window.XtermBundle.filterMouseSequences) {
         inputData = window.XtermBundle.filterMouseSequences(data);
-        if (!inputData) return;
+        if (!inputData) {
+          return;
+        }
       }
       this.send({ type: 'input', data: this.encodeTextInput(inputData) });
     });
@@ -1072,7 +1094,9 @@ export class TerminalClient {
       let inputData = data;
       if (this.options.filterMouseReporting && window.XtermBundle.filterMouseSequences) {
         inputData = window.XtermBundle.filterMouseSequences(data);
-        if (!inputData) return;
+        if (!inputData) {
+          return;
+        }
       }
       this.send({ type: 'input', data: this.encodeBinaryInput(inputData) });
     });
@@ -1093,8 +1117,8 @@ export class TerminalClient {
           onCopyCommand: this.options.onBlockCopyCommand,
           onCopyOutput: this.options.onBlockCopyOutput,
           onSendToAI: this.options.onBlockSendToAI,
-          onFilterBlock: (blockId) => console.log('[BlockUI] Filter in block:', blockId),
-          onRerunCommand: (command) => this.sendInput(command + '\n'),
+          onFilterBlock: (_blockId) => undefined,
+          onRerunCommand: (command) => this.sendInput(`${command}\n`),
           onEditAndRerun: (command) => {
             this.sendInput(command);
             this.focus();
@@ -1114,7 +1138,7 @@ export class TerminalClient {
         onActionClick: (blockId, action, _event) => {
           this.handleDecorationAction(blockId, action);
         },
-        onBlockSelect: (_blockId, _selected) => {}
+        onBlockSelect: (_blockId, _selected) => undefined
       });
     }
 
@@ -1145,8 +1169,6 @@ export class TerminalClient {
         rows: currentRows
       });
     }
-
-    console.log('[TerminalClient] Terminal reinitialized successfully');
   }
 
   /**
@@ -1251,6 +1273,55 @@ export class TerminalClient {
   updateCwd(cwd: string): void {
     this.options.cwd = cwd;
     this.pathLinkManager?.updateCwd(cwd);
+  }
+
+  // === File Watcher API ===
+
+  /**
+   * Watch a file for changes
+   * @param path File path relative to session directory
+   */
+  watchFile(path: string): void {
+    this.send({ type: 'watchFile', path });
+  }
+
+  /**
+   * Stop watching a file
+   * @param path File path relative to session directory
+   */
+  unwatchFile(path: string): void {
+    this.send({ type: 'unwatchFile', path });
+  }
+
+  /**
+   * Watch a directory recursively for changes
+   * @param path Directory path relative to session directory
+   */
+  watchDir(path: string): void {
+    this.send({ type: 'watchDir', path });
+  }
+
+  /**
+   * Stop watching a directory
+   * @param path Directory path relative to session directory
+   */
+  unwatchDir(path: string): void {
+    this.send({ type: 'unwatchDir', path });
+  }
+
+  /**
+   * Register a file change listener
+   * @param listener Callback function (path: string, timestamp: number) => void
+   * @returns Function to unregister the listener
+   */
+  onFileChange(listener: (path: string, timestamp: number) => void): () => void {
+    this.fileChangeListeners.push(listener);
+    return () => {
+      const index = this.fileChangeListeners.indexOf(listener);
+      if (index !== -1) {
+        this.fileChangeListeners.splice(index, 1);
+      }
+    };
   }
 }
 

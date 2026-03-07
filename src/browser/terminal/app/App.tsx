@@ -137,8 +137,8 @@ export const App: FC<AppProps> = ({
           <TerminalPane
             wsUrl={wsUrl}
             sessionName={sessionName}
-            onConnected={() => console.log('[App] Terminal connected')}
-            onError={(error) => console.error('[App] Terminal error:', error)}
+            onConnected={() => undefined}
+            onError={(_error) => undefined}
           />
         }
         right={

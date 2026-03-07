@@ -8,6 +8,10 @@
  * - Sequence gap detection and recovery
  */
 
+import {
+  getAllBlockContents,
+  removeBlockContent
+} from '@/browser/terminal/app/hooks/useBlockContextBridge.js';
 import type {
   AIChatResponse,
   Citation,
@@ -15,11 +19,7 @@ import type {
   NextCommand,
   RunnerName,
   RunnerStatus
-} from '@/daemon/native-terminal/ai/types.js';
-import {
-  getAllBlockContents,
-  removeBlockContent
-} from '@/daemon/native-terminal/client/app/hooks/useBlockContextBridge.js';
+} from '@/features/ai/server/types.js';
 import { create } from 'zustand';
 
 /** File reference for context */
@@ -236,7 +236,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       }
       // Check max limit
       if (state.contextFiles.length >= MAX_CONTEXT_FILES) {
-        console.warn(`Maximum ${MAX_CONTEXT_FILES} files can be attached`);
         return state;
       }
       return { contextFiles: [...state.contextFiles, file] };
@@ -270,15 +269,13 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       });
 
       if (!response.ok) {
-        console.error('Failed to fetch WebSocket token:', response.status);
         return null;
       }
 
       const data = (await response.json()) as { token: string };
       set({ wsToken: data.token });
       return data.token;
-    } catch (error) {
-      console.error('Failed to fetch WebSocket token:', error);
+    } catch (_error) {
       return null;
     }
   },
@@ -294,7 +291,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
     // Get token for authentication
     const token = await get().fetchWsToken(sessionId);
     if (!token) {
-      console.warn('WebSocket connection without token (auth may be disabled)');
     }
 
     const wsUrl = getWsUrl(sessionId);
@@ -304,7 +300,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
     const ws = new WebSocket(wsUrl, protocols);
 
     ws.onopen = () => {
-      console.log('[ChatStore] WebSocket connected');
       set({ wsConnection: ws });
     };
 
@@ -322,17 +317,16 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
             get().handleAIError(data as AIErrorData);
             break;
         }
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+      } catch (_error) {
+        // Ignore parse errors for non-JSON messages
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('[ChatStore] WebSocket error:', error);
+    ws.onerror = (_error) => {
+      // WebSocket errors are logged by onclose handler
     };
 
     ws.onclose = () => {
-      console.log('[ChatStore] WebSocket disconnected');
       set({ wsConnection: null, wsToken: null });
     };
   },
@@ -381,15 +375,14 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       streamingRun = get().streamingRun;
     }
 
-    if (!streamingRun) return;
+    if (!streamingRun) {
+      return;
+    }
 
     // Check for sequence gap
     let gapDetected = streamingRun.gapDetected;
     if (data.seq !== streamingRun.expectedSeq) {
       gapDetected = true;
-      console.warn(
-        `[ChatStore] Sequence gap detected: expected ${streamingRun.expectedSeq}, got ${data.seq}`
-      );
     }
 
     // Append content
@@ -626,8 +619,6 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
         })
       );
     } else {
-      // Fallback to HTTP
-      console.warn('WebSocket not connected, falling back to HTTP');
       await get().sendMessage(question, sessionId);
     }
   },
@@ -638,8 +629,8 @@ export const useChatStore = create<ChatStoreState>((set, get) => ({
       const response = await fetch(`${basePath}/api/ai/runners`);
       const data = (await response.json()) as { runners: RunnerStatus[] };
       set({ availableRunners: data.runners });
-    } catch (error) {
-      console.error('Failed to fetch runners:', error);
+    } catch (_error) {
+      // Silently fail if runners endpoint is unavailable
     }
   }
 }));
