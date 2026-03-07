@@ -1,25 +1,25 @@
 #!/usr/bin/env node
 
-import { program } from 'commander';
-import { attachCommand } from './commands/attach.js';
+import { attachCommand } from '@/core/cli/commands/attach.js';
 import {
   caddyRemoveCommand,
   caddySetupCommand,
   caddySnippetCommand,
   caddyStatusCommand,
   caddySyncCommand
-} from './commands/caddy.js';
-import { daemonCommand } from './commands/daemon.js';
-import { deployCommand } from './commands/deploy.js';
-import { doctorCommand } from './commands/doctor.js';
-import { downCommand } from './commands/down.js';
-import { listCommand } from './commands/list.js';
-import { reloadCommand } from './commands/reload.js';
-import { restartCommand } from './commands/restart.js';
-import { shareCommand, shareListCommand, shareRevokeCommand } from './commands/share.js';
-import { shutdownCommand } from './commands/shutdown.js';
-import { statusCommand } from './commands/status.js';
-import { upCommand } from './commands/up.js';
+} from '@/core/cli/commands/caddy.js';
+import { daemonCommand } from '@/core/cli/commands/daemon.js';
+import { deployCommand } from '@/core/cli/commands/deploy.js';
+import { doctorCommand } from '@/core/cli/commands/doctor.js';
+import { downCommand } from '@/core/cli/commands/down.js';
+import { listCommand } from '@/core/cli/commands/list.js';
+import { reloadCommand } from '@/core/cli/commands/reload.js';
+import { restartCommand } from '@/core/cli/commands/restart.js';
+import { shareCommand, shareListCommand, shareRevokeCommand } from '@/core/cli/commands/share.js';
+import { shutdownCommand } from '@/core/cli/commands/shutdown.js';
+import { statusCommand } from '@/core/cli/commands/status.js';
+import { upCommand } from '@/core/cli/commands/up.js';
+import { program } from 'commander';
 import { NAME, VERSION } from './version.js';
 
 program
