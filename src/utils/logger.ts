@@ -59,7 +59,7 @@ export function getLogFile(): string | null {
 function writeToFile(message: string): void {
   if (logFilePath) {
     try {
-      appendFileSync(logFilePath, message + '\n');
+      appendFileSync(logFilePath, `${message}\n`);
     } catch {
       // Ignore file write errors
     }
@@ -72,7 +72,7 @@ export function createLogger(component: string) {
       if (shouldLog('debug')) {
         const formatted = formatMessage('debug', component, message);
         console.log(formatted, ...args);
-        writeToFile(formatted + (args.length ? ' ' + args.map(String).join(' ') : ''));
+        writeToFile(formatted + (args.length > 0 ? ` ${args.map(String).join(' ')}` : ''));
       }
     },
 
@@ -80,7 +80,7 @@ export function createLogger(component: string) {
       if (shouldLog('info')) {
         const formatted = formatMessage('info', component, message);
         console.log(formatted, ...args);
-        writeToFile(formatted + (args.length ? ' ' + args.map(String).join(' ') : ''));
+        writeToFile(formatted + (args.length > 0 ? ` ${args.map(String).join(' ')}` : ''));
       }
     },
 
@@ -88,7 +88,7 @@ export function createLogger(component: string) {
       if (shouldLog('warn')) {
         const formatted = formatMessage('warn', component, message);
         console.warn(formatted, ...args);
-        writeToFile(formatted + (args.length ? ' ' + args.map(String).join(' ') : ''));
+        writeToFile(formatted + (args.length > 0 ? ` ${args.map(String).join(' ')}` : ''));
       }
     },
 
@@ -96,7 +96,7 @@ export function createLogger(component: string) {
       if (shouldLog('error')) {
         const formatted = formatMessage('error', component, message);
         console.error(formatted, ...args);
-        writeToFile(formatted + (args.length ? ' ' + args.map(String).join(' ') : ''));
+        writeToFile(formatted + (args.length > 0 ? ` ${args.map(String).join(' ')}` : ''));
       }
     }
   };

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import type { SentryConfig } from '@/config/types.js';
+import type { SentryConfig } from '@/core/config/types.js';
 import {
   captureException,
   captureMessage,

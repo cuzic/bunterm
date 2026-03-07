@@ -5,7 +5,7 @@
  * Sentry is only initialized if enabled in config and DSN is provided.
  */
 
-import type { SentryConfig } from '@/config/types.js';
+import type { SentryConfig } from '@/core/config/types.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('sentry');
