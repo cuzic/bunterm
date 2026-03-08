@@ -1,6 +1,6 @@
 {
   "name": "bunterm",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Web terminal with Bun.Terminal - browser-accessible terminal with mobile support and AI integration / Bun.Terminal ベースの Web ターミナル",
   "type": "module",
   "main": "./dist/index.js",
