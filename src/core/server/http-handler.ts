@@ -39,6 +39,134 @@ const log = createLogger('native-http');
 let executorManager: CommandExecutorManager | null = null;
 
 /**
+ * Generate HTML page for Markdown preview with client-side rendering
+ * Uses markdown-it with CJK-friendly plugin from CDN
+ */
+function generateMarkdownPreviewHtml(markdownContent: string, filename: string): string {
+  // Escape content for embedding in script tag
+  const escapedContent = JSON.stringify(markdownContent);
+  const title = basename(filename);
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14/dist/markdown-it.min.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-cjk-friendly@1/dist/markdown-it-cjk-friendly.min.js"><\/script>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    body {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      background: #fff;
+      color: #333;
+    }
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #1e1e1e;
+        color: #e0e0e0;
+      }
+      a { color: #6db3f2; }
+      code { background: #2d2d2d; }
+      pre { background: #2d2d2d; }
+      blockquote { border-color: #444; color: #aaa; }
+      table th, table td { border-color: #444; }
+      hr { border-color: #444; }
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      line-height: 1.3;
+    }
+    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    a { color: #0366d6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #f6f8fa;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-size: 0.9em;
+      font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    pre {
+      background: #f6f8fa;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 6px;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+    }
+    blockquote {
+      margin: 0;
+      padding-left: 1em;
+      border-left: 4px solid #ddd;
+      color: #666;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+    }
+    table th, table td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    table th {
+      background: #f6f8fa;
+      font-weight: 600;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 2em 0;
+    }
+    ul, ol {
+      padding-left: 2em;
+    }
+    li {
+      margin: 0.25em 0;
+    }
+    .task-list-item {
+      list-style: none;
+      margin-left: -1.5em;
+    }
+    .task-list-item input {
+      margin-right: 0.5em;
+    }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    const md = window.markdownit({
+      html: true,
+      linkify: true,
+      typographer: true
+    }).use(window.markdownItCjkFriendly);
+
+    const content = ${escapedContent};
+    document.getElementById('content').innerHTML = md.render(content);
+  </script>
+</body>
+</html>`;
+}
+
+/**
  * Get or create the command executor manager
  */
 function getExecutorManager(sessionManager: NativeSessionManager): CommandExecutorManager {
@@ -1042,6 +1170,20 @@ async function handleApiRequest(
       }
 
       const content = readFileSync(targetPath, 'utf-8');
+
+      // Check if it's a Markdown file - render with markdown-it on client side
+      const isMarkdown =
+        filePath.toLowerCase().endsWith('.md') || filePath.toLowerCase().endsWith('.markdown');
+
+      if (isMarkdown) {
+        const markdownHtml = generateMarkdownPreviewHtml(content, filePath);
+        return new Response(markdownHtml, {
+          headers: {
+            'Content-Type': 'text/html; charset=utf-8'
+          }
+        });
+      }
+
       return new Response(content, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8'
