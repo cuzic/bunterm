@@ -9,6 +9,16 @@ import {
   sessionExists
 } from './tmux.js';
 
+// Check if tmux is available for integration tests
+const tmuxAvailable = (() => {
+  try {
+    const result = Bun.spawnSync(['which', 'tmux']);
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+})();
+
 describe('tmux', () => {
   const originalTmux = process.env['TMUX'];
 
@@ -34,21 +44,24 @@ describe('tmux', () => {
   });
 
   describe('isTmuxInstalled', () => {
-    test('returns true when tmux is installed', () => {
-      // Test actual behavior - tmux should be installed on this system
+    test('returns boolean', () => {
       const result = isTmuxInstalled();
       expect(typeof result).toBe('boolean');
+    });
+
+    test.skipIf(!tmuxAvailable)('returns true when tmux is installed', () => {
+      expect(isTmuxInstalled()).toBe(true);
     });
   });
 
   describe('listSessions', () => {
-    test('returns array', () => {
-      // Test actual behavior
+    test.skipIf(!tmuxAvailable)('returns array', () => {
+      // Test actual behavior - may return empty array if no sessions
       const sessions = listSessions();
       expect(Array.isArray(sessions)).toBe(true);
     });
 
-    test('session has correct shape when sessions exist', () => {
+    test.skipIf(!tmuxAvailable)('session has correct shape when sessions exist', () => {
       const sessions = listSessions();
       if (sessions.length > 0) {
         const session = sessions[0];
@@ -91,13 +104,13 @@ describe('getCwdSessionName', () => {
 });
 
 describe('sessionExists', () => {
-  test('returns false for non-existent session', () => {
+  test.skipIf(!tmuxAvailable)('returns false for non-existent session', () => {
     // Use a random name that definitely doesn't exist
     const randomName = `nonexistent-${Date.now()}-${Math.random()}`;
     expect(sessionExists(randomName)).toBe(false);
   });
 
-  test('returns boolean', () => {
+  test.skipIf(!tmuxAvailable)('returns boolean', () => {
     const result = sessionExists('any-session');
     expect(typeof result).toBe('boolean');
   });
