@@ -637,6 +637,7 @@ body:has(#tui.hidden) .xterm-screen {
 #tui-share-modal-content {
   background: #2d2d2d;
   border-radius: 12px;
+  color: #e0e0e0;
   max-width: 400px;
   width: 90%;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5);
@@ -818,6 +819,7 @@ body:has(#tui.hidden) .xterm-screen {
 #tui-snippet-modal-content {
   background: #2d2d2d;
   border-radius: 12px;
+  color: #e0e0e0;
   max-width: 450px;
   width: 90%;
   max-height: 80vh;
@@ -1255,6 +1257,7 @@ body:has(#tui.hidden) .xterm-screen {
 #tui-file-modal-content {
   background: #252526;
   border-radius: 8px;
+  color: #e0e0e0;
   width: 90%;
   max-width: 500px;
   max-height: 80vh;
@@ -1898,6 +1901,7 @@ body.preview-open .xterm-screen {
 #tui-session-modal-content {
   background: #2d2d2d;
   border-radius: 12px;
+  color: #e0e0e0;
   max-width: 500px;
   width: 90%;
   max-height: 70vh;
@@ -2948,6 +2952,7 @@ body.preview-open .xterm-screen {
 #tui-quote-modal-content {
   background: #252525;
   border-radius: 12px;
+  color: #e0e0e0;
   width: 90%;
   max-width: 600px;
   max-height: 70vh;
