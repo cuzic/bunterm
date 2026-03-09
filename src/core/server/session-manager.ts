@@ -20,6 +20,8 @@ export interface NativeSessionOptions {
   cols?: number;
   /** Initial terminal rows */
   rows?: number;
+  /** Existing tmux session name to attach to (overrides tmux_mode) */
+  tmuxSession?: string;
 }
 
 export interface NativeSessionState {
@@ -45,15 +47,15 @@ export class NativeSessionManager {
    * Create and start a new native terminal session
    */
   async createSession(options: NativeSessionOptions): Promise<TerminalSession> {
-    const { name, dir, cols, rows } = options;
+    const { name, dir, cols, rows, tmuxSession } = options;
 
     // Check if session already exists
     if (this.sessions.has(name)) {
       throw new Error(`Session ${name} already exists`);
     }
 
-    // Build command based on tmux_mode
-    const command = this.buildCommand(name);
+    // Build command based on tmux_mode or explicit tmuxSession
+    const command = this.buildCommand(name, { tmuxSession });
 
     // Create terminal session
     const session = new TerminalSession({
@@ -75,9 +77,14 @@ export class NativeSessionManager {
   }
 
   /**
-   * Build the command to run based on tmux_mode
+   * Build the command to run based on tmux_mode or explicit tmuxSession
    */
-  private buildCommand(sessionName: string): string[] {
+  private buildCommand(sessionName: string, options?: { tmuxSession?: string }): string[] {
+    // If tmuxSession is explicitly specified, attach to that tmux session
+    if (options?.tmuxSession) {
+      return ['tmux', 'attach-session', '-t', options.tmuxSession];
+    }
+
     const tmuxMode = this.config.tmux_mode;
 
     switch (tmuxMode) {

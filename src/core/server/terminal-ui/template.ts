@@ -24,6 +24,7 @@ export const terminalUiHtml = `
     <div class="tui-group" data-label="文字">
       <button id="tui-zoomout">A-</button>
       <button id="tui-zoomin">A+</button>
+      <button id="tui-reinit" title="ターミナル再描画">🔄</button>
     </div>
     <div class="tui-group" data-label="コピペ">
       <button id="tui-copyall">All</button>
@@ -44,9 +45,6 @@ export const terminalUiHtml = `
       <button id="tui-send">Send</button>
       <button id="tui-run">Run</button>
       <button id="tui-auto" class="modifier">Auto</button>
-    </div>
-    <div class="tui-group tui-group-end">
-      <button id="tui-minimize" title="コンパクト表示"><span class="tui-minimize-icon">▼</span></button>
     </div>
   </div>
   <div id="tui-input-row">

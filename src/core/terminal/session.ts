@@ -412,6 +412,15 @@ export class TerminalSession {
       case 'unwatchDir':
         this.fileWatcher.unwatchDir(message.path);
         break;
+      case 'replayRequest':
+        // Replay buffered output to this client (used after terminal reinitialize)
+        this.broadcaster.replayTo(ws);
+        // Also send block list if block UI is enabled
+        if (this.blockUIEnabled) {
+          const blocks = this.blockModel.getRecentBlocks(20);
+          this.broadcaster.sendBlockList(ws, blocks);
+        }
+        break;
     }
   }
 

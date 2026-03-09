@@ -24,6 +24,197 @@ function generateAutoReloadScript(): string {
 }
 
 /**
+ * Generate tmux sessions section HTML
+ */
+function generateTmuxSessionsSection(): string {
+  return `
+  <div id="tmuxSessionsSection" class="tmux-section" style="display: none;">
+    <h2>tmux Sessions</h2>
+    <p class="tmux-subtitle">Attach to an existing tmux session</p>
+    <ul id="tmuxSessionsList" class="tmux-sessions-list">
+      <li class="loading-message">Loading tmux sessions...</li>
+    </ul>
+  </div>`;
+}
+
+/**
+ * Generate tmux sessions styles
+ */
+function generateTmuxSessionsStyles(): string {
+  return `
+    .tmux-section {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #333;
+    }
+    .tmux-section h2 {
+      font-size: 1.2rem;
+      color: #00d9ff;
+      margin-bottom: 0.5rem;
+    }
+    .tmux-subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+    .tmux-sessions-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .tmux-sessions-list li {
+      margin-bottom: 0.5rem;
+    }
+    .tmux-sessions-list .loading-message,
+    .tmux-sessions-list .empty-message {
+      color: #888;
+      font-style: italic;
+      padding: 0.5rem 0;
+    }
+    .tmux-session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a2e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .tmux-session-item:hover {
+      border-color: #00d9ff;
+      background: #252540;
+    }
+    .tmux-session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .tmux-session-name {
+      font-weight: 500;
+      color: #fff;
+    }
+    .tmux-session-meta {
+      font-size: 0.8rem;
+      color: #888;
+    }
+    .tmux-session-meta .attached {
+      color: #4caf50;
+    }
+    .tmux-connect-btn {
+      background: #00d9ff;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tmux-connect-btn:hover {
+      background: #00b8d4;
+    }
+    .tmux-connect-btn:disabled {
+      background: #555;
+      color: #888;
+      cursor: not-allowed;
+    }
+  `;
+}
+
+/**
+ * Generate tmux sessions JavaScript
+ */
+function generateTmuxSessionsScript(basePath: string): string {
+  return `
+  <script>
+    const TMUX_API_BASE = '${basePath}';
+
+    async function loadTmuxSessions() {
+      const section = document.getElementById('tmuxSessionsSection');
+      const list = document.getElementById('tmuxSessionsList');
+
+      try {
+        const res = await fetch(TMUX_API_BASE + '/api/tmux/sessions');
+        const data = await res.json();
+
+        if (!data.installed) {
+          // tmux not installed, hide the section
+          section.style.display = 'none';
+          return;
+        }
+
+        if (data.sessions.length === 0) {
+          list.innerHTML = '<li class="empty-message">No tmux sessions available</li>';
+          section.style.display = 'block';
+          return;
+        }
+
+        list.innerHTML = data.sessions.map(function(s) {
+          const meta = s.windows + ' window' + (s.windows !== 1 ? 's' : '') +
+            (s.attached ? ' • <span class="attached">attached</span>' : '');
+          return '<li>' +
+            '<div class="tmux-session-item">' +
+            '<div class="tmux-session-info">' +
+            '<span class="tmux-session-name">' + escapeHtml(s.name) + '</span>' +
+            '<span class="tmux-session-meta">' + meta + '</span>' +
+            '</div>' +
+            '<button class="tmux-connect-btn" onclick="connectToTmux(\\'' + escapeJs(s.name) + '\\')">Connect</button>' +
+            '</div>' +
+            '</li>';
+        }).join('');
+
+        section.style.display = 'block';
+      } catch (e) {
+        console.error('Failed to load tmux sessions:', e);
+        section.style.display = 'none';
+      }
+    }
+
+    async function connectToTmux(tmuxSessionName) {
+      // Generate a unique bunterm session name
+      const sessionName = 'tmux-' + tmuxSessionName + '-' + Date.now().toString(36);
+
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+
+      try {
+        const res = await fetch(TMUX_API_BASE + '/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: sessionName,
+            dir: '.',
+            tmuxSession: tmuxSessionName
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Failed to connect: ' + (data.error || 'Unknown error'));
+          btn.disabled = false;
+          btn.textContent = 'Connect';
+          return;
+        }
+
+        // Navigate to the new session
+        window.location.href = TMUX_API_BASE + '/' + encodeURIComponent(sessionName) + '/';
+      } catch (e) {
+        console.error('Failed to connect to tmux session:', e);
+        alert('Failed to connect to tmux session');
+        btn.disabled = false;
+        btn.textContent = 'Connect';
+      }
+    }
+
+    // Load tmux sessions on page load
+    loadTmuxSessions();
+  </script>`;
+}
+
+/**
  * Generate directory browser modal HTML
  */
 function generateDirectoryBrowserModal(): string {
@@ -279,6 +470,11 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
   const dirBrowserScript = dirBrowserEnabled ? generateDirectoryBrowserScript(basePath) : '';
   const dirBrowserCss = dirBrowserEnabled ? directoryBrowserStyles : '';
 
+  // tmux sessions section
+  const tmuxSessionsSection = generateTmuxSessionsSection();
+  const tmuxSessionsStyles = generateTmuxSessionsStyles();
+  const tmuxSessionsScript = generateTmuxSessionsScript(basePath);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -296,7 +492,7 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
     }
     .refresh a:hover {
       text-decoration: underline;
-    }${dirBrowserCss}
+    }${dirBrowserCss}${tmuxSessionsStyles}
   </style>
 </head>
 <body>
@@ -306,10 +502,10 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
 ${sessionItems}
   </ul>
   ${noSessions}
-  ${newSessionButton}
+  ${newSessionButton}${tmuxSessionsSection}
   <div class="refresh">
     <a href="javascript:location.reload()">Refresh</a>
-  </div>${dirBrowserModal}${generateSwRegistration(basePath)}${generateAutoReloadScript()}${dirBrowserScript}
+  </div>${dirBrowserModal}${generateSwRegistration(basePath)}${generateAutoReloadScript()}${dirBrowserScript}${tmuxSessionsScript}
 </body>
 </html>
 `;

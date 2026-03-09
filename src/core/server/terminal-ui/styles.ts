@@ -2063,6 +2063,45 @@ body.preview-open .xterm-screen {
   font-size: 14px;
 }
 
+/* Session sections (bunterm/tmux) */
+.tui-session-section {
+  margin-bottom: 12px;
+}
+
+.tui-session-section-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 4px 4px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 8px;
+}
+
+.tui-tmux-section {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid #333;
+}
+
+.tui-tmux-item {
+  border-left: 3px solid #00d9ff;
+}
+
+.tui-tmux-item.attached {
+  border-left-color: #4caf50;
+}
+
+.tui-session-attached-badge {
+  font-size: 10px;
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
 /* Mobile adjustments for session modal */
 @media (max-width: 768px) {
   #tui-session-modal {

@@ -1168,6 +1168,9 @@ export class TerminalClient {
         cols: currentCols,
         rows: currentRows
       });
+
+      // Request replay of buffered output to restore terminal content
+      this.send({ type: 'replayRequest' });
     }
   }
 

@@ -27,7 +27,7 @@ const SCROLL_THRESHOLD = 30; // Pixels to drag before triggering scroll
 const EDGE_SWIPE_THRESHOLD = 30; // Pixels from edge to start swipe detection
 const SWIPE_HORIZONTAL_THRESHOLD = 100; // Minimum horizontal distance for swipe
 const SWIPE_VERTICAL_LIMIT = 50; // Maximum vertical distance for swipe
-const ALT_SCROLL_THRESHOLD = 12; // Pixels to drag for one wheel tick (smaller = faster)
+const ALT_SCROLL_THRESHOLD = 6; // Pixels to drag for one wheel tick (smaller = faster)
 const ALT_SCROLL_MULTIPLIER = 1; // Send multiple wheel events per tick for faster scrolling
 
 export class TouchGestureHandler implements Mountable {

@@ -820,21 +820,53 @@ class ToolbarApp {
   }
 
   /**
-   * Toggle toolbar visibility
+   * Toggle toolbar visibility (3-state cycle)
+   * State 0: Full toolbar (buttons + input)
+   * State 1: Input only (buttons collapsed)
+   * State 2: Hidden
    */
   private toggleToolbar(show?: boolean): void {
     const { container, input, toggleBtn } = this.elements;
 
+    // If explicit show value is provided
     if (typeof show === 'boolean') {
-      container.classList.toggle('hidden', !show);
+      if (show) {
+        // Show full toolbar
+        container.classList.remove('hidden');
+        container.classList.remove('buttons-collapsed');
+      } else {
+        // Hide completely
+        container.classList.add('hidden');
+      }
     } else {
-      container.classList.toggle('hidden');
+      // Cycle through 3 states
+      const isHidden = container.classList.contains('hidden');
+      const isCollapsed = container.classList.contains('buttons-collapsed');
+
+      if (isHidden) {
+        // State 2 → State 0: Hidden → Full toolbar
+        container.classList.remove('hidden');
+        container.classList.remove('buttons-collapsed');
+      } else if (isCollapsed) {
+        // State 1 → State 2: Input only → Hidden
+        container.classList.add('hidden');
+      } else {
+        // State 0 → State 1: Full toolbar → Input only
+        container.classList.add('buttons-collapsed');
+      }
     }
 
     const isHidden = container.classList.contains('hidden');
+    const isCollapsed = container.classList.contains('buttons-collapsed');
 
-    // Update toggle button title
-    toggleBtn.title = isHidden ? 'ツールバーを表示 (Ctrl+J)' : 'ツールバーを隠す (Ctrl+J)';
+    // Update toggle button title based on current state
+    if (isHidden) {
+      toggleBtn.title = 'ツールバーを表示 (Ctrl+J)';
+    } else if (isCollapsed) {
+      toggleBtn.title = '入力欄を非表示 (Ctrl+J)';
+    } else {
+      toggleBtn.title = 'ボタンを非表示 (Ctrl+J)';
+    }
 
     if (isHidden) {
       const terminal = document.querySelector('.xterm-helper-textarea') as HTMLElement;

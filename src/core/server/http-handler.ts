@@ -28,6 +28,7 @@ import { getPublicVapidKey } from '@/features/notifications/server/vapid.js';
 import { createShareManager } from '@/features/share/server/share-manager.js';
 import { createLogger } from '@/utils/logger.js';
 import { validateSecurePath } from '@/utils/path-security.js';
+import { type TmuxSession, createTmuxClient } from '@/utils/tmux-client.js';
 import { generatePortalHtml } from './portal.js';
 import { getIconPng, getIconSvg, getManifestJson, getServiceWorker } from './pwa.js';
 import type { NativeSessionManager } from './session-manager.js';
@@ -561,11 +562,47 @@ async function handleApiRequest(
     return new Response(JSON.stringify(sessions), { headers });
   }
 
+  // GET /api/tmux/sessions - List available tmux sessions
+  if (apiPath === '/tmux/sessions' && method === 'GET') {
+    const tmuxClient = createTmuxClient();
+    const installed = tmuxClient.isInstalled();
+
+    if (!installed) {
+      return new Response(
+        JSON.stringify({
+          sessions: [],
+          installed: false
+        }),
+        { headers }
+      );
+    }
+
+    const tmuxSessions = tmuxClient.listSessions();
+    const sessions = tmuxSessions.map((s: TmuxSession) => ({
+      name: s.name,
+      windows: s.windows,
+      created: s.created.toISOString(),
+      attached: s.attached
+    }));
+
+    return new Response(
+      JSON.stringify({
+        sessions,
+        installed: true
+      }),
+      { headers }
+    );
+  }
+
   // POST /api/sessions - Create new session
   if (apiPath === '/sessions' && method === 'POST') {
     try {
       const body = await req.json();
-      const { name, dir } = body as { name?: string; dir?: string };
+      const { name, dir, tmuxSession } = body as {
+        name?: string;
+        dir?: string;
+        tmuxSession?: string;
+      };
 
       if (!name) {
         return new Response(JSON.stringify({ error: 'Session name is required' }), {
@@ -581,10 +618,31 @@ async function handleApiRequest(
         });
       }
 
+      // If tmuxSession is specified, verify it exists
+      if (tmuxSession) {
+        const tmuxClient = createTmuxClient();
+        if (!tmuxClient.isInstalled()) {
+          return new Response(JSON.stringify({ error: 'tmux is not installed' }), {
+            status: 400,
+            headers
+          });
+        }
+        if (!tmuxClient.sessionExists(tmuxSession)) {
+          return new Response(
+            JSON.stringify({ error: `tmux session "${tmuxSession}" not found` }),
+            {
+              status: 404,
+              headers
+            }
+          );
+        }
+      }
+
       const session = await sessionManager.createSession({
         name,
         dir: dir || process.cwd(),
-        path: `${basePath}/${name}`
+        path: `${basePath}/${name}`,
+        tmuxSession
       });
 
       return new Response(
@@ -592,7 +650,8 @@ async function handleApiRequest(
           name: session.name,
           pid: session.pid,
           path: `/${name}`,
-          dir: session.cwd
+          dir: session.cwd,
+          tmuxSession
         }),
         { status: 201, headers }
       );

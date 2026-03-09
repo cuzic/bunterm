@@ -50,6 +50,10 @@ export interface UnwatchDirMessage {
   path: string;
 }
 
+export interface ReplayRequestMessage {
+  type: 'replayRequest';
+}
+
 export type ClientMessage =
   | InputMessage
   | ResizeMessage
@@ -57,7 +61,8 @@ export type ClientMessage =
   | WatchFileMessage
   | UnwatchFileMessage
   | WatchDirMessage
-  | UnwatchDirMessage;
+  | UnwatchDirMessage
+  | ReplayRequestMessage;
 
 // === Server → Client Messages ===
 
