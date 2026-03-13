@@ -109,6 +109,29 @@ export const portalStyles = `
       padding: 0.2rem 0.4rem;
       border-radius: 4px;
       font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+    }
+    /* Mobile responsive styles */
+    @media (max-width: 480px) {
+      body {
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .subtitle {
+        margin-bottom: 1.5rem;
+      }
+      .session a {
+        padding: 0.875rem;
+      }
+      .name {
+        font-size: 1rem;
+        word-break: break-word;
+      }
+      .info {
+        font-size: 0.8rem;
+        word-break: break-all;
+      }
     }`;
 
 /**
@@ -329,4 +352,46 @@ export const directoryBrowserStyles = `
       padding: 2rem;
       text-align: center;
       color: #888;
+    }
+    /* Mobile responsive styles for directory browser */
+    @media (max-width: 480px) {
+      .new-session-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.875rem 1rem;
+        min-height: 44px;
+      }
+      .modal {
+        width: 95%;
+        max-height: 90vh;
+      }
+      .modal-header {
+        padding: 0.875rem 1rem;
+      }
+      .modal-header h2 {
+        font-size: 1.1rem;
+      }
+      .modal-body {
+        padding: 0.875rem 1rem;
+      }
+      .modal-footer {
+        padding: 0.875rem 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .modal-footer .btn {
+        width: 100%;
+        min-height: 44px;
+      }
+      .directory-list {
+        max-height: 250px;
+      }
+      .directory-item {
+        padding: 0.875rem 1rem;
+        min-height: 44px;
+      }
+      .selected-path {
+        font-size: 0.8rem;
+        word-break: break-all;
+      }
     }`;
