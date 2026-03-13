@@ -350,12 +350,12 @@ export class QuoteManager implements Mountable {
   }
 
   /**
-   * Fetch recently modified markdown files (last 24 hours)
+   * Fetch recently modified markdown files (last week)
    */
   private async fetchRecentMarkdown(basePath: string, sessionName: string): Promise<void> {
     try {
       const response = await fetch(
-        `${basePath}/api/claude-quotes/recent-markdown?session=${encodeURIComponent(sessionName)}&count=20&hours=24`
+        `${basePath}/api/claude-quotes/recent-markdown?session=${encodeURIComponent(sessionName)}&count=20&hours=168`
       );
       if (response.ok) {
         const data = await response.json();
@@ -570,7 +570,7 @@ export class QuoteManager implements Mountable {
   ): void {
     if (files.length === 0) {
       const emptyMessages: Record<string, string> = {
-        recent: '最近更新されたマークダウンファイルがありません（24時間以内）',
+        recent: '最近更新されたマークダウンファイルがありません（1週間以内）',
         project: 'プロジェクト内マークダウンファイルが見つかりません',
         plans: 'マークダウンファイルが見つかりません'
       };
