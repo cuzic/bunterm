@@ -375,6 +375,7 @@ body:has(#tui.hidden) .xterm-screen {
   z-index: 10002;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   line-height: 1.5;
+  pointer-events: none;
 }
 
 #tui-onboarding::after {
@@ -397,6 +398,7 @@ body:has(#tui.hidden) .xterm-screen {
   font-size: 16px;
   cursor: pointer;
   padding: 4px;
+  pointer-events: auto;
 }
 
 #tui-onboarding-close:hover {
