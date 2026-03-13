@@ -178,8 +178,19 @@ export class TerminalSession {
     // Convert to string for OSC parsing
     const text = new TextDecoder('utf-8', { fatal: false }).decode(data);
 
+    // Fix OSC 52 sequences that have been partially processed by tmux.
+    // When set-clipboard is enabled, tmux extracts the clipboard target (e.g., 'c')
+    // for its own clipboard handling, but since it runs in a PTY without access
+    // to the system clipboard, it outputs the sequence without the target:
+    // ESC]52;;base64... instead of ESC]52;c;base64...
+    // We restore the 'c' target for xterm.js ClipboardAddon to work.
+    let processedText = text;
+    if (processedText.includes('\x1b]52;;')) {
+      processedText = processedText.replace(/\x1b\]52;;/g, '\x1b]52;c;');
+    }
+
     // Parse OSC 633 sequences using extracted parser
-    const { filteredOutput, sequences } = this.oscParser.parse(text);
+    const { filteredOutput, sequences } = this.oscParser.parse(processedText);
 
     // Process OSC 633 sequences for block management
     for (const seq of sequences) {

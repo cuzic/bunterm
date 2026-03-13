@@ -5,7 +5,7 @@
  * It exports the Terminal class and addon instances for use by terminal-client.js.
  */
 
-import { ClipboardAddon } from '@xterm/addon-clipboard';
+import { BrowserClipboardProvider, ClipboardAddon } from '@xterm/addon-clipboard';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { SerializeAddon } from '@xterm/addon-serialize';
@@ -129,7 +129,7 @@ export function createTerminal(options?: {
   const unicode11Addon = new Unicode11Addon();
   const serializeAddon = new SerializeAddon();
   const searchAddon = new SearchAddon();
-  const clipboardAddon = new ClipboardAddon();
+  const clipboardAddon = new ClipboardAddon(undefined, new BrowserClipboardProvider());
 
   terminal.loadAddon(fitAddon);
   terminal.loadAddon(webLinksAddon);
