@@ -51,7 +51,6 @@ describe('portal', () => {
       expect(html).toContain('<!DOCTYPE html>');
       expect(html).toContain('<title>bunterm</title>');
       expect(html).toContain('No active sessions');
-      expect(html).toContain('bunterm up');
     });
 
     test('generates HTML with sessions', () => {

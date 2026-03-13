@@ -29,8 +29,11 @@ function generateAutoReloadScript(): string {
 function generateTmuxSessionsSection(): string {
   return `
   <div id="tmuxSessionsSection" class="tmux-section" style="display: none;">
-    <h2>tmux Sessions</h2>
-    <p class="tmux-subtitle">Attach to an existing tmux session</p>
+    <div class="tmux-header">
+      <span class="tmux-icon">&#128279;</span>
+      <h2>tmux Sessions</h2>
+    </div>
+    <p class="tmux-subtitle">Connect to an existing tmux session</p>
     <ul id="tmuxSessionsList" class="tmux-sessions-list">
       <li class="loading-message">Loading tmux sessions...</li>
     </ul>
@@ -43,19 +46,30 @@ function generateTmuxSessionsSection(): string {
 function generateTmuxSessionsStyles(): string {
   return `
     .tmux-section {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #333;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #16213e 0%, #1a2744 100%);
+      border: 1px solid #2a4a6e;
+      border-radius: 12px;
     }
-    .tmux-section h2 {
-      font-size: 1.2rem;
-      color: #00d9ff;
+    .tmux-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       margin-bottom: 0.5rem;
     }
+    .tmux-icon {
+      font-size: 1.3rem;
+    }
+    .tmux-section h2 {
+      font-size: 1.3rem;
+      color: #00d9ff;
+      margin: 0;
+    }
     .tmux-subtitle {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #888;
-      margin-bottom: 1rem;
+      margin: 0 0 1rem 0;
     }
     .tmux-sessions-list {
       list-style: none;
@@ -63,27 +77,34 @@ function generateTmuxSessionsStyles(): string {
       margin: 0;
     }
     .tmux-sessions-list li {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .tmux-sessions-list li:last-child {
+      margin-bottom: 0;
     }
     .tmux-sessions-list .loading-message,
     .tmux-sessions-list .empty-message {
       color: #888;
       font-style: italic;
-      padding: 0.5rem 0;
+      padding: 1rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
     }
     .tmux-session-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: #1a1a2e;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      transition: border-color 0.2s, background 0.2s;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #2a4a6e;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
     }
     .tmux-session-item:hover {
       border-color: #00d9ff;
-      background: #252540;
+      background: rgba(0, 217, 255, 0.1);
+      transform: translateX(4px);
     }
     .tmux-session-info {
       display: flex;
@@ -91,33 +112,89 @@ function generateTmuxSessionsStyles(): string {
       gap: 0.25rem;
     }
     .tmux-session-name {
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 1.1rem;
       color: #fff;
     }
     .tmux-session-meta {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: #888;
     }
     .tmux-session-meta .attached {
       color: #4caf50;
+      font-weight: 500;
     }
     .tmux-connect-btn {
       background: #00d9ff;
       color: #000;
       border: none;
-      border-radius: 4px;
-      padding: 0.5rem 1rem;
-      font-size: 0.85rem;
+      border-radius: 6px;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, transform 0.1s;
     }
     .tmux-connect-btn:hover {
       background: #00b8d4;
+      transform: scale(1.05);
     }
     .tmux-connect-btn:disabled {
       background: #555;
       color: #888;
       cursor: not-allowed;
+      transform: none;
+    }
+    /* Active sessions section */
+    .active-sessions-section {
+      margin-bottom: 1.5rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .section-icon {
+      font-size: 1.2rem;
+    }
+    .section-header h2 {
+      font-size: 1.1rem;
+      color: #888;
+      margin: 0;
+      font-weight: 500;
+    }
+    /* Mobile responsive styles */
+    @media (max-width: 480px) {
+      .tmux-section {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      .tmux-section h2 {
+        font-size: 1.1rem;
+      }
+      .tmux-session-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+      }
+      .tmux-session-info {
+        text-align: left;
+      }
+      .tmux-session-name {
+        font-size: 1rem;
+        word-break: break-word;
+      }
+      .tmux-connect-btn {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        min-height: 44px;
+        font-size: 1rem;
+      }
+      .section-header h2 {
+        font-size: 1rem;
+      }
     }
   `;
 }
@@ -129,6 +206,16 @@ function generateTmuxSessionsScript(basePath: string): string {
   return `
   <script>
     const TMUX_API_BASE = '${basePath}';
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escapeJs(str) {
+      return str.replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'");
+    }
 
     async function loadTmuxSessions() {
       const section = document.getElementById('tmuxSessionsSection');
@@ -457,14 +544,11 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
     })
     .join('\n');
 
-  const noSessions =
-    sessions.length === 0
-      ? '<p class="no-sessions">No active sessions. Use <code>bunterm up</code> to start one.</p>'
-      : '';
+  const noSessions = sessions.length === 0 ? '<p class="no-sessions">No active sessions</p>' : '';
 
   const dirBrowserEnabled = config.directory_browser.enabled;
   const newSessionButton = dirBrowserEnabled
-    ? '<button class="new-session-btn" onclick="openDirBrowser()">+ New Session</button>'
+    ? '<button class="new-session-btn" onclick="openDirBrowser()">+ New Shell Session</button>'
     : '';
   const dirBrowserModal = dirBrowserEnabled ? generateDirectoryBrowserModal() : '';
   const dirBrowserScript = dirBrowserEnabled ? generateDirectoryBrowserScript(basePath) : '';
@@ -474,6 +558,20 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
   const tmuxSessionsSection = generateTmuxSessionsSection();
   const tmuxSessionsStyles = generateTmuxSessionsStyles();
   const tmuxSessionsScript = generateTmuxSessionsScript(basePath);
+
+  // Active sessions section (only if there are sessions)
+  const activeSessionsSection =
+    sessions.length > 0
+      ? `<div class="active-sessions-section">
+    <div class="section-header">
+      <span class="section-icon">&#128187;</span>
+      <h2>Active Sessions</h2>
+    </div>
+    <ul>
+${sessionItems}
+    </ul>
+  </div>`
+      : noSessions;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -497,12 +595,10 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
 </head>
 <body>
   <h1>bunterm</h1>
-  <p class="subtitle">Active Terminal Sessions</p>
-  <ul>
-${sessionItems}
-  </ul>
-  ${noSessions}
-  ${newSessionButton}${tmuxSessionsSection}
+  <p class="subtitle">Terminal Portal</p>
+  ${tmuxSessionsSection}
+  ${activeSessionsSection}
+  ${newSessionButton}
   <div class="refresh">
     <a href="javascript:location.reload()">Refresh</a>
   </div>${dirBrowserModal}${generateSwRegistration(basePath)}${generateAutoReloadScript()}${dirBrowserScript}${tmuxSessionsScript}
