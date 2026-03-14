@@ -5,7 +5,7 @@
  * Supports 4 tabs: Claude Turns, Project Markdown, Plans, Git Diff
  */
 
-import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import { type Mountable, Scope, on } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import { bindClickScoped } from '@/browser/shared/utils.js';
 import type {
@@ -56,6 +56,9 @@ export class QuoteManager implements Mountable {
   // Tooltip
   private tooltipElement: HTMLElement | null = null;
   private tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Scope for list item event listeners (cleared on re-render)
+  private listScope: Scope | null = null;
 
   constructor(config: TerminalUiConfig) {
     this.config = config;
@@ -404,6 +407,10 @@ export class QuoteManager implements Mountable {
       return;
     }
 
+    // Close previous list scope and create new one
+    this.listScope?.close();
+    this.listScope = new Scope();
+
     const list = this.elements.list;
     list.innerHTML = '';
 
@@ -590,24 +597,45 @@ export class QuoteManager implements Mountable {
       content.appendChild(header);
       content.appendChild(meta);
 
-      // Add hover tooltip for file content preview (PC only)
-      if (!this.isMobile()) {
-        item.addEventListener('mouseenter', async (e) => {
+      // Add hover tooltip for file content preview (PC) or long press (mobile)
+      if (this.isMobile()) {
+        this.setupLongPress(item, async (x, y) => {
           const preview = await this.fetchFilePreview(source, file.path);
           if (preview) {
-            this.showTooltip(this.formatFileTooltip(file.path, preview), e.clientX, e.clientY);
+            this.showTooltip(this.formatFileTooltip(file.path, preview), x, y);
           }
         });
+      } else if (this.listScope) {
+        this.listScope.add(
+          on(item, 'mouseenter', async (e: Event) => {
+            const preview = await this.fetchFilePreview(source, file.path);
+            if (preview) {
+              this.showTooltip(
+                this.formatFileTooltip(file.path, preview),
+                (e as MouseEvent).clientX,
+                (e as MouseEvent).clientY
+              );
+            }
+          })
+        );
 
-        item.addEventListener('mousemove', (e) => {
-          if (this.tooltipElement?.style.display === 'block') {
-            this.showTooltip(this.tooltipElement.innerHTML, e.clientX, e.clientY);
-          }
-        });
+        this.listScope.add(
+          on(item, 'mousemove', (e: Event) => {
+            if (this.tooltipElement?.style.display === 'block') {
+              this.showTooltip(
+                this.tooltipElement.innerHTML,
+                (e as MouseEvent).clientX,
+                (e as MouseEvent).clientY
+              );
+            }
+          })
+        );
 
-        item.addEventListener('mouseleave', () => {
-          this.hideTooltip();
-        });
+        this.listScope.add(
+          on(item, 'mouseleave', () => {
+            this.hideTooltip();
+          })
+        );
       }
 
       item.appendChild(checkbox);
@@ -693,24 +721,45 @@ export class QuoteManager implements Mountable {
         </div>
       `;
 
-      // Add hover tooltip for diff preview (PC only)
-      if (!this.isMobile()) {
-        item.addEventListener('mouseenter', async (e) => {
+      // Add hover tooltip for diff preview (PC) or long press (mobile)
+      if (this.isMobile()) {
+        this.setupLongPress(item, async (x, y) => {
           const preview = await this.fetchGitDiffPreview(file.path);
           if (preview) {
-            this.showTooltip(this.formatDiffTooltip(file.path, preview), e.clientX, e.clientY);
+            this.showTooltip(this.formatDiffTooltip(file.path, preview), x, y);
           }
         });
+      } else if (this.listScope) {
+        this.listScope.add(
+          on(item, 'mouseenter', async (e: Event) => {
+            const preview = await this.fetchGitDiffPreview(file.path);
+            if (preview) {
+              this.showTooltip(
+                this.formatDiffTooltip(file.path, preview),
+                (e as MouseEvent).clientX,
+                (e as MouseEvent).clientY
+              );
+            }
+          })
+        );
 
-        item.addEventListener('mousemove', (e) => {
-          if (this.tooltipElement?.style.display === 'block') {
-            this.showTooltip(this.tooltipElement.innerHTML, e.clientX, e.clientY);
-          }
-        });
+        this.listScope.add(
+          on(item, 'mousemove', (e: Event) => {
+            if (this.tooltipElement?.style.display === 'block') {
+              this.showTooltip(
+                this.tooltipElement.innerHTML,
+                (e as MouseEvent).clientX,
+                (e as MouseEvent).clientY
+              );
+            }
+          })
+        );
 
-        item.addEventListener('mouseleave', () => {
-          this.hideTooltip();
-        });
+        this.listScope.add(
+          on(item, 'mouseleave', () => {
+            this.hideTooltip();
+          })
+        );
       }
 
       item.appendChild(checkbox);
@@ -1071,6 +1120,68 @@ export class QuoteManager implements Mountable {
       <div style="color: #00d9ff; margin-bottom: 4px; font-weight: bold;">${this.escapeHtml(path)}</div>
       <div style="white-space: pre-wrap;">${coloredDiff}</div>
     </div>`;
+  }
+
+  /**
+   * Setup long press handler for mobile preview
+   */
+  private setupLongPress(
+    element: HTMLElement,
+    onLongPress: (x: number, y: number) => void
+  ): void {
+    if (!this.listScope) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let touchX = 0;
+    let touchY = 0;
+
+    this.listScope.add(
+      on(element, 'touchstart', (e: Event) => {
+        const touch = (e as TouchEvent).touches[0];
+        touchX = touch.clientX;
+        touchY = touch.clientY;
+
+        timer = setTimeout(() => {
+          onLongPress(touchX, touchY);
+        }, 500); // 500ms long press
+      })
+    );
+
+    this.listScope.add(
+      on(element, 'touchend', () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        // Hide tooltip after a delay when touch ends
+        setTimeout(() => this.hideTooltip(), 100);
+      })
+    );
+
+    this.listScope.add(
+      on(element, 'touchmove', (e: Event) => {
+        // Cancel if moved too far
+        const touch = (e as TouchEvent).touches[0];
+        const dx = Math.abs(touch.clientX - touchX);
+        const dy = Math.abs(touch.clientY - touchY);
+        if (dx > 10 || dy > 10) {
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        }
+      })
+    );
+
+    this.listScope.add(
+      on(element, 'touchcancel', () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        this.hideTooltip();
+      })
+    );
   }
 
   /**
