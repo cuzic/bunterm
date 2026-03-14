@@ -142,11 +142,30 @@ export class QuoteManager implements Mountable {
       return;
     }
 
+    // Clear any pending hide timeout
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+    }
+
     this.tooltipTimeout = setTimeout(() => {
       if (this.tooltipElement) {
         this.tooltipElement.style.display = 'none';
       }
+      this.tooltipTimeout = null;
     }, 100);
+  }
+
+  /**
+   * Hide tooltip immediately
+   */
+  private hideTooltipImmediately(): void {
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+      this.tooltipTimeout = null;
+    }
+    if (this.tooltipElement) {
+      this.tooltipElement.style.display = 'none';
+    }
   }
 
   /**
@@ -240,6 +259,7 @@ export class QuoteManager implements Mountable {
       return;
     }
 
+    this.hideTooltipImmediately();
     this.elements.modal.classList.add('hidden');
     this.isOpen = false;
   }
@@ -252,6 +272,7 @@ export class QuoteManager implements Mountable {
       return;
     }
 
+    this.hideTooltipImmediately();
     this.activeTab = tab;
 
     // Update tab buttons
@@ -406,6 +427,9 @@ export class QuoteManager implements Mountable {
     if (!this.elements) {
       return;
     }
+
+    // Hide any visible tooltip
+    this.hideTooltipImmediately();
 
     // Close previous list scope and create new one
     this.listScope?.close();
