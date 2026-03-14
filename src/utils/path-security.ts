@@ -179,10 +179,13 @@ export type PathValidationResult =
  * @returns Validation result with resolved path or error message
  */
 export function validateSecurePath(baseDir: string, filePath: string): PathValidationResult {
-  const targetPath = resolve(baseDir, filePath);
+  // Resolve baseDir to absolute path to handle relative paths like "."
+  const absBaseDir = resolve(baseDir);
+  const targetPath = resolve(absBaseDir, filePath);
 
   // Security: ensure path is within base directory
-  if (!targetPath.startsWith(baseDir)) {
+  // Use absBaseDir + '/' to prevent matching /home/user/projectfoo when baseDir is /home/user/project
+  if (!targetPath.startsWith(absBaseDir + '/') && targetPath !== absBaseDir) {
     return { valid: false, error: 'Invalid path' };
   }
 
