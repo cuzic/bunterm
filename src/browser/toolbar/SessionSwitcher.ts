@@ -11,7 +11,7 @@
 import { toolbarEvents } from '@/browser/shared/events.js';
 import { type Mountable, type Scope, on, onBus } from '@/browser/shared/lifecycle.js';
 import type { SessionSwitcherElements, TerminalUiConfig } from '@/browser/shared/types.js';
-import { bindClickScoped } from '@/browser/shared/utils.js';
+import { bindClickScoped, escapeHtml } from '@/browser/shared/utils.js';
 
 /** Session data from API */
 interface SessionInfo {
@@ -285,9 +285,23 @@ export class SessionSwitcher implements Mountable {
    * Connect to a tmux session by creating a bunterm session that attaches to it
    */
   private async connectToTmuxSession(tmuxSession: TmuxSessionInfo): Promise<void> {
-    const sessionName = `tmux-${tmuxSession.name}-${Date.now().toString(36)}`;
-
     try {
+      // Check if there's an existing bunterm session for this tmux session
+      const sessionsRes = await fetch(`${this.config.base_path}/api/sessions`);
+      const sessions = (await sessionsRes.json()) as Array<{ name: string; tmuxSession?: string }>;
+      const existing = sessions.find((s) => s.tmuxSession === tmuxSession.name);
+
+      if (existing) {
+        // Open existing session
+        const fullPath = `${this.config.base_path}/${encodeURIComponent(existing.name)}/`;
+        window.open(fullPath, '_blank');
+        this.hide();
+        return;
+      }
+
+      // Use the same name as tmux session
+      const sessionName = tmuxSession.name;
+
       const response = await fetch(`${this.config.base_path}/api/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -494,8 +508,8 @@ export class SessionSwitcher implements Mountable {
             <div class="${classes}" data-section="bunterm" data-index="${index}">
               <span class="tui-session-icon">${isCurrent ? '📍' : '📁'}</span>
               <div class="tui-session-info">
-                <div class="tui-session-name">${this.escapeHtml(session.name)}</div>
-                <div class="tui-session-path">${this.escapeHtml(session.dir)}</div>
+                <div class="tui-session-name">${escapeHtml(session.name)}</div>
+                <div class="tui-session-path">${escapeHtml(session.dir)}</div>
               </div>
               ${isCurrent ? '<span class="tui-session-current-badge">現在</span>' : ''}
             </div>
@@ -527,7 +541,7 @@ export class SessionSwitcher implements Mountable {
             <div class="${classes}" data-section="tmux" data-index="${index}">
               <span class="tui-session-icon">🖥️</span>
               <div class="tui-session-info">
-                <div class="tui-session-name">${this.escapeHtml(tmuxSession.name)}</div>
+                <div class="tui-session-name">${escapeHtml(tmuxSession.name)}</div>
                 <div class="tui-session-path">${meta}</div>
               </div>
               ${tmuxSession.attached ? '<span class="tui-session-attached-badge">attached</span>' : ''}
@@ -546,7 +560,10 @@ export class SessionSwitcher implements Mountable {
     );
     buntermItems.forEach((item) => {
       item.addEventListener('click', () => {
-        const index = Number.parseInt(item.getAttribute('data-index') ?? '0', 10);
+        const index = Number.parseInt(item.getAttribute('data-index') ?? '', 10);
+        if (Number.isNaN(index) || index < 0 || index >= this.filteredSessions.length) {
+          return;
+        }
         const session = this.filteredSessions[index];
         if (session) {
           this.navigateToSession(session);
@@ -560,21 +577,15 @@ export class SessionSwitcher implements Mountable {
     );
     tmuxItems.forEach((item) => {
       item.addEventListener('click', () => {
-        const index = Number.parseInt(item.getAttribute('data-index') ?? '0', 10);
+        const index = Number.parseInt(item.getAttribute('data-index') ?? '', 10);
+        if (Number.isNaN(index) || index < 0 || index >= this.filteredTmuxSessions.length) {
+          return;
+        }
         const tmuxSession = this.filteredTmuxSessions[index];
         if (tmuxSession) {
           this.connectToTmuxSession(tmuxSession);
         }
       });
     });
-  }
-
-  /**
-   * Escape HTML special characters
-   */
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }

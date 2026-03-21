@@ -94,3 +94,54 @@ export async function blobToBase64(blob: Blob): Promise<string> {
     new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
   );
 }
+
+/**
+ * Copy text to clipboard with consistent error handling
+ * @param text - The text to copy
+ * @returns True if copy succeeded, false otherwise
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (!navigator.clipboard) {
+    console.warn('Clipboard API not available');
+    return false;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error);
+    return false;
+  }
+}
+
+/**
+ * Read text from clipboard
+ * @returns Clipboard text or null if failed
+ */
+export async function readClipboardText(): Promise<string | null> {
+  if (!navigator.clipboard) {
+    console.warn('Clipboard API not available');
+    return null;
+  }
+  try {
+    return await navigator.clipboard.readText();
+  } catch (error) {
+    console.error('Failed to read clipboard:', error);
+    return null;
+  }
+}
+
+/**
+ * Escape HTML special characters using string replacement
+ * More efficient than DOM-based escaping
+ * @param text - The text to escape
+ * @returns Escaped HTML string
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

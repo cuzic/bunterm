@@ -36,6 +36,7 @@ export class SmartPasteManager implements Mountable {
   private actor: SmartPasteActor;
   private unsubscribe: (() => void) | null = null;
   private inputTextarea: HTMLTextAreaElement | null = null;
+  private uploadAbortController: AbortController | null = null;
 
   constructor(
     config: TerminalUiConfig,
@@ -66,6 +67,8 @@ export class SmartPasteManager implements Mountable {
     // Update UI based on state
     switch (state) {
       case 'idle': {
+        // Abort any pending upload requests
+        this.abortPendingUploads();
         this.hidePreviewModal();
         // Handle uploaded paths
         if (context.uploadedPaths.length > 0) {
@@ -110,6 +113,25 @@ export class SmartPasteManager implements Mountable {
    */
   private getState(): string {
     return this.actor.getSnapshot().value as string;
+  }
+
+  /**
+   * Abort any pending upload requests
+   */
+  private abortPendingUploads(): void {
+    if (this.uploadAbortController) {
+      this.uploadAbortController.abort();
+      this.uploadAbortController = null;
+    }
+  }
+
+  /**
+   * Create a new AbortController for upload requests
+   */
+  private createUploadAbortController(): AbortSignal {
+    this.abortPendingUploads();
+    this.uploadAbortController = new AbortController();
+    return this.uploadAbortController.signal;
   }
 
   /**
@@ -380,7 +402,9 @@ export class SmartPasteManager implements Mountable {
               }
             }
           }
-        } catch (_err) {}
+        } catch (err) {
+          console.error('[SmartPaste] Failed to read clipboard image:', err);
+        }
       }
 
       // Fall back to text paste - paste into input textarea
@@ -567,7 +591,8 @@ export class SmartPasteManager implements Mountable {
         }))
       );
 
-      // Upload to server
+      // Upload to server with abort signal
+      const signal = this.createUploadAbortController();
       const response = await fetch(
         `${this.config.base_path}/api/clipboard-image?session=${encodeURIComponent(sessionName)}`,
         {
@@ -575,7 +600,8 @@ export class SmartPasteManager implements Mountable {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ images })
+          body: JSON.stringify({ images }),
+          signal
         }
       );
 
@@ -603,6 +629,7 @@ export class SmartPasteManager implements Mountable {
     try {
       const sessionName = this.getSessionName();
       if (!sessionName) {
+        console.error('[SmartPaste] Cannot upload file: session name not available');
         return;
       }
 
@@ -610,12 +637,14 @@ export class SmartPasteManager implements Mountable {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Upload to file upload endpoint
+      // Upload to file upload endpoint with abort signal
+      const signal = this.createUploadAbortController();
       const response = await fetch(
         `${this.config.base_path}/api/files/upload?session=${encodeURIComponent(sessionName)}`,
         {
           method: 'POST',
-          body: formData
+          body: formData,
+          signal
         }
       );
 
@@ -629,7 +658,9 @@ export class SmartPasteManager implements Mountable {
       if (result.path) {
         this.inputHandler.sendText(result.path);
       }
-    } catch (_err) {}
+    } catch (err) {
+      console.error('[SmartPaste] Failed to upload file:', err);
+    }
   }
 
   /**
@@ -639,11 +670,13 @@ export class SmartPasteManager implements Mountable {
     try {
       const sessionName = this.getSessionName();
       if (!sessionName) {
+        console.error('[SmartPaste] Cannot upload image: session name not available');
         return;
       }
 
-      // Upload to server
+      // Upload to server with abort signal
       const base64 = await blobToBase64(blob);
+      const signal = this.createUploadAbortController();
       const response = await fetch(
         `${this.config.base_path}/api/clipboard-image?session=${encodeURIComponent(sessionName)}`,
         {
@@ -653,7 +686,8 @@ export class SmartPasteManager implements Mountable {
           },
           body: JSON.stringify({
             images: [{ data: base64, mimeType, name }]
-          })
+          }),
+          signal
         }
       );
 
@@ -674,7 +708,9 @@ export class SmartPasteManager implements Mountable {
           this.inputHandler.sendText(pathText);
         }
       }
-    } catch (_err) {}
+    } catch (err) {
+      console.error('[SmartPaste] Failed to upload image:', err);
+    }
   }
 
   /**

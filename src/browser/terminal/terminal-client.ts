@@ -9,6 +9,7 @@
  */
 
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
+import { copyToClipboard } from '@/browser/shared/utils.js';
 import { type Block, BlockManager } from './BlockManager.js';
 import { BlockRenderer } from './BlockRenderer.js';
 import { ClaudeBlockManager } from './ClaudeBlockManager.js';
@@ -243,6 +244,11 @@ export class TerminalClient {
     // Setup selection highlight - highlight all occurrences of selected text
     if (window.XtermBundle.setupSelectionHighlight && searchAddonRef) {
       window.XtermBundle.setupSelectionHighlight(terminal, searchAddonRef);
+    }
+
+    // Setup multi-line link detection (URLs that wrap across lines)
+    if (window.XtermBundle.registerMultiLineLinkProvider) {
+      window.XtermBundle.registerMultiLineLinkProvider(terminal);
     }
 
     // Handle terminal input (UTF-8 text including IME input like Japanese)
@@ -606,7 +612,7 @@ export class TerminalClient {
 
     if (texts.length > 0) {
       const content = texts.join('\n\n---\n\n');
-      navigator.clipboard.writeText(content).then(() => {});
+      copyToClipboard(content);
     }
   }
 
@@ -1075,6 +1081,11 @@ export class TerminalClient {
     // Setup selection highlight
     if (window.XtermBundle.setupSelectionHighlight && searchAddon) {
       window.XtermBundle.setupSelectionHighlight(terminal, searchAddon);
+    }
+
+    // Setup multi-line link detection (URLs that wrap across lines)
+    if (window.XtermBundle.registerMultiLineLinkProvider) {
+      window.XtermBundle.registerMultiLineLinkProvider(terminal);
     }
 
     // Handle terminal input
