@@ -5,10 +5,10 @@
  * Provides CRUD operations with localStorage persistence.
  */
 
-import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { Snippet, SnippetElements } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
-import { bindClickScoped } from '@/browser/shared/utils.js';
+import { bindBackdropClose, bindClickScoped, generateUniqueId } from '@/browser/shared/utils.js';
 import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
@@ -101,13 +101,7 @@ export class SnippetManager implements Mountable {
     bindClickScoped(scope, elements.modalClose, () => this.hide());
 
     // Close on backdrop click
-    scope.add(
-      on(elements.modal, 'click', (e: Event) => {
-        if (e.target === elements.modal) {
-          this.hide();
-        }
-      })
-    );
+    bindBackdropClose(scope, elements.modal, () => this.hide());
 
     // Show add form
     bindClickScoped(scope, elements.addBtn, () => this.showAddForm());
@@ -119,12 +113,10 @@ export class SnippetManager implements Mountable {
     bindClickScoped(scope, elements.exportBtn, () => this.exportSnippets());
 
     // Search
-    scope.add(
-      on(elements.searchInput, 'input', () => {
-        this.searchQuery = elements.searchInput.value.trim().toLowerCase();
-        this.renderList();
-      })
-    );
+    scope.on(elements.searchInput, 'input', () => {
+      this.searchQuery = elements.searchInput.value.trim().toLowerCase();
+      this.renderList();
+    });
 
     // Save new snippet
     bindClickScoped(scope, elements.addSaveBtn, () => this.saveNewSnippet());
@@ -135,25 +127,21 @@ export class SnippetManager implements Mountable {
     // Note: Escape key handling is now centralized in KeyRouter
 
     // Handle Enter in add form
-    scope.add(
-      on(elements.addNameInput, 'keydown', (e: Event) => {
-        const ke = e as KeyboardEvent;
-        if (ke.key === 'Enter') {
-          ke.preventDefault();
-          elements.addCommandInput.focus();
-        }
-      })
-    );
+    scope.on(elements.addNameInput, 'keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter') {
+        ke.preventDefault();
+        elements.addCommandInput.focus();
+      }
+    });
 
-    scope.add(
-      on(elements.addCommandInput, 'keydown', (e: Event) => {
-        const ke = e as KeyboardEvent;
-        if (ke.key === 'Enter' && ke.ctrlKey) {
-          ke.preventDefault();
-          this.saveNewSnippet();
-        }
-      })
-    );
+    scope.on(elements.addCommandInput, 'keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' && ke.ctrlKey) {
+        ke.preventDefault();
+        this.saveNewSnippet();
+      }
+    });
   }
 
   /**
@@ -596,6 +584,6 @@ export class SnippetManager implements Mountable {
    * Generate a unique ID
    */
   private generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    return generateUniqueId();
   }
 }

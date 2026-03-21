@@ -9,9 +9,14 @@
  */
 
 import { toolbarEvents } from '@/browser/shared/events.js';
-import { type Mountable, type Scope, on, onBus } from '@/browser/shared/lifecycle.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { SessionSwitcherElements, TerminalUiConfig } from '@/browser/shared/types.js';
-import { bindClickScoped, escapeHtml } from '@/browser/shared/utils.js';
+import {
+  bindBackdropClose,
+  bindClickScoped,
+  escapeHtml,
+  getSessionNameFromURL
+} from '@/browser/shared/utils.js';
 
 /** Session data from API */
 interface SessionInfo {
@@ -44,24 +49,8 @@ export class SessionSwitcher implements Mountable {
 
   constructor(config: TerminalUiConfig) {
     this.config = config;
-    this.currentSessionName = this.extractCurrentSessionName();
-  }
-
-  /**
-   * Extract current session name from URL path
-   */
-  private extractCurrentSessionName(): string | null {
-    const basePath = this.config.base_path;
-    const path = window.location.pathname;
-
-    if (path.startsWith(basePath)) {
-      const remainder = path.slice(basePath.length);
-      const segments = remainder.split('/').filter((s) => s.length > 0);
-      if (segments.length > 0) {
-        return decodeURIComponent(segments[0]);
-      }
-    }
-    return null;
+    const sessionName = getSessionNameFromURL(config.base_path);
+    this.currentSessionName = sessionName || null;
   }
 
   /**
@@ -90,54 +79,42 @@ export class SessionSwitcher implements Mountable {
     bindClickScoped(scope, elements.sessionBtn, () => this.toggle());
 
     // Search input
-    scope.add(
-      on(elements.searchInput, 'input', () => {
-        this.filterSessions();
-        this.selectedIndex = 0;
-        this.renderSessions();
-      })
-    );
+    scope.on(elements.searchInput, 'input', () => {
+      this.filterSessions();
+      this.selectedIndex = 0;
+      this.renderSessions();
+    });
 
     // Keyboard navigation
-    scope.add(
-      on(elements.searchInput, 'keydown', (e: Event) => this.handleKeydown(e as KeyboardEvent))
-    );
-    scope.add(on(elements.modal, 'keydown', (e: Event) => this.handleKeydown(e as KeyboardEvent)));
+    scope.on(elements.searchInput, 'keydown', (e: Event) => this.handleKeydown(e as KeyboardEvent));
+    scope.on(elements.modal, 'keydown', (e: Event) => this.handleKeydown(e as KeyboardEvent));
 
     // Close on backdrop click
-    scope.add(
-      on(elements.modal, 'click', (e: Event) => {
-        if (e.target === elements.modal) {
-          this.hide();
-        }
-      })
-    );
+    bindBackdropClose(scope, elements.modal, () => this.hide());
 
     // Event delegation for session list clicks (avoids memory leak from per-item listeners)
-    scope.add(
-      on(elements.sessionList, 'click', (e: Event) => {
-        const target = (e.target as HTMLElement).closest('.tui-session-item') as HTMLElement | null;
-        if (!target) return;
+    scope.on(elements.sessionList, 'click', (e: Event) => {
+      const target = (e.target as HTMLElement).closest('.tui-session-item') as HTMLElement | null;
+      if (!target) return;
 
-        const section = target.getAttribute('data-section');
-        const index = Number.parseInt(target.getAttribute('data-index') ?? '', 10);
+      const section = target.getAttribute('data-section');
+      const index = Number.parseInt(target.getAttribute('data-index') ?? '', 10);
 
-        if (section === 'bunterm') {
-          if (!Number.isNaN(index) && index >= 0 && index < this.filteredSessions.length) {
-            const session = this.filteredSessions[index];
-            if (session) this.navigateToSession(session);
-          }
-        } else if (section === 'tmux') {
-          if (!Number.isNaN(index) && index >= 0 && index < this.filteredTmuxSessions.length) {
-            const tmuxSession = this.filteredTmuxSessions[index];
-            if (tmuxSession) this.connectToTmuxSession(tmuxSession);
-          }
+      if (section === 'bunterm') {
+        if (!Number.isNaN(index) && index >= 0 && index < this.filteredSessions.length) {
+          const session = this.filteredSessions[index];
+          if (session) this.navigateToSession(session);
         }
-      })
-    );
+      } else if (section === 'tmux') {
+        if (!Number.isNaN(index) && index >= 0 && index < this.filteredTmuxSessions.length) {
+          const tmuxSession = this.filteredTmuxSessions[index];
+          if (tmuxSession) this.connectToTmuxSession(tmuxSession);
+        }
+      }
+    });
 
     // Listen for session:open event
-    scope.add(onBus(toolbarEvents, 'session:open', () => this.show()));
+    scope.onBus(toolbarEvents, 'session:open', () => this.show());
   }
 
   /**
