@@ -25,6 +25,7 @@ import {
   parseClientMessage,
   serializeServerMessage
 } from '@/core/protocol/index.js';
+import { match } from 'ts-pattern';
 import { BlockModel } from '@/features/blocks/server/block-model.js';
 import { ClaudeSessionWatcher } from '@/features/claude-watcher/server/index.js';
 import { FileWatcher } from '@/features/file-watcher/server/file-watcher.js';
@@ -73,7 +74,7 @@ interface BunTerminal {
   closed: boolean;
 }
 
-export class TerminalSession {
+export class TerminalSession implements AsyncDisposable {
   private proc: ReturnType<typeof Bun.spawn> | null = null;
   private terminal: BunTerminal | null = null;
   private readonly startedAt: string;
@@ -403,36 +404,36 @@ export class TerminalSession {
       return;
     }
 
-    switch (message.type) {
-      case 'input':
+    match(message)
+      .with({ type: 'input' }, ({ data }) => {
         // Decode Base64 input data and write to PTY
         try {
-          const bytes = Buffer.from(message.data, 'base64');
+          const bytes = Buffer.from(data, 'base64');
           this.writeBytes(bytes);
         } catch {
           // Fallback to string write if Base64 decoding fails
-          this.writeString(message.data);
+          this.writeString(data);
         }
-        break;
-      case 'resize':
-        this.resize(message.cols, message.rows);
-        break;
-      case 'ping':
+      })
+      .with({ type: 'resize' }, ({ cols, rows }) => {
+        this.resize(cols, rows);
+      })
+      .with({ type: 'ping' }, () => {
         ws.send(serializeServerMessage(createPongMessage()));
-        break;
-      case 'watchFile':
-        this.fileWatcher.watchFile(message.path);
-        break;
-      case 'unwatchFile':
-        this.fileWatcher.unwatchFile(message.path);
-        break;
-      case 'watchDir':
-        this.fileWatcher.watchDir(message.path);
-        break;
-      case 'unwatchDir':
-        this.fileWatcher.unwatchDir(message.path);
-        break;
-      case 'replayRequest':
+      })
+      .with({ type: 'watchFile' }, ({ path }) => {
+        this.fileWatcher.watchFile(path);
+      })
+      .with({ type: 'unwatchFile' }, ({ path }) => {
+        this.fileWatcher.unwatchFile(path);
+      })
+      .with({ type: 'watchDir' }, ({ path }) => {
+        this.fileWatcher.watchDir(path);
+      })
+      .with({ type: 'unwatchDir' }, ({ path }) => {
+        this.fileWatcher.unwatchDir(path);
+      })
+      .with({ type: 'replayRequest' }, () => {
         // Replay buffered output to this client (used after terminal reinitialize)
         this.broadcaster.replayTo(ws);
         // Also send block list if block UI is enabled
@@ -440,8 +441,8 @@ export class TerminalSession {
           const blocks = this.blockModel.getRecentBlocks(20);
           this.broadcaster.sendBlockList(ws, blocks);
         }
-        break;
-    }
+      })
+      .exhaustive();
   }
 
   /**
@@ -599,5 +600,13 @@ export class TerminalSession {
 
     // Reset OSC parser state
     this.oscParser.reset();
+  }
+
+  /**
+   * Dispose the terminal session asynchronously.
+   * Implements Symbol.asyncDispose for use with `await using` declarations.
+   */
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.stop();
   }
 }
