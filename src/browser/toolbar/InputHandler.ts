@@ -46,6 +46,13 @@ export class InputHandler {
   }
 
   /**
+   * Send Backspace key (DEL)
+   */
+  sendBackspace(): void {
+    this.ws.sendBytes([0x7f]);
+  }
+
+  /**
    * Send Escape key
    */
   sendEsc(): void {

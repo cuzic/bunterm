@@ -112,6 +112,7 @@ export interface ToolbarElements {
   shiftBtn: HTMLButtonElement;
   escBtn: HTMLButtonElement;
   tabBtn: HTMLButtonElement;
+  bsBtn: HTMLButtonElement;
   upBtn: HTMLButtonElement;
   downBtn: HTMLButtonElement;
   copyAllBtn: HTMLButtonElement;

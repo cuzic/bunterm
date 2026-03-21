@@ -152,6 +152,7 @@ class ToolbarApp {
       shiftBtn: document.getElementById('tui-shift') as HTMLButtonElement,
       escBtn: document.getElementById('tui-esc') as HTMLButtonElement,
       tabBtn: document.getElementById('tui-tab') as HTMLButtonElement,
+      bsBtn: document.getElementById('tui-bs') as HTMLButtonElement,
       upBtn: document.getElementById('tui-up') as HTMLButtonElement,
       downBtn: document.getElementById('tui-down') as HTMLButtonElement,
       copyAllBtn: document.getElementById('tui-copyall') as HTMLButtonElement,
@@ -418,6 +419,33 @@ class ToolbarApp {
     // Special key buttons
     bindClickScoped(scope, elements.escBtn, () => this.input.sendEsc());
     bindClickScoped(scope, elements.tabBtn, () => this.input.sendTab());
+
+    // Backspace button with long-press repeat
+    let bsInterval: ReturnType<typeof setInterval> | null = null;
+    const startBsRepeat = () => {
+      this.input.sendBackspace();
+      bsInterval = setInterval(() => this.input.sendBackspace(), 100);
+    };
+    const stopBsRepeat = () => {
+      if (bsInterval) {
+        clearInterval(bsInterval);
+        bsInterval = null;
+      }
+    };
+    // Mouse events
+    scope.add(on(elements.bsBtn, 'mousedown', startBsRepeat));
+    scope.add(on(elements.bsBtn, 'mouseup', stopBsRepeat));
+    scope.add(on(elements.bsBtn, 'mouseleave', stopBsRepeat));
+    // Touch events
+    scope.add(
+      on(elements.bsBtn, 'touchstart', (e: Event) => {
+        e.preventDefault();
+        startBsRepeat();
+      })
+    );
+    scope.add(on(elements.bsBtn, 'touchend', stopBsRepeat));
+    scope.add(on(elements.bsBtn, 'touchcancel', stopBsRepeat));
+
     bindClickScoped(scope, elements.upBtn, () => this.input.sendArrow('up'));
     bindClickScoped(scope, elements.downBtn, () => this.input.sendArrow('down'));
 

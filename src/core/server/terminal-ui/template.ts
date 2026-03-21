@@ -15,6 +15,7 @@ export const terminalUiHtml = `
     <div class="tui-group" data-label="キー">
       <button id="tui-esc">Esc</button>
       <button id="tui-tab">Tab</button>
+      <button id="tui-bs" title="Backspace (長押しで連続)">⌫</button>
       <button id="tui-enter">Enter</button>
     </div>
     <div class="tui-group" data-label="移動">
