@@ -32,6 +32,7 @@ import { LayoutManager } from './LayoutManager.js';
 import { ModifierKeyState } from './ModifierKeyState.js';
 import { QuoteManager } from './QuoteManager.js';
 import { SearchManager } from './SearchManager.js';
+import { SelectionHandleManager } from './SelectionHandleManager.js';
 import { SessionSwitcher } from './SessionSwitcher.js';
 import { ShareManager } from './ShareManager.js';
 import { SmartPasteManager } from './SmartPasteManager.js';
@@ -68,6 +69,7 @@ class ToolbarApp {
   private sessionSwitcher: SessionSwitcher;
   private quote: QuoteManager;
   private layout: LayoutManager;
+  private selectionHandles: SelectionHandleManager;
 
   private isMobile: boolean;
 
@@ -102,6 +104,7 @@ class ToolbarApp {
     this.sessionSwitcher = new SessionSwitcher(config);
     this.quote = new QuoteManager(config);
     this.layout = new LayoutManager(this.elements.container, () => this.terminal.fitTerminal());
+    this.selectionHandles = new SelectionHandleManager();
   }
 
   /**
@@ -312,6 +315,15 @@ class ToolbarApp {
       quoteBtn: document.getElementById('tui-quote') as HTMLButtonElement
     });
 
+    // Selection handles for mobile text selection
+    this.selectionHandles.bindElements(
+      document.getElementById('tui-selection-handles') as HTMLElement,
+      document.getElementById('tui-handle-start') as HTMLElement,
+      document.getElementById('tui-handle-end') as HTMLElement,
+      document.getElementById('tui-selection-copy-btn') as HTMLElement
+    );
+    this.touch.bindSelectionHandles(this.selectionHandles);
+
     // Setup event listeners
     this.setupEventListeners();
 
@@ -326,6 +338,7 @@ class ToolbarApp {
     this.clipboardHistory.mount(this.scope);
     this.smartPaste.mount(this.scope);
     this.layout.mount(this.scope);
+    this.selectionHandles.mount(this.scope);
 
     // Setup bell handler (emits 'notification:bell' via EventBus)
     // Note: WebLinksAddon is already loaded in xterm-bundle.ts, no need to initialize LinkManager
@@ -626,6 +639,21 @@ class ToolbarApp {
       }, KeyPriority.PANE)
     );
 
+    // Priority: PANE (60) - Selection handles Escape
+    scope.add(
+      keyRouter.register((e) => {
+        if (e.isComposing) {
+          return false;
+        }
+        if (e.key !== 'Escape' || !this.selectionHandles.isVisible()) {
+          return false;
+        }
+        e.preventDefault();
+        this.selectionHandles.hide();
+        return true;
+      }, KeyPriority.PANE)
+    );
+
     // Priority: SEARCH (40) - Search bar Ctrl+Shift+F toggle
     scope.add(
       keyRouter.register((e) => {
@@ -883,6 +911,12 @@ class ToolbarApp {
 
     // LayoutManager's ResizeObserver will detect toolbar visibility change
     this.layout.scheduleUpdate();
+
+    // Reinitialize terminal to fix any rendering issues
+    setTimeout(() => {
+      this.terminal.reinitialize();
+      this.layout.forceUpdate();
+    }, 100);
   }
 
   /**
