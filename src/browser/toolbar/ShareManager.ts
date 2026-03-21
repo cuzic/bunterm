@@ -4,28 +4,26 @@
  * Handles read-only share link creation from the browser.
  */
 
-import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
+import { BaseModal } from '@/browser/shared/BaseModal.js';
+import type { Scope } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import { bindClickScoped, getSessionNameFromURL } from '@/browser/shared/utils.js';
 import qrcode from 'qrcode-generator';
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
-import { type ModalController, createModalController } from './ModalController.js';
 
-export class ShareManager implements Mountable {
+export class ShareManager extends BaseModal {
   private config: TerminalUiConfig;
   private apiClient: ToolbarApiClient;
   private shareBtn: HTMLElement | null = null;
-  private modal: HTMLElement | null = null;
-  private modalClose: HTMLElement | null = null;
   private createBtn: HTMLElement | null = null;
   private resultSection: HTMLElement | null = null;
   private urlInput: HTMLInputElement | null = null;
   private copyBtn: HTMLElement | null = null;
   private qrBtn: HTMLElement | null = null;
   private expiryOptions: NodeListOf<HTMLInputElement> | null = null;
-  private modalController: ModalController | null = null;
 
   constructor(config: TerminalUiConfig) {
+    super({ backdropClose: true });
     this.config = config;
     this.apiClient = createApiClient({ basePath: config.base_path });
   }
@@ -44,8 +42,6 @@ export class ShareManager implements Mountable {
     qrBtn: HTMLElement;
   }): void {
     this.shareBtn = elements.shareBtn;
-    this.modal = elements.modal;
-    this.modalClose = elements.modalClose;
     this.createBtn = elements.createBtn;
     this.resultSection = elements.resultSection;
     this.urlInput = elements.urlInput;
@@ -54,23 +50,15 @@ export class ShareManager implements Mountable {
     this.expiryOptions = document.querySelectorAll(
       'input[name="tui-share-expiry"]'
     ) as NodeListOf<HTMLInputElement>;
+
+    // Bind modal to base class
+    this.bindModal(elements.modal, elements.modalClose);
   }
 
   /**
-   * Mount event listeners to scope for automatic cleanup
+   * Additional mount logic for ShareManager
    */
-  mount(scope: Scope): void {
-    // Setup modal controller for show/hide/backdrop
-    // Note: Escape key handling is now centralized in KeyRouter
-    if (this.modal) {
-      this.modalController = createModalController({
-        modal: this.modal,
-        closeBtn: this.modalClose,
-        backdropClose: true,
-        escapeClose: false // Handled by KeyRouter
-      });
-    }
-
+  protected onMount(scope: Scope): void {
     // Open modal
     bindClickScoped(scope, this.shareBtn, () => this.show());
 
@@ -82,6 +70,14 @@ export class ShareManager implements Mountable {
 
     // Show QR code
     bindClickScoped(scope, this.qrBtn, () => this.showQR());
+  }
+
+  /**
+   * Reset to initial state when showing
+   */
+  protected onShow(): void {
+    this.resultSection?.classList.add('hidden');
+    this.createBtn?.classList.remove('hidden');
   }
 
   /**
@@ -105,33 +101,6 @@ export class ShareManager implements Mountable {
       }
     }
     return '24h';
-  }
-
-  /**
-   * Check if modal is visible
-   */
-  isVisible(): boolean {
-    return this.modalController?.isVisible() ?? false;
-  }
-
-  /**
-   * Show the share modal
-   */
-  show(): void {
-    if (!this.modalController) {
-      return;
-    }
-    this.modalController.show();
-    // Reset to initial state
-    this.resultSection?.classList.add('hidden');
-    this.createBtn?.classList.remove('hidden');
-  }
-
-  /**
-   * Hide the share modal
-   */
-  hide(): void {
-    this.modalController?.hide();
   }
 
   /**
