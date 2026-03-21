@@ -10,9 +10,9 @@
  * State management is handled by XState state machine.
  */
 
-import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { SmartPasteElements, TerminalUiConfig } from '@/browser/shared/types.js';
-import { blobToBase64, getSessionNameFromURL } from '@/browser/shared/utils.js';
+import { bindBackdropClose, blobToBase64, getSessionNameFromURL } from '@/browser/shared/utils.js';
 import { type Actor, createActor } from 'xstate';
 import type { ClipboardHistoryManager } from './ClipboardHistoryManager.js';
 import type { InputHandler } from './InputHandler.js';
@@ -157,136 +157,104 @@ export class SmartPasteManager implements Mountable {
     }
 
     // Modal control event listeners
-    scope.add(
-      on(this.elements.previewClose, 'click', () => {
-        this.send({ type: 'CANCEL' });
-      })
-    );
+    scope.on(this.elements.previewClose, 'click', () => {
+      this.send({ type: 'CANCEL' });
+    });
 
-    scope.add(
-      on(this.elements.previewCancel, 'click', () => {
-        this.send({ type: 'CANCEL' });
-      })
-    );
+    scope.on(this.elements.previewCancel, 'click', () => {
+      this.send({ type: 'CANCEL' });
+    });
 
-    scope.add(
-      on(this.elements.previewSubmit, 'click', () => {
-        this.handleSubmit();
-      })
-    );
+    scope.on(this.elements.previewSubmit, 'click', () => {
+      this.handleSubmit();
+    });
 
-    scope.add(
-      on(this.elements.previewPrev, 'click', () => {
-        this.send({ type: 'PREV' });
-      })
-    );
+    scope.on(this.elements.previewPrev, 'click', () => {
+      this.send({ type: 'PREV' });
+    });
 
-    scope.add(
-      on(this.elements.previewNext, 'click', () => {
-        this.send({ type: 'NEXT' });
-      })
-    );
+    scope.on(this.elements.previewNext, 'click', () => {
+      this.send({ type: 'NEXT' });
+    });
 
-    scope.add(
-      on(this.elements.previewRemove, 'click', () => {
-        this.send({ type: 'REMOVE' });
-      })
-    );
+    scope.on(this.elements.previewRemove, 'click', () => {
+      this.send({ type: 'REMOVE' });
+    });
 
     // Close on backdrop click
-    scope.add(
-      on(this.elements.previewModal, 'click', (e) => {
-        if (e.target === this.elements?.previewModal) {
-          this.send({ type: 'CANCEL' });
-        }
-      })
-    );
+    bindBackdropClose(scope, this.elements.previewModal, () => {
+      this.send({ type: 'CANCEL' });
+    });
 
     // Keyboard navigation
-    scope.add(
-      on(document, 'keydown', (e) => {
-        if (!this.isPreviewVisible()) {
-          return;
-        }
-        const event = e as KeyboardEvent;
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          this.send({ type: 'CANCEL' });
-        } else if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          this.send({ type: 'PREV' });
-        } else if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          this.send({ type: 'NEXT' });
-        } else if (event.key === 'Enter') {
-          event.preventDefault();
-          this.handleSubmit();
-        } else if (event.key === 'Delete' || event.key === 'Backspace') {
-          event.preventDefault();
-          this.send({ type: 'REMOVE' });
-        }
-      })
-    );
+    scope.on(document, 'keydown', (e) => {
+      if (!this.isPreviewVisible()) {
+        return;
+      }
+      const event = e as KeyboardEvent;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.send({ type: 'CANCEL' });
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        this.send({ type: 'PREV' });
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        this.send({ type: 'NEXT' });
+      } else if (event.key === 'Enter') {
+        event.preventDefault();
+        this.handleSubmit();
+      } else if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        this.send({ type: 'REMOVE' });
+      }
+    });
 
     // Dot click handler (event delegation)
-    scope.add(
-      on(this.elements.previewDots, 'click', (e) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('tui-preview-dot') && target.dataset.index) {
-          const index = Number.parseInt(target.dataset.index, 10);
-          this.send({ type: 'GOTO', index });
-        }
-      })
-    );
+    scope.on(this.elements.previewDots, 'click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('tui-preview-dot') && target.dataset.index) {
+        const index = Number.parseInt(target.dataset.index, 10);
+        this.send({ type: 'GOTO', index });
+      }
+    });
 
     // Drag and drop zone setup
-    scope.add(
-      on(document, 'dragover', (e) => {
-        e.preventDefault();
-      })
-    );
+    scope.on(document, 'dragover', (e) => {
+      e.preventDefault();
+    });
 
-    scope.add(
-      on(document, 'drop', (e) => {
-        e.preventDefault();
+    scope.on(document, 'drop', (e) => {
+      e.preventDefault();
+      this.hideDropZone();
+    });
+
+    scope.on(document, 'dragenter', (e) => {
+      if (this.hasFiles((e as DragEvent).dataTransfer)) {
+        this.showDropZone();
+      }
+    });
+
+    scope.on(document, 'dragleave', (e) => {
+      // Only hide if leaving the document
+      if ((e as MouseEvent).relatedTarget === null) {
         this.hideDropZone();
-      })
-    );
-
-    scope.add(
-      on(document, 'dragenter', (e) => {
-        if (this.hasFiles((e as DragEvent).dataTransfer)) {
-          this.showDropZone();
-        }
-      })
-    );
-
-    scope.add(
-      on(document, 'dragleave', (e) => {
-        // Only hide if leaving the document
-        if ((e as MouseEvent).relatedTarget === null) {
-          this.hideDropZone();
-        }
-      })
-    );
+      }
+    });
 
     // Handle drop on drop zone element
     if (this.elements.dropZone) {
-      scope.add(
-        on(this.elements.dropZone, 'dragover', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        })
-      );
+      scope.on(this.elements.dropZone, 'dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
 
-      scope.add(
-        on(this.elements.dropZone, 'drop', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.hideDropZone();
-          this.handleDrop(e as DragEvent);
-        })
-      );
+      scope.on(this.elements.dropZone, 'drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideDropZone();
+        this.handleDrop(e as DragEvent);
+      });
     }
   }
 

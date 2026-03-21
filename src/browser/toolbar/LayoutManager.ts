@@ -9,7 +9,7 @@
  * - --tui-h: Toolbar height in px
  */
 
-import { type Mountable, type Scope, on } from '../shared/lifecycle.js';
+import type { Mountable, Scope } from '../shared/lifecycle.js';
 
 export class LayoutManager implements Mountable {
   private toolbarEl: HTMLElement;
@@ -112,13 +112,13 @@ export class LayoutManager implements Mountable {
     const onChange = () => this.scheduleUpdate();
 
     // Window resize (fallback)
-    scope.add(on(window, 'resize', onChange, { passive: true }));
+    scope.on(window, 'resize', onChange, { passive: true });
 
     // Visual Viewport events (primary for mobile)
     const vv = window.visualViewport;
     if (vv) {
-      scope.add(on(vv, 'resize', onChange, { passive: true }));
-      scope.add(on(vv, 'scroll', onChange, { passive: true }));
+      scope.on(vv, 'resize', onChange, { passive: true });
+      scope.on(vv, 'scroll', onChange, { passive: true });
     }
 
     // ResizeObserver for toolbar (handles button wrap, minimize, etc.)

@@ -7,7 +7,7 @@
  */
 
 import { toolbarEvents } from '@/browser/shared/events.js';
-import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { Terminal } from '@/browser/shared/types.js';
 
 interface SelectionPosition {
@@ -27,6 +27,13 @@ export class SelectionHandleManager implements Mountable {
   private selection: SelectionPosition | null = null;
   private activeHandle: 'start' | 'end' | null = null;
   private handleOffset = { x: 0, y: 0 };
+
+  // URL pattern for detection (covers http, https, and common URL characters)
+  private static readonly URL_SCHEMES = /^https?:\/\//i;
+  // Valid URL characters (RFC 3986 + common extras)
+  private static readonly URL_CHARS = /^[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/;
+  // URL pattern for validation
+  private static readonly URL_PATTERN = /^https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/i;
 
   /**
    * Bind DOM elements
@@ -56,66 +63,66 @@ export class SelectionHandleManager implements Mountable {
   mount(scope: Scope): void {
     // Start handle touch events
     if (this.startHandle) {
-      scope.add(
-        on(this.startHandle, 'touchstart', (e) => this.onHandleTouchStart(e as TouchEvent, 'start'), {
-          passive: false
-        })
+      scope.on(
+        this.startHandle,
+        'touchstart',
+        (e) => this.onHandleTouchStart(e as TouchEvent, 'start'),
+        { passive: false }
       );
     }
 
     // End handle touch events
     if (this.endHandle) {
-      scope.add(
-        on(this.endHandle, 'touchstart', (e) => this.onHandleTouchStart(e as TouchEvent, 'end'), {
-          passive: false
-        })
+      scope.on(
+        this.endHandle,
+        'touchstart',
+        (e) => this.onHandleTouchStart(e as TouchEvent, 'end'),
+        { passive: false }
       );
     }
 
     // Document-level touch events for handle dragging
-    scope.add(
-      on(document, 'touchmove', (e) => this.onHandleTouchMove(e as TouchEvent), { passive: false })
-    );
-    scope.add(on(document, 'touchend', (e) => this.onHandleTouchEnd(e as TouchEvent)));
+    scope.on(document, 'touchmove', (e) => this.onHandleTouchMove(e as TouchEvent), {
+      passive: false
+    });
+    scope.on(document, 'touchend', (e) => this.onHandleTouchEnd(e as TouchEvent));
 
     // Copy button
     if (this.copyBtn) {
-      scope.add(
-        on(this.copyBtn, 'click', () => {
-          this.copySelection();
-        })
-      );
+      scope.on(this.copyBtn, 'click', () => {
+        this.copySelection();
+      });
     }
 
     // Hide handles when clicking outside terminal
-    scope.add(
-      on(document, 'touchstart', (e) => {
-        const target = e.target as HTMLElement;
-        // Don't hide if touching handles, copy button, or terminal
-        if (
-          this.container?.classList.contains('hidden') ||
-          target.closest('#tui-selection-handles') ||
-          target.closest('#tui-selection-copy-btn') ||
-          target.closest('.xterm')
-        ) {
-          return;
-        }
-        this.hide();
-      })
-    );
+    scope.on(document, 'touchstart', (e) => {
+      const target = e.target as HTMLElement;
+      // Don't hide if touching handles, copy button, or terminal
+      if (
+        this.container?.classList.contains('hidden') ||
+        target.closest('#tui-selection-handles') ||
+        target.closest('#tui-selection-copy-btn') ||
+        target.closest('.xterm')
+      ) {
+        return;
+      }
+      this.hide();
+    });
 
     // Listen for Escape key to hide
-    scope.add(
-      on(document, 'keydown', (e) => {
-        if ((e as KeyboardEvent).key === 'Escape' && !this.container?.classList.contains('hidden')) {
-          this.hide();
-        }
-      })
-    );
+    scope.on(document, 'keydown', (e) => {
+      if (
+        (e as KeyboardEvent).key === 'Escape' &&
+        !this.container?.classList.contains('hidden')
+      ) {
+        this.hide();
+      }
+    });
   }
 
   /**
    * Show handles for current terminal selection
+   * If selection is part of a URL, auto-expand to full URL boundaries
    */
   show(): void {
     if (!this.terminal || !this.container) {
@@ -130,6 +137,15 @@ export class SelectionHandleManager implements Mountable {
     }
 
     this.selection = selectionRange;
+
+    // Try to expand selection to URL boundaries
+    const urlBoundaries = this.findUrlBoundaries();
+    if (urlBoundaries) {
+      this.selection = urlBoundaries;
+      // Apply expanded selection to terminal for visual feedback
+      this.applySelection();
+    }
+
     this.container.classList.remove('hidden');
     this.copyBtn?.classList.remove('hidden');
     this.updateHandlePositions();
@@ -196,8 +212,7 @@ export class SelectionHandleManager implements Mountable {
 
     // Calculate start handle position (left side of first character)
     const startX = termRect.left + this.selection.startCol * cellDims.width;
-    const startY =
-      termRect.top + (this.selection.startRow - scrollOffset + 1) * cellDims.height;
+    const startY = termRect.top + (this.selection.startRow - scrollOffset + 1) * cellDims.height;
 
     // Calculate end handle position (right side of last character)
     const endX = termRect.left + this.selection.endCol * cellDims.width;
@@ -280,7 +295,10 @@ export class SelectionHandleManager implements Mountable {
 
     e.preventDefault();
     const touch = e.touches[0];
-    const pos = this.screenToCell(touch.clientX - this.handleOffset.x, touch.clientY - this.handleOffset.y);
+    const pos = this.screenToCell(
+      touch.clientX - this.handleOffset.x,
+      touch.clientY - this.handleOffset.y
+    );
 
     if (!pos) {
       return;
@@ -382,15 +400,22 @@ export class SelectionHandleManager implements Mountable {
 
   /**
    * Copy selection to clipboard
+   * If selection is a URL, clean whitespace/newlines before copying
    */
   private async copySelection(): Promise<void> {
     if (!this.terminal) {
       return;
     }
 
-    const selection = this.terminal.getSelection();
+    let selection = this.terminal.getSelection();
     if (!selection) {
       return;
+    }
+
+    // Clean whitespace if it looks like a URL
+    const cleaned = this.cleanWhitespace(selection);
+    if (this.isValidUrl(cleaned)) {
+      selection = cleaned;
     }
 
     try {
@@ -401,5 +426,183 @@ export class SelectionHandleManager implements Mountable {
     }
 
     this.hide();
+  }
+
+  /**
+   * Find URL boundaries in terminal buffer around current selection
+   * Returns expanded selection if URL found, null otherwise
+   */
+  private findUrlBoundaries(): SelectionPosition | null {
+    if (!this.terminal || !this.selection) {
+      return null;
+    }
+
+    // Get text around the selection (expand search area)
+    const buffer = this.terminal.buffer?.active;
+    if (!buffer) {
+      return null;
+    }
+
+    // Get the selected text first
+    const selectedText = this.terminal.getSelection() ?? '';
+    const cleanedSelected = this.cleanWhitespace(selectedText);
+
+    // Check if selection already contains URL-like text
+    if (!cleanedSelected.includes('://') && !cleanedSelected.includes('http')) {
+      // Check surrounding context for URL
+      const contextText = this.getTextInRange(
+        { row: this.selection.startRow, col: 0 },
+        { row: this.selection.endRow, col: this.terminal.cols ?? 80 }
+      );
+
+      if (!contextText.includes('://')) {
+        return null;
+      }
+    }
+
+    // Search backwards from selection start for URL scheme
+    let urlStartRow = this.selection.startRow;
+    let urlStartCol = this.selection.startCol;
+    let foundScheme = false;
+
+    // Look for 'http://' or 'https://' starting position
+    for (
+      let row = this.selection.startRow;
+      row >= Math.max(0, this.selection.startRow - 5);
+      row--
+    ) {
+      const line = buffer.getLine(row);
+      if (!line) continue;
+
+      const lineText = line.translateToString(false);
+      const searchStart =
+        row === this.selection.startRow ? this.selection.startCol : lineText.length;
+
+      // Search for scheme in this line
+      const httpIndex = lineText.lastIndexOf('http://', searchStart);
+      const httpsIndex = lineText.lastIndexOf('https://', searchStart);
+      const schemeIndex = Math.max(httpIndex, httpsIndex);
+
+      if (schemeIndex >= 0) {
+        urlStartRow = row;
+        urlStartCol = schemeIndex;
+        foundScheme = true;
+        break;
+      }
+    }
+
+    if (!foundScheme) {
+      return null;
+    }
+
+    // Search forwards from selection end for URL termination
+    let urlEndRow = this.selection.endRow;
+    let urlEndCol = this.selection.endCol;
+
+    // Look for end of URL (whitespace or invalid URL character)
+    for (
+      let row = this.selection.endRow;
+      row <= Math.min(buffer.length - 1, this.selection.endRow + 5);
+      row++
+    ) {
+      const line = buffer.getLine(row);
+      if (!line) continue;
+
+      const lineText = line.translateToString(false);
+      const searchStart = row === this.selection.endRow ? this.selection.endCol : 0;
+
+      // Find first non-URL character
+      for (let col = searchStart; col < lineText.length; col++) {
+        const char = lineText[col];
+        // Stop at whitespace or control characters
+        if (/\s/.test(char) || char.charCodeAt(0) < 32) {
+          urlEndRow = row;
+          urlEndCol = col;
+          // Validate the found URL
+          const urlText = this.getTextInRange(
+            { row: urlStartRow, col: urlStartCol },
+            { row: urlEndRow, col: urlEndCol }
+          );
+          const cleanUrl = this.cleanWhitespace(urlText);
+          if (this.isValidUrl(cleanUrl)) {
+            return {
+              startRow: urlStartRow,
+              startCol: urlStartCol,
+              endRow: urlEndRow,
+              endCol: urlEndCol
+            };
+          }
+          return null;
+        }
+      }
+
+      // Continue to next line if no terminator found
+      urlEndRow = row;
+      urlEndCol = lineText.length;
+    }
+
+    // Validate the found URL
+    const urlText = this.getTextInRange(
+      { row: urlStartRow, col: urlStartCol },
+      { row: urlEndRow, col: urlEndCol }
+    );
+    const cleanUrl = this.cleanWhitespace(urlText);
+
+    if (this.isValidUrl(cleanUrl)) {
+      return {
+        startRow: urlStartRow,
+        startCol: urlStartCol,
+        endRow: urlEndRow,
+        endCol: urlEndCol
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get text from terminal buffer for given range
+   */
+  private getTextInRange(
+    start: { row: number; col: number },
+    end: { row: number; col: number }
+  ): string {
+    if (!this.terminal) {
+      return '';
+    }
+
+    const buffer = this.terminal.buffer?.active;
+    if (!buffer) {
+      return '';
+    }
+
+    const lines: string[] = [];
+
+    for (let row = start.row; row <= end.row; row++) {
+      const line = buffer.getLine(row);
+      if (!line) continue;
+
+      const lineText = line.translateToString(false);
+      const startCol = row === start.row ? start.col : 0;
+      const endCol = row === end.row ? end.col : lineText.length;
+
+      lines.push(lineText.substring(startCol, endCol));
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Remove whitespace and newlines from text
+   */
+  private cleanWhitespace(text: string): string {
+    return text.replace(/\s+/g, '');
+  }
+
+  /**
+   * Check if text is a valid URL
+   */
+  private isValidUrl(text: string): boolean {
+    return SelectionHandleManager.URL_PATTERN.test(text);
   }
 }

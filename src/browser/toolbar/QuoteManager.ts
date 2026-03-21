@@ -5,9 +5,15 @@
  * Supports 4 tabs: Claude Turns, Project Markdown, Plans, Git Diff
  */
 
-import { type Mountable, Scope, on } from '@/browser/shared/lifecycle.js';
+import { type Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
-import { bindClickScoped } from '@/browser/shared/utils.js';
+import {
+  bindBackdropClose,
+  bindClickScoped,
+  escapeHtml,
+  formatRelativeTime,
+  getSessionNameFromURL
+} from '@/browser/shared/utils.js';
 import type {
   ClaudeSessionInfo,
   ClaudeTurnFull,
@@ -190,14 +196,12 @@ export class QuoteManager implements Mountable {
     // Tab switching
     const tabButtons = elements.tabs.querySelectorAll('.tui-quote-tab');
     tabButtons.forEach((btn) => {
-      scope.add(
-        on(btn, 'click', () => {
-          const tab = (btn as HTMLElement).dataset['tab'] as QuoteTab;
-          if (tab) {
-            this.switchTab(tab);
-          }
-        })
-      );
+      scope.on(btn, 'click', () => {
+        const tab = (btn as HTMLElement).dataset['tab'] as QuoteTab;
+        if (tab) {
+          this.switchTab(tab);
+        }
+      });
     });
 
     // Controls
@@ -213,13 +217,7 @@ export class QuoteManager implements Mountable {
     // Note: Escape key handling is now centralized in KeyRouter
 
     // Close on backdrop click
-    scope.add(
-      on(elements.modal, 'click', (e: Event) => {
-        if (e.target === elements.modal) {
-          this.close();
-        }
-      })
-    );
+    bindBackdropClose(scope, elements.modal, () => this.close());
   }
 
   /**
@@ -291,7 +289,7 @@ export class QuoteManager implements Mountable {
    */
   private async fetchAllData(): Promise<void> {
     const basePath = this.config.base_path;
-    const sessionName = this.getSessionName();
+    const sessionName = getSessionNameFromURL(this.config.base_path);
 
     // First, fetch Claude sessions from history.jsonl
     await this.fetchClaudeSessions(basePath);
@@ -312,24 +310,6 @@ export class QuoteManager implements Mountable {
       this.fetchPlans(basePath),
       this.fetchGitDiff(basePath, sessionName)
     ]);
-  }
-
-  /**
-   * Get session name from URL
-   */
-  private getSessionName(): string {
-    const basePath = this.config.base_path;
-    const path = window.location.pathname;
-
-    if (path.startsWith(basePath)) {
-      const remainder = path.slice(basePath.length);
-      const segments = remainder.split('/').filter((s) => s.length > 0);
-      if (segments.length > 0) {
-        return decodeURIComponent(segments[0]);
-      }
-    }
-
-    return 'default';
   }
 
   /**
@@ -475,7 +455,7 @@ export class QuoteManager implements Mountable {
       this.claudeSessions.forEach((session) => {
         const option = document.createElement('option');
         option.value = session.sessionId;
-        const relTime = this.formatRelativeTime(new Date(session.lastTimestamp).toISOString());
+        const relTime = formatRelativeTime(new Date(session.lastTimestamp).toISOString(), 'en');
         option.textContent = `${session.projectName} (${relTime})`;
         if (this.selectedClaudeSession?.sessionId === session.sessionId) {
           option.selected = true;
@@ -533,8 +513,8 @@ export class QuoteManager implements Mountable {
           ? `${turn.assistantSummary.slice(0, 150)}...`
           : turn.assistantSummary;
       header.innerHTML = `
-        <span class="tui-quote-item-title">${this.escapeHtml(displayText)}</span>
-        <span class="tui-quote-item-time">${this.formatRelativeTime(turn.timestamp)}</span>
+        <span class="tui-quote-item-title">${escapeHtml(displayText)}</span>
+        <span class="tui-quote-item-time">${formatRelativeTime(turn.timestamp, 'en')}</span>
       `;
 
       content.appendChild(header);
@@ -610,8 +590,8 @@ export class QuoteManager implements Mountable {
       const header = document.createElement('div');
       header.className = 'tui-quote-item-header';
       header.innerHTML = `
-        <span class="tui-quote-item-title">${this.escapeHtml(file.path)}</span>
-        <span class="tui-quote-item-time">${this.formatRelativeTime(file.modifiedAt)}</span>
+        <span class="tui-quote-item-title">${escapeHtml(file.path)}</span>
+        <span class="tui-quote-item-time">${formatRelativeTime(file.modifiedAt, 'en')}</span>
       `;
 
       const meta = document.createElement('div');
@@ -630,36 +610,30 @@ export class QuoteManager implements Mountable {
           }
         });
       } else if (this.listScope) {
-        this.listScope.add(
-          on(item, 'mouseenter', async (e: Event) => {
-            const preview = await this.fetchFilePreview(source, file.path);
-            if (preview) {
-              this.showTooltip(
-                this.formatFileTooltip(file.path, preview),
-                (e as MouseEvent).clientX,
-                (e as MouseEvent).clientY
-              );
-            }
-          })
-        );
+        this.listScope.on(item, 'mouseenter', async (e: Event) => {
+          const preview = await this.fetchFilePreview(source, file.path);
+          if (preview) {
+            this.showTooltip(
+              this.formatFileTooltip(file.path, preview),
+              (e as MouseEvent).clientX,
+              (e as MouseEvent).clientY
+            );
+          }
+        });
 
-        this.listScope.add(
-          on(item, 'mousemove', (e: Event) => {
-            if (this.tooltipElement?.style.display === 'block') {
-              this.showTooltip(
-                this.tooltipElement.innerHTML,
-                (e as MouseEvent).clientX,
-                (e as MouseEvent).clientY
-              );
-            }
-          })
-        );
+        this.listScope.on(item, 'mousemove', (e: Event) => {
+          if (this.tooltipElement?.style.display === 'block') {
+            this.showTooltip(
+              this.tooltipElement.innerHTML,
+              (e as MouseEvent).clientX,
+              (e as MouseEvent).clientY
+            );
+          }
+        });
 
-        this.listScope.add(
-          on(item, 'mouseleave', () => {
-            this.hideTooltip();
-          })
-        );
+        this.listScope.on(item, 'mouseleave', () => {
+          this.hideTooltip();
+        });
       }
 
       item.appendChild(checkbox);
@@ -737,7 +711,7 @@ export class QuoteManager implements Mountable {
       content.innerHTML = `
         <div class="tui-quote-item-header">
           <span class="tui-quote-status-badge">${file.status}</span>
-          <span class="tui-quote-item-title">${this.escapeHtml(file.path)}</span>
+          <span class="tui-quote-item-title">${escapeHtml(file.path)}</span>
           <span class="tui-quote-diff-stats">
             <span class="tui-quote-additions">+${file.additions}</span>
             <span class="tui-quote-deletions">-${file.deletions}</span>
@@ -754,36 +728,30 @@ export class QuoteManager implements Mountable {
           }
         });
       } else if (this.listScope) {
-        this.listScope.add(
-          on(item, 'mouseenter', async (e: Event) => {
-            const preview = await this.fetchGitDiffPreview(file.path);
-            if (preview) {
-              this.showTooltip(
-                this.formatDiffTooltip(file.path, preview),
-                (e as MouseEvent).clientX,
-                (e as MouseEvent).clientY
-              );
-            }
-          })
-        );
+        this.listScope.on(item, 'mouseenter', async (e: Event) => {
+          const preview = await this.fetchGitDiffPreview(file.path);
+          if (preview) {
+            this.showTooltip(
+              this.formatDiffTooltip(file.path, preview),
+              (e as MouseEvent).clientX,
+              (e as MouseEvent).clientY
+            );
+          }
+        });
 
-        this.listScope.add(
-          on(item, 'mousemove', (e: Event) => {
-            if (this.tooltipElement?.style.display === 'block') {
-              this.showTooltip(
-                this.tooltipElement.innerHTML,
-                (e as MouseEvent).clientX,
-                (e as MouseEvent).clientY
-              );
-            }
-          })
-        );
+        this.listScope.on(item, 'mousemove', (e: Event) => {
+          if (this.tooltipElement?.style.display === 'block') {
+            this.showTooltip(
+              this.tooltipElement.innerHTML,
+              (e as MouseEvent).clientX,
+              (e as MouseEvent).clientY
+            );
+          }
+        });
 
-        this.listScope.add(
-          on(item, 'mouseleave', () => {
-            this.hideTooltip();
-          })
-        );
+        this.listScope.on(item, 'mouseleave', () => {
+          this.hideTooltip();
+        });
       }
 
       item.appendChild(checkbox);
@@ -897,7 +865,7 @@ export class QuoteManager implements Mountable {
     }
 
     const basePath = this.config.base_path;
-    const sessionName = this.getSessionName();
+    const sessionName = getSessionNameFromURL(this.config.base_path);
     const parts: string[] = [];
 
     this.elements.copyBtn.disabled = true;
@@ -1017,48 +985,21 @@ export class QuoteManager implements Mountable {
   }
 
   /**
-   * Format relative time
-   */
-  private formatRelativeTime(isoString: string): string {
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-
-    if (diffSec < 60) {
-      return 'just now';
-    }
-    if (diffMin < 60) {
-      return `${diffMin}m ago`;
-    }
-    if (diffHour < 24) {
-      return `${diffHour}h ago`;
-    }
-    if (diffDay < 7) {
-      return `${diffDay}d ago`;
-    }
-    return date.toLocaleDateString();
-  }
-
-  /**
    * Format assistant response for tooltip
    */
   private formatTurnTooltip(turn: ClaudeTurnSummary): string {
     const assistantSection = `<div style="margin-bottom: 2px;">
-      <span style="color: #e0e0e0;">${this.escapeHtml(turn.assistantSummary)}</span>
+      <span style="color: #e0e0e0;">${escapeHtml(turn.assistantSummary)}</span>
     </div>`;
 
     let metaSection = '';
     if (turn.hasToolUse || turn.editedFiles?.length > 0) {
       const tools =
         turn.editedFiles?.length > 0 ? `Edited: ${turn.editedFiles.join(', ')}` : 'Used tools';
-      metaSection = `<div style="color: #888; font-size: 9px; margin-top: 4px;">🔧 ${this.escapeHtml(tools)}</div>`;
+      metaSection = `<div style="color: #888; font-size: 9px; margin-top: 4px;">🔧 ${escapeHtml(tools)}</div>`;
     }
 
-    const timeSection = `<div style="color: #666; font-size: 9px; margin-top: 4px;">${this.formatRelativeTime(turn.timestamp)}</div>`;
+    const timeSection = `<div style="color: #666; font-size: 9px; margin-top: 4px;">${formatRelativeTime(turn.timestamp, 'en')}</div>`;
 
     return assistantSection + metaSection + timeSection;
   }
@@ -1068,7 +1009,7 @@ export class QuoteManager implements Mountable {
    */
   private async fetchFilePreview(source: string, path: string): Promise<string | null> {
     const basePath = this.config.base_path;
-    const sessionName = this.getSessionName();
+    const sessionName = getSessionNameFromURL(this.config.base_path);
 
     try {
       const response = await fetch(
@@ -1089,7 +1030,7 @@ export class QuoteManager implements Mountable {
    */
   private async fetchGitDiffPreview(filePath: string): Promise<string | null> {
     const basePath = this.config.base_path;
-    const sessionName = this.getSessionName();
+    const sessionName = getSessionNameFromURL(this.config.base_path);
 
     try {
       const response = await fetch(
@@ -1116,8 +1057,8 @@ export class QuoteManager implements Mountable {
   private formatFileTooltip(path: string, content: string): string {
     const truncated = content.length > 1000 ? content.slice(0, 1000) + '...' : content;
     return `<div style="font-family: monospace; font-size: 11px; max-height: 400px; overflow: hidden;">
-      <div style="color: #00d9ff; margin-bottom: 4px; font-weight: bold;">${this.escapeHtml(path)}</div>
-      <div style="color: #e0e0e0; white-space: pre-wrap;">${this.escapeHtml(truncated)}</div>
+      <div style="color: #00d9ff; margin-bottom: 4px; font-weight: bold;">${escapeHtml(path)}</div>
+      <div style="color: #e0e0e0; white-space: pre-wrap;">${escapeHtml(truncated)}</div>
     </div>`;
   }
 
@@ -1130,18 +1071,18 @@ export class QuoteManager implements Mountable {
       .split('\n')
       .map((line) => {
         if (line.startsWith('+') && !line.startsWith('+++')) {
-          return `<span style="color: #4caf50;">${this.escapeHtml(line)}</span>`;
+          return `<span style="color: #4caf50;">${escapeHtml(line)}</span>`;
         } else if (line.startsWith('-') && !line.startsWith('---')) {
-          return `<span style="color: #f44336;">${this.escapeHtml(line)}</span>`;
+          return `<span style="color: #f44336;">${escapeHtml(line)}</span>`;
         } else if (line.startsWith('@@')) {
-          return `<span style="color: #00d9ff;">${this.escapeHtml(line)}</span>`;
+          return `<span style="color: #00d9ff;">${escapeHtml(line)}</span>`;
         }
-        return this.escapeHtml(line);
+        return escapeHtml(line);
       })
       .join('\n');
 
     return `<div style="font-family: monospace; font-size: 11px; max-height: 400px; overflow: hidden;">
-      <div style="color: #00d9ff; margin-bottom: 4px; font-weight: bold;">${this.escapeHtml(path)}</div>
+      <div style="color: #00d9ff; margin-bottom: 4px; font-weight: bold;">${escapeHtml(path)}</div>
       <div style="white-space: pre-wrap;">${coloredDiff}</div>
     </div>`;
   }
@@ -1149,63 +1090,52 @@ export class QuoteManager implements Mountable {
   /**
    * Setup long press handler for mobile preview
    */
-  private setupLongPress(
-    element: HTMLElement,
-    onLongPress: (x: number, y: number) => void
-  ): void {
+  private setupLongPress(element: HTMLElement, onLongPress: (x: number, y: number) => void): void {
     if (!this.listScope) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let touchX = 0;
     let touchY = 0;
 
-    this.listScope.add(
-      on(element, 'touchstart', (e: Event) => {
-        const touch = (e as TouchEvent).touches[0];
-        touchX = touch.clientX;
-        touchY = touch.clientY;
+    this.listScope.on(element, 'touchstart', (e: Event) => {
+      const touch = (e as TouchEvent).touches[0];
+      touchX = touch.clientX;
+      touchY = touch.clientY;
 
-        timer = setTimeout(() => {
-          onLongPress(touchX, touchY);
-        }, 500); // 500ms long press
-      })
-    );
+      timer = setTimeout(() => {
+        onLongPress(touchX, touchY);
+      }, 500); // 500ms long press
+    });
 
-    this.listScope.add(
-      on(element, 'touchend', () => {
+    this.listScope.on(element, 'touchend', () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      // Hide tooltip after a delay when touch ends
+      setTimeout(() => this.hideTooltip(), 100);
+    });
+
+    this.listScope.on(element, 'touchmove', (e: Event) => {
+      // Cancel if moved too far
+      const touch = (e as TouchEvent).touches[0];
+      const dx = Math.abs(touch.clientX - touchX);
+      const dy = Math.abs(touch.clientY - touchY);
+      if (dx > 10 || dy > 10) {
         if (timer) {
           clearTimeout(timer);
           timer = null;
         }
-        // Hide tooltip after a delay when touch ends
-        setTimeout(() => this.hideTooltip(), 100);
-      })
-    );
+      }
+    });
 
-    this.listScope.add(
-      on(element, 'touchmove', (e: Event) => {
-        // Cancel if moved too far
-        const touch = (e as TouchEvent).touches[0];
-        const dx = Math.abs(touch.clientX - touchX);
-        const dy = Math.abs(touch.clientY - touchY);
-        if (dx > 10 || dy > 10) {
-          if (timer) {
-            clearTimeout(timer);
-            timer = null;
-          }
-        }
-      })
-    );
-
-    this.listScope.add(
-      on(element, 'touchcancel', () => {
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        this.hideTooltip();
-      })
-    );
+    this.listScope.on(element, 'touchcancel', () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      this.hideTooltip();
+    });
   }
 
   /**
@@ -1213,17 +1143,5 @@ export class QuoteManager implements Mountable {
    */
   private isMobile(): boolean {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  }
-
-  /**
-   * Escape HTML
-   */
-  private escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
   }
 }
