@@ -5,10 +5,11 @@
  * Shows history popup on long press of paste button.
  */
 
-import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
+import { LongPressHandler } from '@/browser/shared/LongPressHandler.js';
+import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { ClipboardHistoryItem } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
-import { bindClickScoped } from '@/browser/shared/utils.js';
+import { bindClickScoped, generateUniqueId } from '@/browser/shared/utils.js';
 import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
@@ -35,8 +36,7 @@ export class ClipboardHistoryManager implements Mountable {
   private history: ClipboardHistoryItem[] = [];
   private pasteBtn: HTMLButtonElement | null = null;
   private popup: HTMLElement | null = null;
-  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
-  private isLongPress = false;
+  private longPressHandler: LongPressHandler | null = null;
   private storage: StorageManager<ClipboardHistoryStorageType>;
 
   constructor(inputHandler: InputHandler) {
@@ -88,73 +88,30 @@ export class ClipboardHistoryManager implements Mountable {
     bindClickScoped(scope, closeBtn, () => this.hidePopup());
 
     // Close on outside click
-    scope.add(
-      on(document, 'click', (e: Event) => {
-        if (this.isPopupVisible() && !popup.contains(e.target as Node) && e.target !== pasteBtn) {
-          this.hidePopup();
-        }
-      })
-    );
+    scope.on(document, 'click', (e: Event) => {
+      if (this.isPopupVisible() && !popup.contains(e.target as Node) && e.target !== pasteBtn) {
+        this.hidePopup();
+      }
+    });
 
-    // Long press detection
-    scope.add(
-      on(pasteBtn, 'pointerdown', () => {
-        this.isLongPress = false;
-        this.longPressTimer = setTimeout(() => {
-          this.isLongPress = true;
-          this.showPopup();
-        }, LONG_PRESS_DURATION);
-      })
-    );
-
-    scope.add(
-      on(pasteBtn, 'pointerup', () => {
-        this.clearLongPressTimer();
-        // Reset isLongPress after a short delay to allow click handler to check it
-        setTimeout(() => {
-          this.isLongPress = false;
-        }, 50);
-      })
-    );
-
-    scope.add(
-      on(pasteBtn, 'pointercancel', () => {
-        this.clearLongPressTimer();
-        this.isLongPress = false;
-      })
-    );
-
-    scope.add(
-      on(pasteBtn, 'pointerleave', () => {
-        this.clearLongPressTimer();
-      })
-    );
-
-    // Prevent context menu on long press
-    scope.add(
-      on(pasteBtn, 'contextmenu', (e: Event) => {
-        if (this.isLongPress) {
-          e.preventDefault();
-        }
-      })
-    );
+    // Long press detection using LongPressHandler
+    this.longPressHandler = new LongPressHandler({
+      element: pasteBtn,
+      duration: LONG_PRESS_DURATION,
+      onLongPress: () => this.showPopup(),
+      onCancel: () => {
+        // Reset triggered state after a short delay to allow click handler to check it
+        setTimeout(() => this.longPressHandler?.resetTriggered(), 50);
+      }
+    });
+    scope.mount(this.longPressHandler);
   }
 
   /**
-   * Clear long press timer
-   */
-  private clearLongPressTimer(): void {
-    if (this.longPressTimer) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
-  }
-
-  /**
-   * Check if long press is in progress
+   * Check if long press was triggered
    */
   isLongPressInProgress(): boolean {
-    return this.isLongPress;
+    return this.longPressHandler?.isTriggered() ?? false;
   }
 
   /**
@@ -293,6 +250,6 @@ export class ClipboardHistoryManager implements Mountable {
    * Generate a unique ID
    */
   private generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    return generateUniqueId();
   }
 }
