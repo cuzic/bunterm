@@ -272,17 +272,9 @@ export class BlockStore {
 
     const { fromSeq = 0, stream = 'all', limit = 100 } = options;
 
-    // Get all chunks for this block
+    // Get all chunks for this block using direct O(1) lookup
     let chunks = metadata.chunkSeqs
-      .map((seq) => {
-        // Find chunk by block ID and seq
-        for (const [, chunk] of this.chunks) {
-          if (chunk.blockId === blockId && chunk.seq === seq) {
-            return chunk;
-          }
-        }
-        return undefined;
-      })
+      .map((seq) => this.chunks.get(generateChunkId(blockId, seq)))
       .filter((c): c is OutputChunk => c !== undefined);
 
     // Filter by seq

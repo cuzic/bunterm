@@ -155,8 +155,12 @@ export class TerminalSession {
       }
     });
 
-    // Get terminal reference
-    this.terminal = (this.proc as any).terminal as BunTerminal;
+    // Get terminal reference with runtime validation
+    const procAny = this.proc as any;
+    if (!procAny.terminal || typeof procAny.terminal.write !== 'function') {
+      throw new Error('Bun.spawn with terminal option did not return a valid terminal object');
+    }
+    this.terminal = procAny.terminal as BunTerminal;
 
     // Handle process exit
     this.proc.exited.then((code) => {

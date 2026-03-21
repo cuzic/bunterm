@@ -113,6 +113,29 @@ export class SessionSwitcher implements Mountable {
       })
     );
 
+    // Event delegation for session list clicks (avoids memory leak from per-item listeners)
+    scope.add(
+      on(elements.sessionList, 'click', (e: Event) => {
+        const target = (e.target as HTMLElement).closest('.tui-session-item') as HTMLElement | null;
+        if (!target) return;
+
+        const section = target.getAttribute('data-section');
+        const index = Number.parseInt(target.getAttribute('data-index') ?? '', 10);
+
+        if (section === 'bunterm') {
+          if (!Number.isNaN(index) && index >= 0 && index < this.filteredSessions.length) {
+            const session = this.filteredSessions[index];
+            if (session) this.navigateToSession(session);
+          }
+        } else if (section === 'tmux') {
+          if (!Number.isNaN(index) && index >= 0 && index < this.filteredTmuxSessions.length) {
+            const tmuxSession = this.filteredTmuxSessions[index];
+            if (tmuxSession) this.connectToTmuxSession(tmuxSession);
+          }
+        }
+      })
+    );
+
     // Listen for session:open event
     scope.add(onBus(toolbarEvents, 'session:open', () => this.show()));
   }
@@ -390,11 +413,18 @@ export class SessionSwitcher implements Mountable {
         fetch(`${this.config.base_path}/api/tmux/sessions`)
       ]);
 
+      // Check if component is still mounted after async operation
+      if (!this.elements) return;
+
       if (!sessionsResponse.ok) {
         throw new Error('Failed to fetch sessions');
       }
 
       const sessionsData = (await sessionsResponse.json()) as SessionInfo[];
+
+      // Check again after json() parsing
+      if (!this.elements) return;
+
       this.sessions = sessionsData.map((s) => ({
         name: s.name,
         dir: s.dir,
@@ -408,6 +438,7 @@ export class SessionSwitcher implements Mountable {
           sessions: TmuxSessionInfo[];
           installed: boolean;
         };
+        if (!this.elements) return;
         this.tmuxInstalled = tmuxData.installed;
         this.tmuxSessions = tmuxData.sessions;
       } else {
@@ -418,6 +449,7 @@ export class SessionSwitcher implements Mountable {
       this.filterSessions();
       this.renderSessions();
     } catch (_error) {
+      if (!this.elements) return;
       this.elements.sessionList.innerHTML =
         '<div id="tui-session-error">セッションの読み込みに失敗しました</div>';
     }
@@ -556,39 +588,6 @@ export class SessionSwitcher implements Mountable {
     }
 
     this.elements.sessionList.innerHTML = html;
-
-    // Add click handlers for bunterm sessions
-    const buntermItems = this.elements.sessionList.querySelectorAll(
-      '.tui-session-item[data-section="bunterm"]'
-    );
-    buntermItems.forEach((item) => {
-      item.addEventListener('click', () => {
-        const index = Number.parseInt(item.getAttribute('data-index') ?? '', 10);
-        if (Number.isNaN(index) || index < 0 || index >= this.filteredSessions.length) {
-          return;
-        }
-        const session = this.filteredSessions[index];
-        if (session) {
-          this.navigateToSession(session);
-        }
-      });
-    });
-
-    // Add click handlers for tmux sessions
-    const tmuxItems = this.elements.sessionList.querySelectorAll(
-      '.tui-session-item[data-section="tmux"]'
-    );
-    tmuxItems.forEach((item) => {
-      item.addEventListener('click', () => {
-        const index = Number.parseInt(item.getAttribute('data-index') ?? '', 10);
-        if (Number.isNaN(index) || index < 0 || index >= this.filteredTmuxSessions.length) {
-          return;
-        }
-        const tmuxSession = this.filteredTmuxSessions[index];
-        if (tmuxSession) {
-          this.connectToTmuxSession(tmuxSession);
-        }
-      });
-    });
+    // Click handlers are managed via event delegation in mount() for proper cleanup
   }
 }

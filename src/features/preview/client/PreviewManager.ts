@@ -42,7 +42,6 @@ export class PreviewManager implements Mountable {
     previewBtn: HTMLButtonElement;
     paneElements: PreviewPaneElements;
   } | null = null;
-  private fileSelectCallback: ((path: string) => void) | null = null;
 
   constructor(config: TerminalUiConfig, deps: PreviewManagerDeps) {
     this.config = config;
@@ -161,6 +160,7 @@ export class PreviewManager implements Mountable {
 
     // Load in iframe
     const url = `${this.config.base_path}/api/preview/file?session=${encodeURIComponent(session)}&path=${encodeURIComponent(path)}`;
+    console.log('[PreviewManager] Loading preview:', { session, path, url });
     this.pane.loadUrl(url);
     this.pane.setTitle(this.getFileName(path));
 
@@ -239,9 +239,11 @@ export class PreviewManager implements Mountable {
   openFileSelector(): void {
     // Trigger the file modal in "preview select" mode
     // This is handled by FileTransferManager integration
+    console.log('[PreviewManager] Opening file selector, sessionName:', this.sessionName);
     const event = new CustomEvent('tui-preview-select', {
       detail: {
         callback: (selection: { path: string; isDirectory: boolean }) => {
+          console.log('[PreviewManager] File selected:', selection);
           if (selection.isDirectory) {
             this.previewDirectory(this.sessionName, selection.path);
           } else {
@@ -251,21 +253,6 @@ export class PreviewManager implements Mountable {
       }
     });
     document.dispatchEvent(event);
-  }
-
-  /**
-   * Set callback for file selection
-   * Called by FileTransferManager when in preview select mode
-   */
-  setFileSelectCallback(callback: ((path: string) => void) | null): void {
-    this.fileSelectCallback = callback;
-  }
-
-  /**
-   * Get file select callback
-   */
-  getFileSelectCallback(): ((path: string) => void) | null {
-    return this.fileSelectCallback;
   }
 
   /**

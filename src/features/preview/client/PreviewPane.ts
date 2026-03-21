@@ -6,7 +6,11 @@
 
 const STORAGE_KEY_WIDTH = 'tui-preview-width';
 const MIN_WIDTH = 200;
-const MAX_WIDTH = window.innerWidth * 0.8;
+
+/** Calculate max width dynamically based on current window size */
+function getMaxWidth(): number {
+  return window.innerWidth * 0.8;
+}
 
 export interface PreviewPaneElements {
   pane: HTMLElement;
@@ -45,6 +49,8 @@ export class PreviewPane {
   private touchMoveListener: ((e: TouchEvent) => void) | null = null;
   private mouseUpListener: (() => void) | null = null;
   private touchEndListener: (() => void) | null = null;
+  private resizerMouseDownListener: ((e: MouseEvent) => void) | null = null;
+  private resizerTouchStartListener: ((e: TouchEvent) => void) | null = null;
 
   constructor(defaultWidth = 400) {
     this.width = this.loadWidth() || defaultWidth;
@@ -74,6 +80,17 @@ export class PreviewPane {
     if (this.touchEndListener) {
       document.removeEventListener('touchend', this.touchEndListener);
       this.touchEndListener = null;
+    }
+    // Clean up resizer listeners
+    if (this.elements?.resizer) {
+      if (this.resizerMouseDownListener) {
+        this.elements.resizer.removeEventListener('mousedown', this.resizerMouseDownListener);
+        this.resizerMouseDownListener = null;
+      }
+      if (this.resizerTouchStartListener) {
+        this.elements.resizer.removeEventListener('touchstart', this.resizerTouchStartListener);
+        this.resizerTouchStartListener = null;
+      }
     }
   }
 
@@ -223,15 +240,18 @@ export class PreviewPane {
 
     const { resizer } = this.elements;
 
-    resizer.addEventListener('mousedown', (e) => {
+    // Store resizer listeners for cleanup
+    this.resizerMouseDownListener = (e: MouseEvent) => {
       e.preventDefault();
       this.startResize();
-    });
+    };
+    resizer.addEventListener('mousedown', this.resizerMouseDownListener);
 
-    resizer.addEventListener('touchstart', (e) => {
+    this.resizerTouchStartListener = (e: TouchEvent) => {
       e.preventDefault();
       this.startResize();
-    });
+    };
+    resizer.addEventListener('touchstart', this.resizerTouchStartListener);
 
     // Store document-level listeners for cleanup
     this.mouseMoveListener = (e: MouseEvent) => {
@@ -278,7 +298,7 @@ export class PreviewPane {
    */
   private resize(clientX: number): void {
     const newWidth = window.innerWidth - clientX;
-    this.width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+    this.width = Math.max(MIN_WIDTH, Math.min(getMaxWidth(), newWidth));
     this.applyWidth();
     this.updateTerminalWidth();
   }
@@ -360,7 +380,7 @@ export class PreviewPane {
       const stored = localStorage.getItem(STORAGE_KEY_WIDTH);
       if (stored) {
         const width = Number.parseInt(stored, 10);
-        if (!Number.isNaN(width) && width >= MIN_WIDTH && width <= MAX_WIDTH) {
+        if (!Number.isNaN(width) && width >= MIN_WIDTH && width <= getMaxWidth()) {
           return width;
         }
       }

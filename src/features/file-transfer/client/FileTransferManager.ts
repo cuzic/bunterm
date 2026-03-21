@@ -9,6 +9,7 @@ import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import {
   bindClickScoped,
+  escapeHtml,
   getSessionNameFromURL,
   isPreviewable as isPreviewableUtil
 } from '@/browser/shared/utils.js';
@@ -371,7 +372,8 @@ export class FileTransferManager implements Mountable {
       this.renderFileList(data.files);
       this.renderBreadcrumb();
     } catch (error) {
-      fileList.innerHTML = `<div class="tui-file-error">エラー: ${error instanceof Error ? error.message : 'Unknown error'}</div>`;
+      const errorMessage = escapeHtml(error instanceof Error ? error.message : 'Unknown error');
+      fileList.innerHTML = `<div class="tui-file-error">エラー: ${errorMessage}</div>`;
     }
   }
 
