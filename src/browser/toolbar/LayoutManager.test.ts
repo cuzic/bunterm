@@ -78,12 +78,10 @@ function expectedTerminalHeight(vvh: number, tuiH: number): number {
 describe('LayoutManager', () => {
   let layoutManager: LayoutManager;
   let fitFnMock: ReturnType<typeof mock>;
-  let scope: Scope;
 
   beforeEach(() => {
     fitFnMock = mock(() => {});
     layoutManager = new LayoutManager(mockToolbarEl as unknown as HTMLElement, fitFnMock);
-    scope = new Scope();
 
     // Reset mocks
     mockToolbarEl.classList.contains = mock(() => false);
@@ -472,6 +470,7 @@ describe('LayoutManager', () => {
 
   describe('Lifecycle', () => {
     test('mount registers event listeners', () => {
+      using scope = new Scope();
       layoutManager.mount(scope);
 
       // Should have called visualViewport.addEventListener
@@ -479,6 +478,7 @@ describe('LayoutManager', () => {
     });
 
     test('scope.close cleans up resources', () => {
+      const scope = new Scope(); // Manual control - testing explicit close()
       layoutManager.mount(scope);
       scope.close();
 
@@ -492,6 +492,7 @@ describe('LayoutManager', () => {
     });
 
     test('does not update after disposed', () => {
+      const scope = new Scope(); // Manual control - testing post-dispose behavior
       layoutManager.mount(scope);
       scope.close();
 
@@ -503,6 +504,7 @@ describe('LayoutManager', () => {
     });
 
     test('scheduleUpdate does not run after disposed', () => {
+      const scope = new Scope(); // Manual control - testing post-dispose behavior
       layoutManager.mount(scope);
       scope.close();
 
