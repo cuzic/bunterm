@@ -13,6 +13,7 @@ import { type Mountable, type Scope, on } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import type { InputHandler } from './InputHandler.js';
 import type { ModifierKeyState } from './ModifierKeyState.js';
+import type { SelectionHandleManager } from './SelectionHandleManager.js';
 import type { TerminalController } from './TerminalController.js';
 
 // Safari GestureEvent type declaration (not in standard DOM types)
@@ -29,6 +30,8 @@ const SWIPE_HORIZONTAL_THRESHOLD = 100; // Minimum horizontal distance for swipe
 const SWIPE_VERTICAL_LIMIT = 50; // Maximum vertical distance for swipe
 const ALT_SCROLL_THRESHOLD = 6; // Pixels to drag for one wheel tick (smaller = faster)
 const ALT_SCROLL_MULTIPLIER = 1; // Send multiple wheel events per tick for faster scrolling
+const LONG_PRESS_DELAY = 500; // Milliseconds for long press detection
+const LONG_PRESS_MOVE_THRESHOLD = 10; // Pixels of movement to cancel long press
 
 export class TouchGestureHandler implements Mountable {
   private config: TerminalUiConfig;
@@ -57,6 +60,12 @@ export class TouchGestureHandler implements Mountable {
   private modifierScrollLastY = 0;
   private modifierScrollMode: 'alt' | 'ctrl' | null = null;
 
+  // Long press selection state
+  private longPressTimer: number | null = null;
+  private longPressStartPos: { x: number; y: number } | null = null;
+  private longPressActive = false;
+  private selectionHandles: SelectionHandleManager | null = null;
+
   constructor(
     config: TerminalUiConfig,
     terminal: TerminalController,
@@ -75,6 +84,13 @@ export class TouchGestureHandler implements Mountable {
    */
   bindScrollButton(scrollBtn: HTMLElement): void {
     this.scrollBtn = scrollBtn;
+  }
+
+  /**
+   * Bind selection handle manager for long-press selection
+   */
+  bindSelectionHandles(handles: SelectionHandleManager): void {
+    this.selectionHandles = handles;
   }
 
   /**
@@ -108,6 +124,7 @@ export class TouchGestureHandler implements Mountable {
     this.mountEdgeSwipe(scope);
     this.mountModifierScroll(scope);
     this.mountMobileKeyboardSuppress(scope);
+    this.mountLongPressSelection(scope);
   }
 
   /**
@@ -733,5 +750,160 @@ export class TouchGestureHandler implements Mountable {
         { passive: true, capture: true }
       )
     );
+  }
+
+  /**
+   * Setup long-press for text selection on mobile
+   * Long press activates Shift mode and starts selection
+   */
+  private mountLongPressSelection(scope: Scope): void {
+    // Only apply on touch devices
+    if (!('ontouchstart' in window)) {
+      return;
+    }
+
+    scope.add(
+      on(
+        document,
+        'touchstart',
+        (e: Event) => {
+          const te = e as TouchEvent;
+          const target = te.target as HTMLElement;
+
+          // Only trigger on terminal area
+          if (!target.closest('.xterm-screen') && !target.closest('.xterm')) {
+            return;
+          }
+
+          // Don't trigger if modifier key is already active
+          if (
+            this.modifiers.isShiftActive() ||
+            this.modifiers.isCtrlActive() ||
+            this.modifiers.isAltActive()
+          ) {
+            return;
+          }
+
+          // Don't trigger if scroll mode is active
+          if (this.scrollActive) {
+            return;
+          }
+
+          // Single touch only
+          if (te.touches.length !== 1) {
+            this.cancelLongPress();
+            return;
+          }
+
+          const touch = te.touches[0];
+          this.longPressStartPos = { x: touch.clientX, y: touch.clientY };
+
+          // Start long press timer
+          this.longPressTimer = window.setTimeout(() => {
+            this.triggerLongPressSelection(touch);
+          }, LONG_PRESS_DELAY);
+        },
+        { passive: true, capture: true }
+      )
+    );
+
+    scope.add(
+      on(
+        document,
+        'touchmove',
+        (e: Event) => {
+          const te = e as TouchEvent;
+
+          // Cancel long press if moved too much before it triggered
+          if (this.longPressTimer && this.longPressStartPos && te.touches.length === 1) {
+            const touch = te.touches[0];
+            const dx = touch.clientX - this.longPressStartPos.x;
+            const dy = touch.clientY - this.longPressStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > LONG_PRESS_MOVE_THRESHOLD) {
+              this.cancelLongPress();
+            }
+          }
+        },
+        { passive: true, capture: true }
+      )
+    );
+
+    scope.add(
+      on(
+        document,
+        'touchend',
+        (e: Event) => {
+          const te = e as TouchEvent;
+
+          // Cancel long press timer
+          this.cancelLongPress();
+
+          // If long press selection was active and we're releasing
+          if (this.longPressActive && te.touches.length === 0) {
+            this.longPressActive = false;
+
+            // Show selection handles if there's a selection
+            const term = this.terminal.findTerminal();
+            if (term?.hasSelection() && this.selectionHandles) {
+              this.selectionHandles.setTerminal(term);
+              this.selectionHandles.show();
+            }
+
+            // Deactivate Shift after selection is complete
+            this.modifiers.deactivate('shift');
+          }
+        },
+        { passive: true, capture: true }
+      )
+    );
+
+    scope.add(
+      on(
+        document,
+        'touchcancel',
+        () => {
+          this.cancelLongPress();
+          if (this.longPressActive) {
+            this.longPressActive = false;
+            this.modifiers.deactivate('shift');
+          }
+        },
+        { passive: true, capture: true }
+      )
+    );
+  }
+
+  /**
+   * Cancel long press timer
+   */
+  private cancelLongPress(): void {
+    if (this.longPressTimer) {
+      window.clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.longPressStartPos = null;
+  }
+
+  /**
+   * Trigger long press selection mode
+   */
+  private triggerLongPressSelection(touch: Touch): void {
+    this.longPressTimer = null;
+    this.longPressActive = true;
+
+    // Vibrate for haptic feedback (if supported)
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+
+    // Activate Shift mode for selection
+    this.modifiers.activate('shift');
+    this.shiftTouchActive = true;
+    this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+
+    // Dispatch mousedown to start selection at the touch point
+    this.dispatchMouseEvent('mousedown', touch, true);
   }
 }
