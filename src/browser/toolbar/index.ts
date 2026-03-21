@@ -7,7 +7,8 @@
 
 import { toolbarEvents } from '@/browser/shared/events.js';
 import { KeyPriority, KeyRouter } from '@/browser/shared/key-router.js';
-import { Scope, on, onBus } from '@/browser/shared/lifecycle.js';
+import { Scope } from '@/browser/shared/lifecycle.js';
+import { RepeatButtonHandler } from '@/browser/shared/RepeatButtonHandler.js';
 import type {
   SessionSwitcherElements,
   ShareElements,
@@ -329,17 +330,17 @@ class ToolbarApp {
     this.setupEventListeners();
 
     // Mount all Mountable components to scope for automatic cleanup
-    this.touch.mount(this.scope);
-    this.sessionSwitcher.mount(this.scope);
-    this.snippet.mount(this.scope);
-    this.fileTransfer.mount(this.scope);
-    this.share.mount(this.scope);
-    this.preview.mount(this.scope);
-    this.quote.mount(this.scope);
-    this.clipboardHistory.mount(this.scope);
-    this.smartPaste.mount(this.scope);
-    this.layout.mount(this.scope);
-    this.selectionHandles.mount(this.scope);
+    this.scope.mount(this.touch);
+    this.scope.mount(this.sessionSwitcher);
+    this.scope.mount(this.snippet);
+    this.scope.mount(this.fileTransfer);
+    this.scope.mount(this.share);
+    this.scope.mount(this.preview);
+    this.scope.mount(this.quote);
+    this.scope.mount(this.clipboardHistory);
+    this.scope.mount(this.smartPaste);
+    this.scope.mount(this.layout);
+    this.scope.mount(this.selectionHandles);
 
     // Setup bell handler (emits 'notification:bell' via EventBus)
     // Note: WebLinksAddon is already loaded in xterm-bundle.ts, no need to initialize LinkManager
@@ -421,42 +422,13 @@ class ToolbarApp {
     bindClickScoped(scope, elements.tabBtn, () => this.input.sendTab());
 
     // Backspace button with long-press repeat
-    let bsTimer: ReturnType<typeof setTimeout> | null = null;
-    let bsInterval: ReturnType<typeof setInterval> | null = null;
-    const startBsRepeat = () => {
-      if (bsTimer || bsInterval) return; // Guard against double-fire (touch + mouse)
-      this.input.sendBackspace();
-      // Initial delay before continuous repeat (like keyboard behavior)
-      bsTimer = setTimeout(() => {
-        bsTimer = null;
-        bsInterval = setInterval(() => this.input.sendBackspace(), 100);
-      }, 300);
-    };
-    const stopBsRepeat = () => {
-      if (bsTimer) {
-        clearTimeout(bsTimer);
-        bsTimer = null;
-      }
-      if (bsInterval) {
-        clearInterval(bsInterval);
-        bsInterval = null;
-      }
-    };
-    // Mouse events
-    scope.add(on(elements.bsBtn, 'mousedown', startBsRepeat));
-    scope.add(on(elements.bsBtn, 'mouseup', stopBsRepeat));
-    scope.add(on(elements.bsBtn, 'mouseleave', stopBsRepeat));
-    // Touch events
-    scope.add(
-      on(elements.bsBtn, 'touchstart', (e: Event) => {
-        e.preventDefault();
-        startBsRepeat();
-      })
-    );
-    scope.add(on(elements.bsBtn, 'touchend', stopBsRepeat));
-    scope.add(on(elements.bsBtn, 'touchcancel', stopBsRepeat));
-    // Stop on window blur
-    scope.add(on(window, 'blur', stopBsRepeat));
+    const bsHandler = new RepeatButtonHandler({
+      element: elements.bsBtn,
+      action: () => this.input.sendBackspace(),
+      initialDelay: 300,
+      repeatInterval: 100
+    });
+    scope.mount(bsHandler);
 
     bindClickScoped(scope, elements.upBtn, () => this.input.sendArrow('up'));
     bindClickScoped(scope, elements.downBtn, () => this.input.sendArrow('down'));
@@ -524,35 +496,31 @@ class ToolbarApp {
     bindClickScoped(scope, elements.searchCaseBtn, () => this.search.toggleCaseSensitive());
     bindClickScoped(scope, elements.searchRegexBtn, () => this.search.toggleRegex());
 
-    scope.add(
-      on(elements.searchInput, 'input', () => {
-        this.search.doSearch();
-      })
-    );
+    scope.on(elements.searchInput, 'input', () => {
+      this.search.doSearch();
+    });
 
-    scope.add(
-      on(elements.searchInput, 'keydown', (e: Event) => {
-        const ke = e as KeyboardEvent;
-        if (ke.key === 'Enter' && !ke.isComposing) {
-          ke.preventDefault();
-          if (ke.shiftKey) {
-            this.search.findPrevious();
-          } else {
-            this.search.findNext();
-          }
-        } else if (ke.key === 'Escape') {
-          ke.preventDefault();
-          this.search.toggle(false);
-        } else if (ke.key === 'F3') {
-          ke.preventDefault();
-          if (ke.shiftKey) {
-            this.search.findPrevious();
-          } else {
-            this.search.findNext();
-          }
+    scope.on(elements.searchInput, 'keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' && !ke.isComposing) {
+        ke.preventDefault();
+        if (ke.shiftKey) {
+          this.search.findPrevious();
+        } else {
+          this.search.findNext();
         }
-      })
-    );
+      } else if (ke.key === 'Escape') {
+        ke.preventDefault();
+        this.search.toggle(false);
+      } else if (ke.key === 'F3') {
+        ke.preventDefault();
+        if (ke.shiftKey) {
+          this.search.findPrevious();
+        } else {
+          this.search.findNext();
+        }
+      }
+    });
   }
 
   /**
@@ -562,20 +530,18 @@ class ToolbarApp {
     const { input } = this.elements;
     const { scope } = this;
 
-    scope.add(on(input, 'input', () => this.adjustTextareaHeight()));
+    scope.on(input, 'input', () => this.adjustTextareaHeight());
 
-    scope.add(
-      on(input, 'keydown', (e: Event) => {
-        const ke = e as KeyboardEvent;
-        if (ke.key === 'Enter' && !ke.shiftKey && !ke.isComposing) {
-          ke.preventDefault();
-          this.submitInput();
-        } else if (ke.key === 'Escape') {
-          ke.preventDefault();
-          this.toggleToolbar(false);
-        }
-      })
-    );
+    scope.on(input, 'keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' && !ke.shiftKey && !ke.isComposing) {
+        ke.preventDefault();
+        this.submitInput();
+      } else if (ke.key === 'Escape') {
+        ke.preventDefault();
+        this.toggleToolbar(false);
+      }
+    });
   }
 
   /**
@@ -586,7 +552,7 @@ class ToolbarApp {
     const { scope, keyRouter } = this;
 
     // Mount the KeyRouter to handle document keydown events
-    keyRouter.mount(scope);
+    scope.mount(keyRouter);
 
     // Priority: CRITICAL (200) - SmartPaste preview modal Escape
     scope.add(
@@ -984,35 +950,33 @@ class ToolbarApp {
     const { scope } = this;
 
     // Listen for bell events
-    scope.add(onBus(toolbarEvents, 'notification:bell', () => {}));
+    scope.onBus(toolbarEvents, 'notification:bell', () => {});
 
     // Listen for toast notifications
-    scope.add(
-      onBus(toolbarEvents, 'toast:show', ({ message, type }) => {
-        this.notifications.showToast(message, type || 'info');
-      })
-    );
+    scope.onBus(toolbarEvents, 'toast:show', ({ message, type }) => {
+      this.notifications.showToast(message, type || 'info');
+    });
 
     // Listen for font change events
-    scope.add(
-      onBus(toolbarEvents, 'font:change', (size) => {
-        this.fontSizeManager.save(size);
-      })
-    );
+    scope.onBus(toolbarEvents, 'font:change', (size) => {
+      this.fontSizeManager.save(size);
+    });
 
     // Listen for error events
-    scope.add(onBus(toolbarEvents, 'error', (_error) => {}));
+    scope.onBus(toolbarEvents, 'error', (_error) => {});
 
     // Listen for preview file select events
-    scope.add(
-      on(document, 'tui-preview-select', ((e: CustomEvent) => {
+    scope.on(
+      document,
+      'tui-preview-select',
+      ((e: CustomEvent) => {
         const callback = e.detail?.callback as
           | ((selection: { path: string; isDirectory: boolean }) => void)
           | undefined;
         if (callback) {
           this.fileTransfer.openForPreview(callback);
         }
-      }) as EventListener)
+      }) as EventListener
     );
   }
 
@@ -1020,27 +984,23 @@ class ToolbarApp {
    * Setup visibility change handler for auto-reload
    */
   private setupVisibilityHandler(): void {
-    this.scope.add(
-      on(document, 'visibilitychange', () => {
-        if (!document.hidden) {
-          if (!this.ws.isConnected()) {
-            this.handleReconnect();
-          }
+    this.scope.on(document, 'visibilitychange', () => {
+      if (!document.hidden) {
+        if (!this.ws.isConnected()) {
+          this.handleReconnect();
         }
-      })
-    );
+      }
+    });
 
     // Listen for WebSocket close events (dispatched by interception script)
-    this.scope.add(
-      on(window, 'bunterm-ws-close', () => {
-        // Small delay to avoid immediate reconnect on page unload
-        setTimeout(() => {
-          if (!this.ws.isConnected()) {
-            this.handleReconnect();
-          }
-        }, 500);
-      })
-    );
+    this.scope.on(window, 'bunterm-ws-close', () => {
+      // Small delay to avoid immediate reconnect on page unload
+      setTimeout(() => {
+        if (!this.ws.isConnected()) {
+          this.handleReconnect();
+        }
+      }, 500);
+    });
   }
 
   /**
