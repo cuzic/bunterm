@@ -15,6 +15,8 @@ import { Terminal } from '@xterm/xterm';
 
 import type { IDisposable } from '@xterm/xterm';
 
+import { registerMultiLineLinkProvider } from './MultiLineLinkProvider.js';
+
 export {
   Terminal,
   FitAddon,
@@ -22,7 +24,8 @@ export {
   Unicode11Addon,
   SerializeAddon,
   SearchAddon,
-  ClipboardAddon
+  ClipboardAddon,
+  registerMultiLineLinkProvider
 };
 
 /**
