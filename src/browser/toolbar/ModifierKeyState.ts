@@ -101,4 +101,56 @@ export class ModifierKeyState {
     this.altBtn?.classList.remove('active');
     this.shiftBtn?.classList.remove('active');
   }
+
+  /**
+   * Activate a modifier key (without toggling)
+   */
+  activate(key: ModifierKey): void {
+    switch (key) {
+      case 'ctrl': {
+        this.ctrlActive = true;
+        this.ctrlBtn?.classList.add('active');
+        // Deactivate Alt
+        this.altActive = false;
+        this.altBtn?.classList.remove('active');
+        break;
+      }
+      case 'alt': {
+        this.altActive = true;
+        this.altBtn?.classList.add('active');
+        // Deactivate Ctrl
+        this.ctrlActive = false;
+        this.ctrlBtn?.classList.remove('active');
+        break;
+      }
+      case 'shift': {
+        this.shiftActive = true;
+        this.shiftBtn?.classList.add('active');
+        break;
+      }
+    }
+  }
+
+  /**
+   * Deactivate a modifier key
+   */
+  deactivate(key: ModifierKey): void {
+    switch (key) {
+      case 'ctrl': {
+        this.ctrlActive = false;
+        this.ctrlBtn?.classList.remove('active');
+        break;
+      }
+      case 'alt': {
+        this.altActive = false;
+        this.altBtn?.classList.remove('active');
+        break;
+      }
+      case 'shift': {
+        this.shiftActive = false;
+        this.shiftBtn?.classList.remove('active');
+        break;
+      }
+    }
+  }
 }
