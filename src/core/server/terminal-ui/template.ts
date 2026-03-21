@@ -25,6 +25,7 @@ export const terminalUiHtml = `
       <button id="tui-zoomout">A-</button>
       <button id="tui-zoomin">A+</button>
       <button id="tui-reinit" title="ターミナル再描画">🔄</button>
+      <button id="tui-minimize" title="コンパクト表示"><span class="tui-minimize-icon">▼</span></button>
     </div>
     <div class="tui-group" data-label="コピペ">
       <button id="tui-copyall">All</button>
@@ -62,7 +63,7 @@ export const terminalUiHtml = `
 </div>
 <button id="tui-toggle" title="ツールバーを表示 (Ctrl+J)">
   <span class="tui-toggle-icon">⌨</span>
-  <span class="tui-toggle-badge">入力</span>
+  <span class="tui-toggle-label">入力</span>
 </button>
 <div id="tui-share-modal" class="hidden">
   <div id="tui-share-modal-content">
@@ -215,6 +216,11 @@ export const terminalUiHtml = `
     </div>
   </div>
 </div>
+<div id="tui-selection-handles" class="hidden">
+  <div id="tui-handle-start" class="selection-handle"></div>
+  <div id="tui-handle-end" class="selection-handle"></div>
+</div>
+<button id="tui-selection-copy-btn" class="hidden">Copy</button>
 `;
 
 export const onboardingHtml = `
@@ -225,6 +231,7 @@ export const onboardingHtml = `
     <li><code>Ctrl+J</code> でツールバー表示/非表示</li>
     <li>ピンチ操作でフォントサイズ変更</li>
     <li>ダブルタップで Enter 送信</li>
+    <li>長押しでテキスト選択 → コピー</li>
     <li><code>▼</code> でコンパクト表示</li>
   </ul>
 </div>
