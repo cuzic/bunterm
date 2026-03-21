@@ -33,7 +33,7 @@ export interface RateLimitResult {
 /**
  * Sliding window rate limiter
  */
-export class RateLimiter {
+export class RateLimiter implements Disposable {
   private entries: Map<string, RateLimitEntry> = new Map();
   private options: Required<RateLimitOptions>;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
@@ -231,6 +231,14 @@ export class RateLimiter {
       this.cleanupInterval = null;
     }
     this.entries.clear();
+  }
+
+  /**
+   * Dispose the rate limiter.
+   * Implements Symbol.dispose for use with `using` declarations.
+   */
+  [Symbol.dispose](): void {
+    this.dispose();
   }
 
   /**

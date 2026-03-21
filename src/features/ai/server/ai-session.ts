@@ -97,7 +97,7 @@ export type AIMessage = AIStreamMessage | AIFinalMessage | AIErrorMessage;
 
 // === Idempotency Store ===
 
-export class IdempotencyStore extends EventEmitter {
+export class IdempotencyStore extends EventEmitter implements Disposable {
   private entries = new Map<string, AIRunEntry>();
   private runIdIndex = new Map<string, string>(); // runId -> idempotencyKey
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
@@ -298,6 +298,14 @@ export class IdempotencyStore extends EventEmitter {
     this.runIdIndex.clear();
     this.removeAllListeners();
   }
+
+  /**
+   * Dispose the store.
+   * Implements Symbol.dispose for use with `using` declarations.
+   */
+  [Symbol.dispose](): void {
+    this.dispose();
+  }
 }
 
 // === Context Snapshot Helper ===
@@ -359,7 +367,7 @@ export interface AISession {
   streamSeq: number;
 }
 
-export class AISessionManager {
+export class AISessionManager implements Disposable {
   private sessions = new Map<string, AISession>();
   private idempotencyStore: IdempotencyStore;
 
@@ -532,6 +540,14 @@ export class AISessionManager {
   dispose(): void {
     this.idempotencyStore.dispose();
     this.sessions.clear();
+  }
+
+  /**
+   * Dispose the manager.
+   * Implements Symbol.dispose for use with `using` declarations.
+   */
+  [Symbol.dispose](): void {
+    this.dispose();
   }
 }
 

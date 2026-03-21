@@ -15,7 +15,7 @@ export interface FileWatcherOptions {
 
 const DEFAULT_DEBOUNCE_MS = 300;
 
-export class FileWatcher {
+export class FileWatcher implements Disposable {
   private watchers = new Map<string, FSWatcher>();
   private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly debounceMs: number;
@@ -183,5 +183,13 @@ export class FileWatcher {
         this.onChange(path);
       }, this.debounceMs)
     );
+  }
+
+  /**
+   * Dispose the file watcher.
+   * Implements Symbol.dispose for use with `using` declarations.
+   */
+  [Symbol.dispose](): void {
+    this.close();
   }
 }
