@@ -102,7 +102,13 @@ export class FileTransferManager implements Mountable {
     bindClickScoped(scope, elements.downloadBtn, () => this.showDownloadMode());
 
     // Upload button - triggers file selection
-    bindClickScoped(scope, elements.uploadBtn, () => elements.uploadInput.click());
+    // Note: Don't use bindClickScoped here because it calls preventDefault()
+    // which breaks the trusted user gesture chain on mobile browsers
+    scope.add(
+      on(elements.uploadBtn, 'click', () => {
+        elements.uploadInput.click();
+      })
+    );
 
     // Close modal
     bindClickScoped(scope, elements.modalClose, () => this.hide());
@@ -128,7 +134,13 @@ export class FileTransferManager implements Mountable {
     );
 
     // Modal upload button
-    bindClickScoped(scope, elements.uploadBtn2, () => elements.uploadInput.click());
+    // Note: Don't use bindClickScoped here because it calls preventDefault()
+    // which breaks the trusted user gesture chain on mobile browsers
+    scope.add(
+      on(elements.uploadBtn2, 'click', () => {
+        elements.uploadInput.click();
+      })
+    );
 
     // Note: Escape key handling is now centralized in KeyRouter
   }
