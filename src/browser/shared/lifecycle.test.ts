@@ -7,7 +7,7 @@ import { Scope, on, onBus } from './lifecycle.js';
 
 describe('Scope', () => {
   test('add() collects disposables', () => {
-    const scope = new Scope();
+    using scope = new Scope();
     const fn1 = mock(() => {});
     const fn2 = mock(() => {});
 
@@ -94,6 +94,28 @@ describe('Scope', () => {
     expect(fn1).toHaveBeenCalledTimes(1);
     expect(fn2).toHaveBeenCalledTimes(1);
     expect(fn3).toHaveBeenCalledTimes(1);
+  });
+
+  test('Symbol.dispose calls close()', () => {
+    const fn = mock(() => {});
+    {
+      using scope = new Scope();
+      scope.add(fn);
+      expect(fn).not.toHaveBeenCalled();
+    }
+    // After block ends, Symbol.dispose should have been called
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  test('using keyword auto-cleans up scope', () => {
+    const order: number[] = [];
+    {
+      using scope = new Scope();
+      scope.add(() => order.push(1));
+      scope.add(() => order.push(2));
+    }
+    // LIFO order
+    expect(order).toEqual([2, 1]);
   });
 });
 
