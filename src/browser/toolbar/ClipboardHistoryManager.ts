@@ -9,7 +9,12 @@ import { LongPressHandler } from '@/browser/shared/LongPressHandler.js';
 import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { ClipboardHistoryItem } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
-import { bindClickScoped, generateUniqueId } from '@/browser/shared/utils.js';
+import {
+  bindClickScoped,
+  generateUniqueId,
+  renderEmptyState,
+  truncateText
+} from '@/browser/shared/utils.js';
 import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
 import { type StorageManager, createStorageManager } from './StorageManager.js';
@@ -197,35 +202,22 @@ export class ClipboardHistoryManager implements Mountable {
       return;
     }
 
-    list.innerHTML = '';
-
     if (this.history.length === 0) {
-      const empty = document.createElement('div');
-      empty.id = 'tui-clipboard-history-empty';
-      empty.textContent = '履歴がありません';
-      list.appendChild(empty);
+      renderEmptyState(list, '履歴がありません', { id: 'tui-clipboard-history-empty' });
       return;
     }
+
+    list.innerHTML = '';
 
     for (const item of this.history) {
       const el = document.createElement('div');
       el.className = 'tui-clipboard-history-item';
-      el.textContent = this.truncateText(item.text, 50);
+      // Replace newlines with spaces for single-line display
+      el.textContent = truncateText(item.text.replace(/\n/g, ' '), 50);
       el.title = item.text;
       el.addEventListener('click', () => this.sendFromHistory(item.id));
       list.appendChild(el);
     }
-  }
-
-  /**
-   * Truncate text with ellipsis
-   */
-  private truncateText(text: string, maxLength: number): string {
-    const singleLine = text.replace(/\n/g, ' ');
-    if (singleLine.length <= maxLength) {
-      return singleLine;
-    }
-    return `${singleLine.slice(0, maxLength - 3)}...`;
   }
 
   /**

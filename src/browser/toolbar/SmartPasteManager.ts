@@ -12,7 +12,7 @@
 
 import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { SmartPasteElements, TerminalUiConfig } from '@/browser/shared/types.js';
-import { bindBackdropClose, blobToBase64, getSessionNameFromURL } from '@/browser/shared/utils.js';
+import { bindBackdropClose, blobToBase64, getSessionName } from '@/browser/shared/utils.js';
 import { type Actor, createActor } from 'xstate';
 import type { ClipboardHistoryManager } from './ClipboardHistoryManager.js';
 import type { InputHandler } from './InputHandler.js';
@@ -419,7 +419,7 @@ export class SmartPasteManager implements Mountable {
   /**
    * Check if preview modal is visible
    */
-  isPreviewVisible(): boolean {
+  get isPreviewVisible(): boolean {
     const state = this.getState();
     return state === 'previewing' || state === 'uploading';
   }
@@ -517,9 +517,8 @@ export class SmartPasteManager implements Mountable {
   /**
    * Get session name from config or URL
    */
-  private getSessionName(): string {
-    // Use sessionName from config if available (server-provided), otherwise extract from URL
-    return this.config.sessionName || getSessionNameFromURL(this.config.base_path);
+  private getSessionNameValue(): string {
+    return getSessionName(this.config);
   }
 
   /**
@@ -544,7 +543,7 @@ export class SmartPasteManager implements Mountable {
     }
 
     try {
-      const sessionName = this.getSessionName();
+      const sessionName = this.getSessionNameValue();
       if (!sessionName) {
         this.send({ type: 'UPLOAD_ERROR', error: 'セッション名を取得できませんでした' });
         return;
@@ -595,7 +594,7 @@ export class SmartPasteManager implements Mountable {
    */
   private async uploadSingleFile(file: File): Promise<void> {
     try {
-      const sessionName = this.getSessionName();
+      const sessionName = this.getSessionNameValue();
       if (!sessionName) {
         console.error('[SmartPaste] Cannot upload file: session name not available');
         return;
@@ -636,7 +635,7 @@ export class SmartPasteManager implements Mountable {
    */
   private async uploadImageDirectly(blob: Blob, name: string, mimeType: string): Promise<void> {
     try {
-      const sessionName = this.getSessionName();
+      const sessionName = this.getSessionNameValue();
       if (!sessionName) {
         console.error('[SmartPaste] Cannot upload image: session name not available');
         return;
