@@ -1,35 +1,33 @@
 /**
  * Daemon Guard
  *
- * Common patterns for daemon availability checks in CLI commands.
+ * Daemon availability check for CLI commands.
+ * Handles the not-running case with appropriate user feedback.
  */
 
 import { isDaemonRunning } from '@/core/client/index.js';
-import { daemonNotRunning, type DaemonNotRunningError } from '@/core/errors.js';
-import { err, ok, type Result } from '@/utils/result.js';
 
 export interface DaemonGuardOptions {
+  /** Output JSON format when daemon not running */
   json?: boolean;
-  /** Custom hint when daemon is not running (default: 'Run "bunterm up" to start a session.') */
+  /** Custom hint (default: 'Run "bunterm up" to start a session.') */
   hint?: string;
-  /** Suppress console output (for commands that handle output themselves) */
+  /** Suppress console output */
   silent?: boolean;
 }
 
-export interface DaemonNotRunningResult {
-  running: false;
+export interface DaemonGuardResult {
+  running: boolean;
 }
-
-export interface DaemonRunningResult {
-  running: true;
-}
-
-export type DaemonGuardResult = DaemonNotRunningResult | DaemonRunningResult;
 
 /**
  * Check if daemon is running and handle the not-running case.
- * Returns { running: false } if daemon is not running (and outputs appropriate message unless silent).
- * Returns { running: true } if daemon is running.
+ *
+ * Usage:
+ * ```
+ * const guard = await guardDaemon({ json: options.json });
+ * if (!guard.running) return;
+ * ```
  */
 export async function guardDaemon(options: DaemonGuardOptions = {}): Promise<DaemonGuardResult> {
   if (await isDaemonRunning()) {
@@ -46,17 +44,4 @@ export async function guardDaemon(options: DaemonGuardOptions = {}): Promise<Dae
   }
 
   return { running: false };
-}
-
-// === Result-returning version ===
-
-/**
- * Check if daemon is running, returning Result.
- * Use this for pure service logic without console output.
- */
-export async function checkDaemonRunning(): Promise<Result<true, DaemonNotRunningError>> {
-  if (await isDaemonRunning()) {
-    return ok(true);
-  }
-  return err(daemonNotRunning());
 }
