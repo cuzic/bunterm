@@ -2,38 +2,18 @@
  * Claude Session File Parsing
  *
  * Parses Claude Code session JSONL files to extract conversation turns.
+ * Uses validated schemas from claude-watcher for type safety.
  */
 
 import { readJsonlFile } from '@/utils/jsonl.js';
 import type { ClaudeTurnFull, ClaudeTurnSummary } from './types.js';
+import {
+  type ClaudeAssistantContent,
+  ClaudeSessionEntrySchema
+} from '@/features/claude-watcher/server/schemas.js';
 
 /**
- * Claude session JSONL entry structure
- */
-interface SessionEntry {
-  isMeta?: boolean;
-  type?: 'user' | 'assistant';
-  uuid?: string;
-  parentUuid?: string;
-  timestamp?: string;
-  message?: {
-    role?: string;
-    content?: string | ContentBlock[];
-  };
-}
-
-/**
- * Content block in assistant message
- */
-interface ContentBlock {
-  type: string;
-  text?: string;
-  name?: string;
-  input?: Record<string, unknown>;
-}
-
-/**
- * Parsed assistant content
+ * Parsed assistant content (domain type)
  */
 interface ParsedAssistantContent {
   fullText: string;
@@ -43,27 +23,25 @@ interface ParsedAssistantContent {
 }
 
 /**
- * Parse content blocks from an assistant entry
+ * Parse content blocks from a validated assistant entry
  */
-function parseAssistantContent(blocks: ContentBlock[]): ParsedAssistantContent {
+function parseAssistantContent(blocks: ClaudeAssistantContent[]): ParsedAssistantContent {
   let fullText = '';
   let hasToolUse = false;
   const editedFiles: string[] = [];
   const toolUses: Array<{ name: string; input: Record<string, unknown> }> = [];
 
   for (const block of blocks) {
-    if (block.type === 'text' && block.text) {
+    if (block.type === 'text') {
       if (!fullText) {
         fullText = block.text;
       }
     }
-    if (block.type === 'tool_use' && block.name) {
+    if (block.type === 'tool_use') {
       hasToolUse = true;
-      if (block.input) {
-        toolUses.push({ name: block.name, input: block.input });
-      }
+      toolUses.push({ name: block.name, input: block.input });
       if (block.name === 'Edit' || block.name === 'Write') {
-        const filePath = block.input?.['file_path'] || block.input?.['path'];
+        const filePath = block.input['file_path'] ?? block.input['path'];
         if (typeof filePath === 'string') {
           editedFiles.push(filePath);
         }
@@ -81,22 +59,29 @@ function parseAssistantContent(blocks: ContentBlock[]): ParsedAssistantContent {
  * @returns Array of assistant response summaries (newest first)
  */
 export function parseTurnsFromSessionFile(sessionFile: string, count: number): ClaudeTurnSummary[] {
-  const entries = readJsonlFile<SessionEntry>(sessionFile);
+  const rawEntries = readJsonlFile<unknown>(sessionFile);
   const turns: ClaudeTurnSummary[] = [];
 
-  for (const entry of entries) {
-    if (entry.isMeta || entry.type !== 'assistant' || !Array.isArray(entry.message?.content)) {
+  for (const raw of rawEntries) {
+    // Validate raw entry against schema
+    const result = ClaudeSessionEntrySchema.safeParse(raw);
+    if (!result.success) {
       continue;
     }
 
-    const { fullText, hasToolUse, editedFiles } = parseAssistantContent(entry.message.content);
+    const entry = result.data;
+    if (entry.isMeta || entry.type !== 'assistant' || !Array.isArray(entry.message)) {
+      continue;
+    }
+
+    const { fullText, hasToolUse, editedFiles } = parseAssistantContent(entry.message);
 
     // Only include entries with text content that has 3+ lines
-    if (fullText && entry.uuid && fullText.split('\n').length >= 3) {
+    if (fullText && fullText.split('\n').length >= 3) {
       turns.push({
         uuid: entry.uuid,
         assistantSummary: fullText.slice(0, 500),
-        timestamp: entry.timestamp ?? '',
+        timestamp: entry.timestamp,
         hasToolUse,
         editedFiles: editedFiles.length > 0 ? editedFiles : undefined
       });
@@ -116,23 +101,26 @@ export function parseTurnByUuidFromSessionFile(
   sessionFile: string,
   uuid: string
 ): ClaudeTurnFull | null {
-  const entries = readJsonlFile<SessionEntry>(sessionFile);
+  const rawEntries = readJsonlFile<unknown>(sessionFile);
 
-  for (const entry of entries) {
-    if (
-      entry.uuid !== uuid ||
-      entry.type !== 'assistant' ||
-      !Array.isArray(entry.message?.content)
-    ) {
+  for (const raw of rawEntries) {
+    // Validate raw entry against schema
+    const result = ClaudeSessionEntrySchema.safeParse(raw);
+    if (!result.success) {
       continue;
     }
 
-    const { fullText, toolUses } = parseAssistantContent(entry.message.content);
+    const entry = result.data;
+    if (entry.uuid !== uuid || entry.type !== 'assistant' || !Array.isArray(entry.message)) {
+      continue;
+    }
+
+    const { fullText, toolUses } = parseAssistantContent(entry.message);
 
     return {
       uuid,
       assistantContent: fullText,
-      timestamp: entry.timestamp ?? '',
+      timestamp: entry.timestamp,
       toolUses
     };
   }
