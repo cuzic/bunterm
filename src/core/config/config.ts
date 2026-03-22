@@ -29,24 +29,40 @@ export function loadConfig(configPath?: string): Config {
 
   if (!path) {
     // Return default config using zod defaults
-    return ConfigSchema.parse({});
+    const result = ConfigSchema.safeParse({});
+    if (!result.success) {
+      throw new Error('Failed to create default config');
+    }
+    return result.data;
   }
 
+  let content: string;
   try {
-    const content = readFileSync(path, 'utf-8');
-    const parsed = parseYaml(content);
-    return ConfigSchema.parse(parsed);
+    content = readFileSync(path, 'utf-8');
   } catch (error) {
-    if (error instanceof Error) {
-      const hint = error.message.includes('YAMLParseError')
-        ? '\n  Check YAML syntax: indentation and colons.'
-        : error.name === 'ZodError'
-          ? '\n  Run "bunterm doctor" to validate config.'
-          : '';
-      throw new Error(`Failed to load config from ${path}:\n  ${error.message}${hint}`);
-    }
-    throw error;
+    throw new Error(
+      `Failed to read config from ${path}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
+
+  let parsed: unknown;
+  try {
+    parsed = parseYaml(content);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to load config from ${path}:\n  ${message}\n  Check YAML syntax: indentation and colons.`);
+  }
+
+  const result = ConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const field = issue?.path.join('.') || 'unknown';
+    throw new Error(
+      `Failed to load config from ${path}:\n  Invalid value for '${field}': ${issue?.message}\n  Run "bunterm doctor" to validate config.`
+    );
+  }
+
+  return result.data;
 }
 
 export function normalizeBasePath(basePath: string): string {

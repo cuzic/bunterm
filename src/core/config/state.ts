@@ -3,12 +3,13 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { lockSync, unlockSync } from 'proper-lockfile';
 import type { StateStore } from './state-store.js';
-import type {
-  DaemonState,
-  PushSubscriptionState,
-  SessionState,
-  ShareState,
-  State
+import {
+  type DaemonState,
+  type PushSubscriptionState,
+  type SessionState,
+  type ShareState,
+  type State,
+  StateSchema
 } from './types.js';
 
 /**
@@ -79,15 +80,26 @@ export function loadState(): State {
 
   try {
     const content = readFileSync(stateFile, 'utf-8');
-    const parsed = JSON.parse(content) as Partial<State>;
-    // Merge with defaults to handle missing fields from old state files
+    const parsed: unknown = JSON.parse(content);
+
+    // Validate with schema, merging with defaults for missing fields
     const defaultState = getDefaultState();
-    return {
-      daemon: parsed.daemon ?? defaultState.daemon,
-      sessions: parsed.sessions ?? defaultState.sessions,
-      shares: parsed.shares ?? defaultState.shares,
-      pushSubscriptions: parsed.pushSubscriptions ?? defaultState.pushSubscriptions
+    const raw = parsed as Record<string, unknown> | null;
+    const withDefaults = {
+      daemon: raw?.['daemon'] ?? defaultState.daemon,
+      sessions: raw?.['sessions'] ?? defaultState.sessions,
+      shares: raw?.['shares'] ?? defaultState.shares,
+      pushSubscriptions: raw?.['pushSubscriptions'] ?? defaultState.pushSubscriptions
     };
+
+    const result = StateSchema.safeParse(withDefaults);
+    if (result.success) {
+      return result.data;
+    }
+
+    // Schema validation failed - return default state
+    // This handles corrupted state files gracefully
+    return getDefaultState();
   } catch {
     return getDefaultState();
   }

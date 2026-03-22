@@ -306,45 +306,57 @@ export type Config = z.infer<typeof ConfigSchema>;
 
 // === 状態ファイル (state.json) ===
 
-export interface DaemonState {
-  pid: number;
-  port: number;
-  started_at: string;
-}
+export const DaemonStateSchema = z.object({
+  pid: z.number().int().positive(),
+  port: z.number().int().min(1).max(65535),
+  started_at: z.string()
+});
 
-export interface SessionState {
-  name: string;
-  pid: number;
-  path: string;
-  dir: string;
-  started_at: string;
-}
+export type DaemonState = z.infer<typeof DaemonStateSchema>;
 
-export interface ShareState {
-  token: string;
-  sessionName: string;
-  createdAt: string;
-  expiresAt: string;
-  password?: string;
-}
+export const SessionStateSchema = z.object({
+  name: z.string().min(1),
+  pid: z.number().int().positive(),
+  path: z.string(),
+  dir: z.string(),
+  started_at: z.string()
+});
 
-export interface PushSubscriptionState {
-  id: string;
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-  sessionName?: string;
-  createdAt: string;
-}
+export type SessionState = z.infer<typeof SessionStateSchema>;
 
-export interface State {
-  daemon: DaemonState | null;
-  sessions: SessionState[];
-  shares: ShareState[];
-  pushSubscriptions: PushSubscriptionState[];
-}
+export const ShareStateSchema = z.object({
+  token: z.string().min(1),
+  sessionName: z.string().min(1),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  password: z.string().optional()
+});
+
+export type ShareState = z.infer<typeof ShareStateSchema>;
+
+export const PushSubscriptionKeysSchema = z.object({
+  p256dh: z.string(),
+  auth: z.string()
+});
+
+export const PushSubscriptionStateSchema = z.object({
+  id: z.string().min(1),
+  endpoint: z.string().url(),
+  keys: PushSubscriptionKeysSchema,
+  sessionName: z.string().optional(),
+  createdAt: z.string()
+});
+
+export type PushSubscriptionState = z.infer<typeof PushSubscriptionStateSchema>;
+
+export const StateSchema = z.object({
+  daemon: DaemonStateSchema.nullable(),
+  sessions: z.array(SessionStateSchema),
+  shares: z.array(ShareStateSchema),
+  pushSubscriptions: z.array(PushSubscriptionStateSchema)
+});
+
+export type State = z.infer<typeof StateSchema>;
 
 // === 解決済みセッション（設定 + 状態を統合）===
 
@@ -366,23 +378,45 @@ export interface StartSessionRequest {
   path?: string; // 省略時は name から生成
 }
 
-export interface SessionResponse {
-  name: string;
-  port: number;
-  path: string;
-  fullPath: string;
-  dir: string;
-  pid: number;
-  started_at: string;
-  /** tmux session name if attached to one */
-  tmuxSession?: string;
-}
+export const SessionResponseSchema = z.object({
+  name: z.string(),
+  port: z.number(),
+  path: z.string(),
+  fullPath: z.string(),
+  dir: z.string(),
+  pid: z.number(),
+  started_at: z.string(),
+  tmuxSession: z.string().optional()
+});
 
-export interface StatusResponse {
-  daemon: DaemonState;
-  sessions: SessionResponse[];
-}
+export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
-export interface ErrorResponse {
-  error: string;
-}
+export const StatusResponseSchema = z.object({
+  daemon: DaemonStateSchema,
+  sessions: z.array(SessionResponseSchema)
+});
+
+export type StatusResponse = z.infer<typeof StatusResponseSchema>;
+
+export const ErrorResponseSchema = z.object({
+  error: z.string()
+});
+
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+export const TmuxSessionResponseSchema = z.object({
+  name: z.string(),
+  windows: z.number(),
+  created: z.string(),
+  attached: z.boolean(),
+  cwd: z.string().optional()
+});
+
+export type TmuxSessionResponse = z.infer<typeof TmuxSessionResponseSchema>;
+
+export const TmuxSessionsResponseSchema = z.object({
+  sessions: z.array(TmuxSessionResponseSchema),
+  installed: z.boolean()
+});
+
+export type TmuxSessionsResponse = z.infer<typeof TmuxSessionsResponseSchema>;
