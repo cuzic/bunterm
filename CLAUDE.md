@@ -177,6 +177,27 @@ Bun.Terminal API を使用した組み込み PTY 実装:
 - [docs/optional-field-inventory.md](docs/optional-field-inventory.md) - optional 使用ポリシー
 - [docs/error-handling.md](docs/error-handling.md) - エラーハンドリングポリシー
 
+### HTTP ルーティング (server/http/)
+
+HTTP ルートは table-driven routing パターンで定義:
+
+- **RouteDef**: ルート定義（method, path, schema, handler）
+- **RouteContext**: ハンドラに渡されるコンテキスト
+- **Result 型返却**: ハンドラは `Result<T, DomainError>` を返す
+
+```typescript
+// routes は RouteDef[] として定義
+export const sessionRoutes: RouteDef[] = [
+  {
+    method: 'GET',
+    path: '/api/sessions/:name',
+    handler: async (ctx) => ok(ctx.sessionManager.getSession(ctx.pathParams.name))
+  }
+];
+```
+
+詳細は **[docs/route-architecture.md](docs/route-architecture.md)** を参照。
+
 ### ブラウザアーキテクチャ (browser/)
 
 ブラウザ側コードは `browser/` ディレクトリに集約。詳細は **[docs/browser-api.md](docs/browser-api.md)** を参照。
