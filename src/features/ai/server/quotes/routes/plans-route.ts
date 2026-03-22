@@ -6,6 +6,7 @@
 
 import { type QuoteRouteContext, successResponse, handleError } from './types.js';
 import { getPlanFiles } from '../quotes-service.js';
+import { PlansParamsSchema, parseSearchParams } from './params.js';
 
 /**
  * Handle /plans route
@@ -14,7 +15,8 @@ import { getPlanFiles } from '../quotes-service.js';
  * Error: { error: string } with 500 status
  */
 export function handlePlansRoute(ctx: QuoteRouteContext): Response {
-  const count = Math.min(Number.parseInt(ctx.params.get('count') ?? '10', 10), 50);
+  const parsed = parseSearchParams(ctx.params, PlansParamsSchema);
+  const count = parsed.ok ? parsed.data.count : 10;
 
   try {
     const files = getPlanFiles(count);

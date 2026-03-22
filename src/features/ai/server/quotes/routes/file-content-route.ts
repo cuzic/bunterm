@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { type QuoteRouteContext, successResponse, failureResponse } from './types.js';
 import { readFileContent } from '../quotes-service.js';
+import { FileContentParamsSchema, parseSearchParams } from './params.js';
 
 /**
  * Handle /file-content route
@@ -16,19 +17,18 @@ import { readFileContent } from '../quotes-service.js';
  * Error: { error: string } with appropriate status code
  */
 export function handleFileContentRoute(ctx: QuoteRouteContext): Response {
-  const source = ctx.params.get('source');
-  const filePath = ctx.params.get('path');
-  const sessionName = ctx.params.get('session');
-  const isPreview = ctx.params.get('preview') === 'true';
-
-  if (!source || !filePath) {
-    return failureResponse('source and path parameters required', ctx.headers, 400);
+  const parsed = parseSearchParams(ctx.params, FileContentParamsSchema);
+  if (!parsed.ok) {
+    return failureResponse(parsed.error, ctx.headers, 400);
   }
+
+  const { source, path: filePath, session: sessionName, preview: isPreview } = parsed.data;
 
   let baseDir: string;
   if (source === 'plans') {
     baseDir = join(homedir(), '.claude', 'plans');
-  } else if (source === 'project') {
+  } else {
+    // source === 'project'
     if (!sessionName) {
       return failureResponse('session parameter required for project source', ctx.headers, 400);
     }
@@ -37,8 +37,6 @@ export function handleFileContentRoute(ctx: QuoteRouteContext): Response {
       return failureResponse('Session not found', ctx.headers, 404);
     }
     baseDir = session.cwd;
-  } else {
-    return failureResponse('source must be "project" or "plans"', ctx.headers, 400);
   }
 
   const result = readFileContent(baseDir, filePath, isPreview);
