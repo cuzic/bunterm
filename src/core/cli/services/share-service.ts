@@ -8,6 +8,7 @@ import { addShare, getAllShares, getSession, removeShare } from '@/core/config/s
 import type { Config } from '@/core/config/types.js';
 import { buildShareUrl } from '@/core/cli/helpers/url-builder.js';
 import { createShareManager, type ShareState } from '@/features/share/server/share-manager.js';
+import { type Result, err, ok } from '@/utils/result.js';
 
 /**
  * Get a configured ShareManager
@@ -36,18 +37,18 @@ export function createShare(
   sessionName: string,
   config: Config,
   expiresIn: string
-): CreateShareResult | { error: string } {
+): Result<CreateShareResult, string> {
   // Check if session exists
   const session = getSession(sessionName);
   if (!session) {
-    return { error: `Session '${sessionName}' not found` };
+    return err(`Session '${sessionName}' not found`);
   }
 
   const manager = getShareManager();
   const share = manager.createShare(sessionName, { expiresIn });
   const url = buildShareUrl(config, share.token);
 
-  return { share, url };
+  return ok({ share, url });
 }
 
 /**
