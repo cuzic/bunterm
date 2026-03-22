@@ -7,6 +7,7 @@
 import { execSync } from 'node:child_process';
 import { isDaemonRunning } from '@/core/client/index.js';
 import { findConfigPath, loadConfig } from '@/core/config/config.js';
+import { validateEnvAtStartup } from '@/core/config/env.js';
 import type { Config } from '@/core/config/types.js';
 
 const VERSION_REGEX = /(\d+\.\d+[\.\d]*)/;
@@ -198,12 +199,39 @@ export class PortCheck implements DoctorCheck {
 }
 
 /**
+ * Check environment variables
+ */
+export class EnvCheck implements DoctorCheck {
+  readonly name = 'env';
+
+  run(): CheckResult {
+    const errors = validateEnvAtStartup();
+
+    if (errors.length === 0) {
+      return {
+        name: this.name,
+        ok: true,
+        message: 'environment variables valid'
+      };
+    }
+
+    return {
+      name: this.name,
+      ok: false,
+      message: `environment variable issues: ${errors[0]}`,
+      hint: errors.length > 1 ? `(and ${errors.length - 1} more issues)` : undefined
+    };
+  }
+}
+
+/**
  * Default checks registry
  */
 export const defaultChecks: DoctorCheck[] = [
   new BunCheck(),
   new TmuxCheck(),
   new ConfigCheck(),
+  new EnvCheck(),
   new DaemonCheck(),
   new PortCheck()
 ];
