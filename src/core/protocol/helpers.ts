@@ -22,62 +22,105 @@ import type {
   PongMessage,
   TitleMessage
 } from './messages.js';
+import {
+  ClientMessageSchema,
+  ServerMessageSchema,
+  type ValidatedClientMessage,
+  type ValidatedServerMessage
+} from './schemas.js';
 
 /**
- * Parse a client message from JSON string
+ * Parse a client message from JSON string using schema validation
+ *
+ * @returns Validated ClientMessage or null if parsing/validation fails
  */
 export function parseClientMessage(data: string): ClientMessage | null {
   try {
-    const parsed = JSON.parse(data);
-    if (typeof parsed !== 'object' || parsed === null) {
-      return null;
-    }
-
-    switch (parsed.type) {
-      case 'input':
-        if (typeof parsed.data === 'string') {
-          return { type: 'input', data: parsed.data };
-        }
-        break;
-      case 'resize':
-        if (
-          typeof parsed.cols === 'number' &&
-          typeof parsed.rows === 'number' &&
-          parsed.cols > 0 &&
-          parsed.rows > 0
-        ) {
-          return { type: 'resize', cols: parsed.cols, rows: parsed.rows };
-        }
-        break;
-      case 'ping':
-        return { type: 'ping' };
-      case 'watchFile':
-        if (typeof parsed.path === 'string') {
-          return { type: 'watchFile', path: parsed.path };
-        }
-        break;
-      case 'unwatchFile':
-        if (typeof parsed.path === 'string') {
-          return { type: 'unwatchFile', path: parsed.path };
-        }
-        break;
-      case 'watchDir':
-        if (typeof parsed.path === 'string') {
-          return { type: 'watchDir', path: parsed.path };
-        }
-        break;
-      case 'unwatchDir':
-        if (typeof parsed.path === 'string') {
-          return { type: 'unwatchDir', path: parsed.path };
-        }
-        break;
-      case 'replayRequest':
-        return { type: 'replayRequest' };
+    const parsed: unknown = JSON.parse(data);
+    const result = ClientMessageSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data as ClientMessage;
     }
     return null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Parse a client message with detailed error information
+ *
+ * @returns Result with validated message or parse error details
+ */
+export function parseClientMessageSafe(data: string): {
+  ok: true;
+  value: ValidatedClientMessage;
+} | {
+  ok: false;
+  error: string;
+} {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch (e) {
+    return { ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : 'parse error'}` };
+  }
+
+  const result = ClientMessageSchema.safeParse(parsed);
+  if (result.success) {
+    return { ok: true, value: result.data };
+  }
+
+  const issue = result.error.issues[0];
+  const field = issue?.path.join('.') || 'unknown';
+  return { ok: false, error: `Validation failed at '${field}': ${issue?.message || 'unknown error'}` };
+}
+
+/**
+ * Parse a server message from JSON string using schema validation
+ *
+ * @returns Validated ServerMessage or null if parsing/validation fails
+ */
+export function parseServerMessage(data: string): ServerMessage | null {
+  try {
+    const parsed: unknown = JSON.parse(data);
+    const result = ServerMessageSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data as ServerMessage;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parse a server message with detailed error information
+ *
+ * @returns Result with validated message or parse error details
+ */
+export function parseServerMessageSafe(data: string): {
+  ok: true;
+  value: ValidatedServerMessage;
+} | {
+  ok: false;
+  error: string;
+} {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch (e) {
+    return { ok: false, error: `Invalid JSON: ${e instanceof Error ? e.message : 'parse error'}` };
+  }
+
+  const result = ServerMessageSchema.safeParse(parsed);
+  if (result.success) {
+    return { ok: true, value: result.data };
+  }
+
+  const issue = result.error.issues[0];
+  const field = issue?.path.join('.') || 'unknown';
+  return { ok: false, error: `Validation failed at '${field}': ${issue?.message || 'unknown error'}` };
 }
 
 /**

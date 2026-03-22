@@ -9,6 +9,7 @@
  */
 
 import { copyToClipboard } from '@/browser/shared/utils.js';
+import { parseServerMessage, type ServerMessage } from '@/core/protocol/index.js';
 import { match, P } from 'ts-pattern';
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import { type Block, BlockManager } from './BlockManager.js';
@@ -84,53 +85,7 @@ interface ClientMessage {
   path?: string;
 }
 
-interface ServerMessage {
-  type:
-    | 'output'
-    | 'title'
-    | 'exit'
-    | 'pong'
-    | 'error'
-    | 'bell'
-    | 'fileChange'
-    | 'blockStart'
-    | 'blockEnd'
-    | 'blockOutput'
-    | 'blockList'
-    // Claude watcher messages
-    | 'claudeUserMessage'
-    | 'claudeAssistantText'
-    | 'claudeThinking'
-    | 'claudeToolUse'
-    | 'claudeToolResult'
-    | 'claudeSessionStart'
-    | 'claudeSessionEnd';
-  data?: string;
-  title?: string;
-  code?: number;
-  message?: string;
-  // Block-related fields
-  block?: Block;
-  blockId?: string;
-  exitCode?: number;
-  endedAt?: string;
-  endLine?: number;
-  blocks?: Block[];
-  // Claude-related fields
-  uuid?: string;
-  content?: string;
-  text?: string;
-  thinking?: string;
-  toolId?: string;
-  toolName?: string;
-  input?: Record<string, unknown>;
-  isError?: boolean;
-  sessionId?: string;
-  project?: string;
-  timestamp?: string;
-  // File watcher fields
-  path?: string;
-}
+// ServerMessage type is now imported from @/core/protocol/index.js
 
 /**
  * Extended Terminal type with internal xterm.js APIs.
@@ -677,8 +632,13 @@ export class TerminalClient implements Disposable {
    * Handle incoming server messages
    */
   private handleMessage(data: string): void {
+    const message = parseServerMessage(data);
+    if (!message) {
+      // Invalid message - silently ignore or log for debugging
+      return;
+    }
+
     try {
-      const message: ServerMessage = JSON.parse(data);
 
       match(message)
         .with({ type: 'output', data: P.string }, ({ data }) => {

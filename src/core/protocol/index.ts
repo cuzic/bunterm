@@ -75,6 +75,9 @@ export type {
 // === Helpers ===
 export {
   parseClientMessage,
+  parseClientMessageSafe,
+  parseServerMessage,
+  parseServerMessageSafe,
   serializeServerMessage,
   createOutputMessage,
   createErrorMessage,
@@ -88,6 +91,14 @@ export {
   createBlockOutputMessage,
   createBlockListMessage
 } from './helpers.js';
+
+// === Schemas ===
+export {
+  ClientMessageSchema,
+  ServerMessageSchema,
+  type ValidatedClientMessage,
+  type ValidatedServerMessage
+} from './schemas.js';
 
 import type { AIErrorMessage, AIFinalMessage, AIRunStartedMessage, AIStreamMessage } from './ai.js';
 import type {
