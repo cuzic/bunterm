@@ -1,8 +1,12 @@
 /**
  * Route Helpers
  *
- * Minimal helpers for quote routes.
- * These simplify common patterns without hiding control flow.
+ * Small helpers that simplify common route patterns.
+ *
+ * Criteria for adding helpers here:
+ * - Must return T | Response (consistent early-return pattern)
+ * - Must be used by 3+ routes
+ * - Must not hide control flow (caller still sees if/return)
  */
 
 import type { z } from 'zod';
