@@ -38,7 +38,7 @@ export async function runCommand(fn: CommandFn): Promise<void> {
     // Otherwise, successful completion
   } catch (error) {
     if (error instanceof CliError) {
-      if (error.message) {
+      if (!error.silent && error.message) {
         console.error(`Error: ${error.message}`);
       }
       process.exit(error.exitCode);

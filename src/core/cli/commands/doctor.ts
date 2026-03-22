@@ -48,7 +48,7 @@ export async function doctorCommand(options: DoctorOptions): Promise<void> {
       })
     );
     if (!allPassed) {
-      throw new CliError('');
+      throw CliError.silent();
     }
     return;
   }
