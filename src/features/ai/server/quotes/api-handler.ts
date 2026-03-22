@@ -21,7 +21,7 @@
  * 1. **Write directly first** - Don't abstract until a pattern repeats 3+ times
  * 2. **Use the standard route skeleton**:
  *    - Step 1: Validate path params (if any)
- *    - Step 2: Parse search params with parseSearchParams()
+ *    - Step 2: Parse search params with parseParams()
  *    - Step 3: Resolve context with resolveWorkspaceFromParams() or resolveClaudeFromParams()
  *    - Step 4: Execute service logic
  * 3. **Self-review with the 10-item checklist** (see below)

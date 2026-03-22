@@ -5,28 +5,22 @@
  */
 
 import { getRecentClaudeSessions } from '../quotes-service.js';
-import { SessionsParamsSchema, parseSearchParams } from './params.js';
-import { failureResponse, handleError, successResponse } from './response.js';
+import { SessionsParamsSchema } from './params.js';
+import { handleError, successResponse } from './response.js';
+import { parseParams } from './route-helpers.js';
 import type { QuoteRouteContext } from './types.js';
 
 /**
  * Handle /sessions route
  *
  * No session required - reads from ~/.claude/history.jsonl
- *
- * Success: { sessions: ClaudeSession[] }
- * Error: { error: string } with appropriate status code
  */
 export function handleSessionsRoute(ctx: QuoteRouteContext): Response {
-  // Parse parameters
-  const parsed = parseSearchParams(ctx.params, SessionsParamsSchema);
-  if (!parsed.ok) {
-    return failureResponse(parsed.error, ctx.headers, 400);
-  }
+  const params = parseParams(ctx.params, SessionsParamsSchema, ctx.headers);
+  if (params instanceof Response) return params;
 
-  // Get sessions
   try {
-    const sessions = getRecentClaudeSessions(parsed.value.limit);
+    const sessions = getRecentClaudeSessions(params.limit);
     return successResponse({ sessions }, ctx.headers);
   } catch (error) {
     return handleError(error, ctx.headers);

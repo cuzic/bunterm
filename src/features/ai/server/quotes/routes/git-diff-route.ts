@@ -6,14 +6,13 @@
  */
 
 import { getFileDiff, getGitDiff } from '../quotes-service.js';
-import { GitDiffFileParamsSchema, parseSearchParams } from './params.js';
-import { failureResponse, handleError, successResponse } from './response.js';
+import { GitDiffFileParamsSchema } from './params.js';
+import { handleError, successResponse } from './response.js';
+import { parseParams } from './route-helpers.js';
 import { type QuoteRouteContext, resolveWorkspaceFromParams } from './types.js';
 
 /**
  * Handle /git-diff route
- *
- * No route-specific params - only needs workspace resolution.
  */
 export async function handleGitDiffRoute(ctx: QuoteRouteContext): Promise<Response> {
   const cwd = resolveWorkspaceFromParams(ctx);
@@ -29,19 +28,17 @@ export async function handleGitDiffRoute(ctx: QuoteRouteContext): Promise<Respon
 
 /**
  * Handle /git-diff-file route
- *
- * Requires: path
  */
 export async function handleGitDiffFileRoute(ctx: QuoteRouteContext): Promise<Response> {
-  const parsed = parseSearchParams(ctx.params, GitDiffFileParamsSchema);
-  if (!parsed.ok) return failureResponse(parsed.error, ctx.headers, 400);
+  const params = parseParams(ctx.params, GitDiffFileParamsSchema, ctx.headers);
+  if (params instanceof Response) return params;
 
   const cwd = resolveWorkspaceFromParams(ctx);
   if (cwd instanceof Response) return cwd;
 
   try {
-    const diff = await getFileDiff(cwd, parsed.value.path);
-    return successResponse({ path: parsed.value.path, diff }, ctx.headers);
+    const diff = await getFileDiff(cwd, params.path);
+    return successResponse({ path: params.path, diff }, ctx.headers);
   } catch (error) {
     return handleError(error, ctx.headers);
   }

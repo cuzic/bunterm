@@ -10,8 +10,9 @@ import {
   getRecentClaudeTurns,
   getRecentClaudeTurnsFromSession
 } from '../quotes-service.js';
-import { RecentMarkdownParamsSchema, RecentParamsSchema, parseSearchParams } from './params.js';
-import { failureResponse, handleError, successResponse } from './response.js';
+import { RecentMarkdownParamsSchema, RecentParamsSchema } from './params.js';
+import { handleError, successResponse } from './response.js';
+import { parseParams } from './route-helpers.js';
 import {
   type QuoteRouteContext,
   resolveClaudeFromParams,
@@ -22,14 +23,14 @@ import {
  * Handle /recent-markdown route
  */
 export function handleRecentMarkdownRoute(ctx: QuoteRouteContext): Response {
-  const parsed = parseSearchParams(ctx.params, RecentMarkdownParamsSchema);
-  if (!parsed.ok) return failureResponse(parsed.error, ctx.headers, 400);
+  const params = parseParams(ctx.params, RecentMarkdownParamsSchema, ctx.headers);
+  if (params instanceof Response) return params;
 
   const cwd = resolveWorkspaceFromParams(ctx);
   if (cwd instanceof Response) return cwd;
 
   try {
-    const files = collectRecentMarkdown(cwd, parsed.value.hours, parsed.value.count);
+    const files = collectRecentMarkdown(cwd, params.hours, params.count);
     return successResponse({ files }, ctx.headers);
   } catch (error) {
     return handleError(error, ctx.headers);
@@ -40,16 +41,16 @@ export function handleRecentMarkdownRoute(ctx: QuoteRouteContext): Response {
  * Handle /recent route (Claude turns)
  */
 export async function handleRecentRoute(ctx: QuoteRouteContext): Promise<Response> {
-  const parsed = parseSearchParams(ctx.params, RecentParamsSchema);
-  if (!parsed.ok) return failureResponse(parsed.error, ctx.headers, 400);
+  const params = parseParams(ctx.params, RecentParamsSchema, ctx.headers);
+  if (params instanceof Response) return params;
 
   const claude = resolveClaudeFromParams(ctx);
   if (claude instanceof Response) return claude;
 
   try {
     const turns = claude.claudeSessionId
-      ? await getRecentClaudeTurnsFromSession(claude.cwd, claude.claudeSessionId, parsed.value.count)
-      : await getRecentClaudeTurns(claude.cwd, parsed.value.count);
+      ? await getRecentClaudeTurnsFromSession(claude.cwd, claude.claudeSessionId, params.count)
+      : await getRecentClaudeTurns(claude.cwd, params.count);
     return successResponse({ turns }, ctx.headers);
   } catch (error) {
     return handleError(error, ctx.headers);

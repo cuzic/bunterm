@@ -5,8 +5,9 @@
  */
 
 import { readFileContent, resolveFileContentBaseDir } from '../quotes-service.js';
-import { FileContentParamsSchema, parseSearchParams } from './params.js';
+import { FileContentParamsSchema } from './params.js';
 import { failureResponse, successResponse } from './response.js';
+import { parseParams } from './route-helpers.js';
 import { type QuoteRouteContext, resolveWorkspaceFromParams } from './types.js';
 
 /**
@@ -16,21 +17,19 @@ import { type QuoteRouteContext, resolveWorkspaceFromParams } from './types.js';
  * source='plans': uses ~/.claude/plans (no workspace needed)
  */
 export function handleFileContentRoute(ctx: QuoteRouteContext): Response {
-  const parsed = parseSearchParams(ctx.params, FileContentParamsSchema);
-  if (!parsed.ok) return failureResponse(parsed.error, ctx.headers, 400);
-
-  const { source, path: filePath, preview: isPreview } = parsed.value;
+  const params = parseParams(ctx.params, FileContentParamsSchema, ctx.headers);
+  if (params instanceof Response) return params;
 
   // Resolve workspace for project source only
   let workspaceCwd: string | undefined;
-  if (source === 'project') {
+  if (params.source === 'project') {
     const cwd = resolveWorkspaceFromParams(ctx);
     if (cwd instanceof Response) return cwd;
     workspaceCwd = cwd;
   }
 
-  const baseDir = resolveFileContentBaseDir(source, workspaceCwd);
-  const result = readFileContent(baseDir, filePath, isPreview);
+  const baseDir = resolveFileContentBaseDir(params.source, workspaceCwd);
+  const result = readFileContent(baseDir, params.path, params.preview);
 
   if ('error' in result) {
     return failureResponse(
