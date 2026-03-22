@@ -5,8 +5,9 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { notFound, validationFailed } from '@/core/errors.js';
 import type { PushSubscriptionState } from '@/core/config/types.js';
 import {
   addPushSubscription,
@@ -16,48 +17,75 @@ import {
 } from '@/core/config/state.js';
 import { getPublicVapidKey } from '@/features/notifications/server/vapid.js';
 import { createLogger } from '@/utils/logger.js';
+import type { RouteDef } from '../../route-types.js';
 
 const log = createLogger('notifications-api');
 
-/**
- * Handle notifications API routes
- */
-export async function handleNotificationsRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // GET /api/notifications/vapid-key
-  if (apiPath === '/notifications/vapid-key' && method === 'GET') {
-    try {
+const SubscribeBodySchema = z.object({
+  endpoint: z.string().url('Invalid endpoint URL'),
+  keys: z.object({
+    p256dh: z.string().min(1, 'p256dh key is required'),
+    auth: z.string().min(1, 'auth key is required')
+  }),
+  sessionName: z.string().optional()
+});
+
+const BellBodySchema = z.object({
+  sessionName: z.string().min(1, 'sessionName is required')
+});
+
+// === Response Types ===
+
+interface VapidKeyResponse {
+  publicKey: string;
+}
+
+interface BellResponse {
+  success: boolean;
+  sessionName: string;
+  subscriptionCount: number;
+}
+
+// === Routes ===
+
+export const notificationsRoutes: RouteDef[] = [
+  {
+    method: 'GET',
+    path: '/api/notifications/vapid-key',
+    description: 'Get VAPID public key for push notifications',
+    tags: ['notifications'],
+    handler: async () => {
       const publicKey = getPublicVapidKey(getStateDir());
-      return jsonResponse({ publicKey }, { sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok<VapidKeyResponse>({ publicKey });
     }
-  }
+  },
 
-  // GET /api/notifications/subscriptions
-  if (apiPath === '/notifications/subscriptions' && method === 'GET') {
-    const subscriptions = getAllPushSubscriptions();
-    return jsonResponse(subscriptions, { sentryEnabled });
-  }
+  {
+    method: 'GET',
+    path: '/api/notifications/subscriptions',
+    description: 'List all push subscriptions',
+    tags: ['notifications'],
+    handler: async () => {
+      const subscriptions = getAllPushSubscriptions();
+      return ok(subscriptions);
+    }
+  },
 
-  // POST /api/notifications/subscribe
-  if (apiPath === '/notifications/subscribe' && method === 'POST') {
-    try {
-      const body = (await req.json()) as {
-        endpoint: string;
-        keys: { p256dh: string; auth: string };
-        sessionName?: string;
-      };
-
-      if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
-        return errorResponse('endpoint and keys (p256dh, auth) are required', 400, sentryEnabled);
-      }
+  {
+    method: 'POST',
+    path: '/api/notifications/subscribe',
+    bodySchema: SubscribeBodySchema,
+    description: 'Create or return existing push subscription',
+    tags: ['notifications'],
+    handler: async (ctx) => {
+      const body = ctx.body as z.infer<typeof SubscribeBodySchema>;
 
       // Check if subscription already exists
       const existing = getAllPushSubscriptions().find((s) => s.endpoint === body.endpoint);
       if (existing) {
-        return jsonResponse(existing, { sentryEnabled });
+        return ok(existing);
       }
 
       // Create new subscription
@@ -72,64 +100,66 @@ export async function handleNotificationsRoutes(ctx: ApiContext): Promise<Respon
       addPushSubscription(subscription);
       log.info(`New subscription: ${subscription.id}`);
 
-      return jsonResponse(subscription, { status: 201, sentryEnabled });
-    } catch (error) {
-      log.error(`Subscribe error: ${error}`);
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok(subscription);
     }
-  }
+  },
 
-  // DELETE /api/notifications/subscribe/:id
-  const subscribeDeleteMatch = apiPath.match(/^\/notifications\/subscribe\/([^/]+)$/);
-  if (subscribeDeleteMatch && method === 'DELETE') {
-    const subscriptionId = subscribeDeleteMatch[1];
-    if (!subscriptionId) {
-      return errorResponse('Subscription ID required', 400, sentryEnabled);
-    }
-
-    const existing = getAllPushSubscriptions().find((s) => s.id === subscriptionId);
-    if (!existing) {
-      return errorResponse('Subscription not found', 404, sentryEnabled);
-    }
-
-    removePushSubscription(subscriptionId);
-    log.info(`Subscription removed: ${subscriptionId}`);
-
-    return jsonResponse({ success: true }, { sentryEnabled });
-  }
-
-  // POST /api/notifications/bell
-  if (apiPath === '/notifications/bell' && method === 'POST') {
-    try {
-      const body = (await req.json()) as { sessionName: string };
-
-      if (!body.sessionName) {
-        return errorResponse('sessionName is required', 400, sentryEnabled);
+  {
+    method: 'DELETE',
+    path: '/api/notifications/subscribe/:id',
+    description: 'Delete a push subscription',
+    tags: ['notifications'],
+    handler: async (ctx) => {
+      const id = ctx.pathParams['id'];
+      if (!id) {
+        return err(validationFailed('id', 'Subscription ID is required'));
       }
 
+      const existing = getAllPushSubscriptions().find((s) => s.id === id);
+      if (!existing) {
+        return err(notFound(`Subscription ${id}`));
+      }
+
+      removePushSubscription(id);
+      log.info(`Subscription removed: ${id}`);
+
+      return ok({ success: true });
+    }
+  },
+
+  {
+    method: 'POST',
+    path: '/api/notifications/bell',
+    bodySchema: BellBodySchema,
+    description: 'Trigger bell notification for a session',
+    tags: ['notifications'],
+    handler: async (ctx) => {
+      const { sessionName } = ctx.body as z.infer<typeof BellBodySchema>;
+
       const subscriptions = getAllPushSubscriptions().filter(
-        (s) => !s.sessionName || s.sessionName === body.sessionName
+        (s) => !s.sessionName || s.sessionName === sessionName
       );
 
       if (subscriptions.length === 0) {
-        return jsonResponse({ sent: 0, message: 'No subscriptions' }, { sentryEnabled });
+        return ok({ sent: 0, message: 'No subscriptions' });
       }
 
-      log.info(`Bell triggered for session: ${body.sessionName}`);
+      log.info(`Bell triggered for session: ${sessionName}`);
 
-      return jsonResponse(
-        {
-          success: true,
-          sessionName: body.sessionName,
-          subscriptionCount: subscriptions.length
-        },
-        { sentryEnabled }
-      );
-    } catch (error) {
-      log.error(`Bell error: ${error}`);
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok<BellResponse>({
+        success: true,
+        sessionName,
+        subscriptionCount: subscriptions.length
+      });
     }
   }
+];
 
+// === Legacy Handler (deprecated) ===
+
+/**
+ * @deprecated Use notificationsRoutes with RouteRegistry instead
+ */
+export async function handleNotificationsRoutes(): Promise<Response | null> {
   return null;
 }

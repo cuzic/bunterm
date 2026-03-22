@@ -7,59 +7,76 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { notFound, validationFailed } from '@/core/errors.js';
 import { getExecutorManager } from './blocks-routes.js';
 import type { BlockContext, FileContext } from '@/features/ai/server/types.js';
 import { validateSecurePath } from '@/utils/path-security.js';
+import type { RouteDef } from '../../route-types.js';
 
-/**
- * Handle AI API routes
- */
-export async function handleAiRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sessionManager, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // GET /api/ai/runners
-  if (apiPath === '/ai/runners' && method === 'GET') {
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    const runners = await aiService.getRunnerStatuses();
-    return jsonResponse({ runners }, { sentryEnabled });
-  }
+const AiRunBodySchema = z.object({
+  question: z.string().min(1, 'question is required'),
+  context: z.object({
+    sessionId: z.string().min(1),
+    blocks: z.array(z.string()),
+    inlineBlocks: z
+      .array(
+        z.object({
+          id: z.string(),
+          type: z.enum(['command', 'claude']),
+          content: z.string(),
+          metadata: z.record(z.string(), z.unknown()).optional()
+        })
+      )
+      .optional(),
+    files: z
+      .array(
+        z.object({
+          source: z.enum(['plans', 'project']),
+          path: z.string()
+        })
+      )
+      .optional(),
+    renderMode: z.enum(['full', 'errorOnly', 'preview', 'commandOnly']).optional().default('full')
+  }),
+  runner: z.enum(['claude', 'codex', 'gemini', 'auto']).optional(),
+  conversationId: z.string().optional()
+});
 
-  // POST /api/ai/runs
-  if (apiPath === '/ai/runs' && method === 'POST') {
-    try {
-      const body = (await req.json()) as {
-        question: string;
-        context: {
-          sessionId: string;
-          blocks: string[];
-          inlineBlocks?: Array<{
-            id: string;
-            type: 'command' | 'claude';
-            content: string;
-            metadata?: Record<string, unknown>;
-          }>;
-          files?: Array<{ source: 'plans' | 'project'; path: string }>;
-          renderMode?: 'full' | 'errorOnly' | 'preview' | 'commandOnly';
-        };
-        runner?: 'claude' | 'codex' | 'gemini' | 'auto';
-        conversationId?: string;
-      };
+type AiRunBody = z.infer<typeof AiRunBodySchema>;
 
-      if (!body.question || typeof body.question !== 'string') {
-        return errorResponse('question is required', 400, sentryEnabled);
-      }
+// === Routes ===
 
-      if (!body.context?.sessionId || !Array.isArray(body.context?.blocks)) {
-        return errorResponse('context with sessionId and blocks is required', 400, sentryEnabled);
-      }
+export const aiRoutes: RouteDef[] = [
+  {
+    method: 'GET',
+    path: '/api/ai/runners',
+    description: 'Get AI runner statuses',
+    tags: ['ai'],
+    handler: async () => {
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      const runners = await aiService.getRunnerStatuses();
+      return ok({ runners });
+    }
+  },
+
+  {
+    method: 'POST',
+    path: '/api/ai/runs',
+    bodySchema: AiRunBodySchema,
+    description: 'Submit an AI chat request',
+    tags: ['ai'],
+    handler: async (ctx) => {
+      const body = ctx.body as AiRunBody;
 
       const aiModule = await import('@/features/ai/server/index.js');
       const aiService = aiModule.getAIService();
 
-      const executor = getExecutorManager(sessionManager);
+      const executor = getExecutorManager(ctx.sessionManager);
       const blockContexts: BlockContext[] = [];
 
       for (const blockId of body.context.blocks) {
@@ -95,7 +112,7 @@ export async function handleAiRoutes(ctx: ApiContext): Promise<Response | null> 
 
       const fileContexts: FileContext[] = [];
       if (body.context.files && Array.isArray(body.context.files)) {
-        const session = sessionManager.getSession(body.context.sessionId);
+        const session = ctx.sessionManager.getSession(body.context.sessionId);
         const sessionCwd = session?.cwd ?? process.cwd();
 
         for (const fileRef of body.context.files) {
@@ -152,77 +169,120 @@ export async function handleAiRoutes(ctx: ApiContext): Promise<Response | null> 
         body.context.inlineBlocks
       );
 
-      return jsonResponse(response, { sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok(response);
+    }
+  },
+
+  {
+    method: 'GET',
+    path: '/api/ai/runs/:runId',
+    description: 'Get a specific AI run',
+    tags: ['ai'],
+    handler: async (ctx) => {
+      const runId = ctx.pathParams['runId'];
+      if (!runId) {
+        return err(validationFailed('runId', 'Run ID is required'));
+      }
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      const run = aiService.getRun(runId);
+
+      if (!run) {
+        return err(notFound(`Run "${runId}" not found`));
+      }
+
+      return ok(run);
+    }
+  },
+
+  {
+    method: 'GET',
+    path: '/api/ai/threads/:threadId',
+    description: 'Get a specific AI thread',
+    tags: ['ai'],
+    handler: async (ctx) => {
+      const threadId = ctx.pathParams['threadId'];
+      if (!threadId) {
+        return err(validationFailed('threadId', 'Thread ID is required'));
+      }
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      const thread = aiService.getThread(threadId);
+
+      if (!thread) {
+        return err(notFound(`Thread "${threadId}" not found`));
+      }
+
+      return ok(thread);
+    }
+  },
+
+  {
+    method: 'GET',
+    path: '/api/ai/sessions/:sessionId/threads',
+    description: 'Get threads for a session',
+    tags: ['ai'],
+    handler: async (ctx) => {
+      const sessionId = ctx.pathParams['sessionId'];
+      if (!sessionId) {
+        return err(validationFailed('sessionId', 'Session ID is required'));
+      }
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      const threads = aiService.getSessionThreads(sessionId);
+      return ok(threads);
+    }
+  },
+
+  {
+    method: 'DELETE',
+    path: '/api/ai/sessions/:sessionId/history',
+    description: 'Clear AI history for a session',
+    tags: ['ai'],
+    handler: async (ctx) => {
+      const sessionId = ctx.pathParams['sessionId'];
+      if (!sessionId) {
+        return err(validationFailed('sessionId', 'Session ID is required'));
+      }
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      aiService.clearSessionHistory(sessionId);
+      return ok({ success: true });
+    }
+  },
+
+  {
+    method: 'GET',
+    path: '/api/ai/stats',
+    description: 'Get AI service statistics',
+    tags: ['ai'],
+    handler: async () => {
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      const stats = aiService.getStats();
+      return ok(stats);
+    }
+  },
+
+  {
+    method: 'DELETE',
+    path: '/api/ai/cache',
+    description: 'Clear AI service cache',
+    tags: ['ai'],
+    handler: async () => {
+      const { getAIService } = await import('@/features/ai/server/index.js');
+      const aiService = getAIService();
+      aiService.clearCache();
+      return ok({ success: true });
     }
   }
+];
 
-  // GET /api/ai/runs/:runId
-  const runMatch = apiPath.match(/^\/ai\/runs\/([^/]+)$/);
-  if (runMatch?.[1] && method === 'GET') {
-    const runId = decodeURIComponent(runMatch[1]);
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    const run = aiService.getRun(runId);
+// === Legacy Handler (deprecated) ===
 
-    if (!run) {
-      return errorResponse(`Run "${runId}" not found`, 404, sentryEnabled);
-    }
-
-    return jsonResponse(run, { sentryEnabled });
-  }
-
-  // GET /api/ai/threads/:threadId
-  const threadMatch = apiPath.match(/^\/ai\/threads\/([^/]+)$/);
-  if (threadMatch?.[1] && method === 'GET') {
-    const threadId = decodeURIComponent(threadMatch[1]);
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    const thread = aiService.getThread(threadId);
-
-    if (!thread) {
-      return errorResponse(`Thread "${threadId}" not found`, 404, sentryEnabled);
-    }
-
-    return jsonResponse(thread, { sentryEnabled });
-  }
-
-  // GET /api/ai/sessions/:sessionId/threads
-  const sessionThreadsMatch = apiPath.match(/^\/ai\/sessions\/([^/]+)\/threads$/);
-  if (sessionThreadsMatch?.[1] && method === 'GET') {
-    const sessionId = decodeURIComponent(sessionThreadsMatch[1]);
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    const threads = aiService.getSessionThreads(sessionId);
-    return jsonResponse(threads, { sentryEnabled });
-  }
-
-  // DELETE /api/ai/sessions/:sessionId/history
-  const clearHistoryMatch = apiPath.match(/^\/ai\/sessions\/([^/]+)\/history$/);
-  if (clearHistoryMatch?.[1] && method === 'DELETE') {
-    const sessionId = decodeURIComponent(clearHistoryMatch[1]);
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    aiService.clearSessionHistory(sessionId);
-    return jsonResponse({ success: true }, { sentryEnabled });
-  }
-
-  // GET /api/ai/stats
-  if (apiPath === '/ai/stats' && method === 'GET') {
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    const stats = aiService.getStats();
-    return jsonResponse(stats, { sentryEnabled });
-  }
-
-  // DELETE /api/ai/cache
-  if (apiPath === '/ai/cache' && method === 'DELETE') {
-    const { getAIService } = await import('@/features/ai/server/index.js');
-    const aiService = getAIService();
-    aiService.clearCache();
-    return jsonResponse({ success: true }, { sentryEnabled });
-  }
-
+/**
+ * @deprecated Use aiRoutes with RouteRegistry instead
+ */
+export async function handleAiRoutes(): Promise<Response | null> {
   return null;
 }

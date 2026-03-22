@@ -4,44 +4,64 @@
  * Handles authentication: WebSocket token generation.
  */
 
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { sessionNotFound } from '@/core/errors.js';
+import type { RouteDef } from '../../route-types.js';
 
-/**
- * Handle auth API routes
- */
-export async function handleAuthRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sessionManager, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // POST /api/auth/ws-token
-  if (apiPath === '/auth/ws-token' && method === 'POST') {
-    try {
-      const body = (await req.json()) as { sessionId: string; userId?: string };
+const WsTokenBodySchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  userId: z.string().optional()
+});
 
-      if (!body.sessionId || typeof body.sessionId !== 'string') {
-        return errorResponse('sessionId is required', 400, sentryEnabled);
-      }
+type WsTokenBody = z.infer<typeof WsTokenBodySchema>;
 
-      if (!sessionManager.hasSession(body.sessionId)) {
-        return errorResponse(`Session "${body.sessionId}" not found`, 404, sentryEnabled);
+// === Response Types ===
+
+interface WsTokenResponse {
+  token: string;
+  sessionId: string;
+  expiresIn: number;
+}
+
+// === Routes ===
+
+export const authRoutes: RouteDef[] = [
+  {
+    method: 'POST',
+    path: '/api/auth/ws-token',
+    bodySchema: WsTokenBodySchema,
+    description: 'Generate WebSocket authentication token',
+    tags: ['auth'],
+    handler: async (ctx) => {
+      const { sessionId, userId } = ctx.body as WsTokenBody;
+
+      if (!ctx.sessionManager.hasSession(sessionId)) {
+        return err(sessionNotFound(sessionId));
       }
 
       const { getTokenGenerator } = await import('@/core/server/ws/session-token.js');
       const tokenGenerator = getTokenGenerator();
-      const token = tokenGenerator.generate(body.sessionId, body.userId);
+      const token = tokenGenerator.generate(sessionId, userId);
 
-      return jsonResponse(
-        {
-          token,
-          sessionId: body.sessionId,
-          expiresIn: 30
-        },
-        { sentryEnabled }
-      );
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok<WsTokenResponse>({
+        token,
+        sessionId,
+        expiresIn: 30
+      });
     }
   }
+];
 
+// === Legacy Handler (deprecated) ===
+
+/**
+ * @deprecated Use authRoutes with RouteRegistry instead
+ */
+export async function handleAuthRoutes(): Promise<Response | null> {
+  // Preserved for backward compatibility during migration
+  // Will be removed once API index uses RouteRegistry
   return null;
 }

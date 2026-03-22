@@ -7,199 +7,108 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, relative } from 'node:path';
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { sessionNotFound, notFound, validationFailed, pathTraversal } from '@/core/errors.js';
 import { validateSecurePath } from '@/utils/path-security.js';
 import { createLogger } from '@/utils/logger.js';
+import type { RouteDef, RouteContext } from '../../route-types.js';
+import { securityHeaders } from '../../utils.js';
 
 const log = createLogger('preview-api');
 
-/**
- * Handle preview API routes
- */
-export async function handlePreviewRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sessionManager, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // GET /api/preview/file?session=<name>&path=<path>
-  if (apiPath.startsWith('/preview/file') && method === 'GET') {
-    const params = new URL(req.url).searchParams;
-    const sessionName = params.get('session');
-    const filePath = params.get('path');
-    log.info(`Preview request: session=${sessionName}, path=${filePath}`);
+const RecentFilesQuerySchema = z.object({
+  session: z.string().min(1, 'session is required'),
+  count: z.coerce.number().int().min(1).max(20).optional().default(10)
+});
 
-    if (!sessionName || !filePath) {
-      return errorResponse('session and path parameters are required', 400, sentryEnabled);
-    }
+const ContentFileQuerySchema = z.object({
+  source: z.enum(['plans', 'project'], { message: 'source must be "plans" or "project"' }),
+  path: z.string().min(1, 'path is required'),
+  session: z.string().optional()
+});
 
-    const session = sessionManager.getSession(sessionName);
-    if (!session) {
-      log.warn(`Session not found: ${sessionName}`);
-      return errorResponse(`Session "${sessionName}" not found`, 404, sentryEnabled);
-    }
+// === Response Types ===
 
-    try {
-      const baseDir = session.cwd;
-      log.info(`Preview baseDir=${baseDir}, filePath=${filePath}`);
-      const pathResult = validateSecurePath(baseDir, filePath);
-      if (!pathResult.valid) {
-        log.warn(`Invalid path: ${pathResult.error}`);
-        return errorResponse(pathResult.error!, 400, sentryEnabled);
-      }
-      const targetPath = pathResult.targetPath!;
-      log.info(`Resolved path: ${targetPath}`);
-
-      if (!existsSync(targetPath)) {
-        log.warn(`File not found: ${targetPath}`);
-        return errorResponse('File not found', 404, sentryEnabled);
-      }
-
-      const content = readFileSync(targetPath, 'utf-8');
-      log.info(`Serving file: ${targetPath} (${content.length} bytes)`);
-
-      const isMarkdown =
-        filePath.toLowerCase().endsWith('.md') || filePath.toLowerCase().endsWith('.markdown');
-
-      if (isMarkdown) {
-        const markdownHtml = generateMarkdownPreviewHtml(content, filePath);
-        return new Response(markdownHtml, {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' }
-        });
-      }
-
-      return new Response(content, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
-    }
-  }
-
-  // GET /api/context-files/recent
-  if (apiPath.startsWith('/context-files/recent') && method === 'GET') {
-    const params = new URL(req.url).searchParams;
-    const sessionName = params.get('session');
-    const count = Math.min(Number.parseInt(params.get('count') ?? '10', 10), 20);
-
-    if (!sessionName) {
-      return errorResponse('session parameter is required', 400, sentryEnabled);
-    }
-
-    const session = sessionManager.getSession(sessionName);
-    if (!session) {
-      return errorResponse(`Session "${sessionName}" not found`, 404, sentryEnabled);
-    }
-
-    try {
-      const files: Array<{
-        source: 'plans' | 'project';
-        path: string;
-        name: string;
-        size: number;
-        modifiedAt: string;
-      }> = [];
-
-      // Get plans files from ~/.claude/plans/
-      const plansDir = join(homedir(), '.claude', 'plans');
-      if (existsSync(plansDir)) {
-        const planFiles = collectMdFiles(plansDir, plansDir);
-        for (const file of planFiles) {
-          files.push({ source: 'plans', ...file });
-        }
-      }
-
-      // Get project files from session working directory
-      const projectDir = session.cwd;
-      if (existsSync(projectDir)) {
-        const projectFiles = collectMdFiles(projectDir, projectDir, {
-          excludeDirs: ['node_modules', '.git', 'dist', 'build', '.next', 'coverage', 'vendor']
-        });
-        for (const file of projectFiles) {
-          files.push({ source: 'project', ...file });
-        }
-      }
-
-      files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
-      const limitedFiles = files.slice(0, count);
-
-      return jsonResponse({ files: limitedFiles }, { sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
-    }
-  }
-
-  // GET /api/context-files/content
-  if (apiPath.startsWith('/context-files/content') && method === 'GET') {
-    const params = new URL(req.url).searchParams;
-    const source = params.get('source') as 'plans' | 'project' | null;
-    const sessionName = params.get('session');
-    const filePath = params.get('path');
-
-    if (!source || !filePath) {
-      return errorResponse('source and path parameters are required', 400, sentryEnabled);
-    }
-
-    if (source !== 'plans' && source !== 'project') {
-      return errorResponse('source must be "plans" or "project"', 400, sentryEnabled);
-    }
-
-    if (source === 'project' && !sessionName) {
-      return errorResponse('session parameter is required for project files', 400, sentryEnabled);
-    }
-
-    try {
-      let baseDir: string;
-      if (source === 'plans') {
-        baseDir = join(homedir(), '.claude', 'plans');
-      } else {
-        const sessionId = sessionName as string;
-        const session = sessionManager.getSession(sessionId);
-        if (!session) {
-          return errorResponse(`Session "${sessionId}" not found`, 404, sentryEnabled);
-        }
-        baseDir = session.cwd;
-      }
-
-      const pathResult = validateSecurePath(baseDir, filePath);
-      if (!pathResult.valid) {
-        return errorResponse(pathResult.error!, 400, sentryEnabled);
-      }
-      const targetPath = pathResult.targetPath!;
-
-      if (!existsSync(targetPath)) {
-        return errorResponse('File not found', 404, sentryEnabled);
-      }
-
-      const stat = statSync(targetPath);
-      const MAX_FILE_SIZE = 100 * 1024;
-      if (stat.size > MAX_FILE_SIZE) {
-        return errorResponse(`File too large (max ${MAX_FILE_SIZE / 1024}KB)`, 413, sentryEnabled);
-      }
-
-      const content = readFileSync(targetPath, 'utf-8');
-      const name = basename(targetPath);
-
-      return jsonResponse(
-        {
-          source,
-          path: filePath,
-          name,
-          content,
-          size: stat.size,
-          modifiedAt: stat.mtime.toISOString()
-        },
-        { sentryEnabled }
-      );
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
-    }
-  }
-
-  return null;
+interface CollectedFile {
+  source: 'plans' | 'project';
+  path: string;
+  name: string;
+  size: number;
+  modifiedAt: string;
 }
 
-/**
- * Generate HTML page for Markdown preview
- */
+interface FileContentResponse {
+  source: 'plans' | 'project';
+  path: string;
+  name: string;
+  content: string;
+  size: number;
+  modifiedAt: string;
+}
+
+// === Helper Functions ===
+
+interface CollectOptions {
+  excludeDirs?: string[];
+  maxDepth?: number;
+}
+
+interface FileInfo {
+  path: string;
+  name: string;
+  size: number;
+  modifiedAt: string;
+}
+
+function collectMdFiles(
+  dir: string,
+  baseDir: string,
+  options: CollectOptions = {},
+  currentDepth = 0
+): FileInfo[] {
+  const { excludeDirs = [], maxDepth = 5 } = options;
+  const files: FileInfo[] = [];
+
+  if (currentDepth > maxDepth) {
+    return files;
+  }
+
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (excludeDirs.includes(entry.name) || entry.name.startsWith('.')) {
+          continue;
+        }
+        const subFiles = collectMdFiles(entryPath, baseDir, options, currentDepth + 1);
+        files.push(...subFiles);
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        try {
+          const stat = statSync(entryPath);
+          files.push({
+            path: relative(baseDir, entryPath),
+            name: entry.name,
+            size: stat.size,
+            modifiedAt: stat.mtime.toISOString()
+          });
+        } catch {
+          // Skip files that can't be stat'd
+        }
+      }
+    }
+  } catch {
+    // Skip directories that can't be read
+  }
+
+  return files;
+}
+
 function generateMarkdownPreviewHtml(markdownContent: string, filename: string): string {
   const escapedContent = JSON.stringify(markdownContent);
   const title = basename(filename);
@@ -245,63 +154,174 @@ function generateMarkdownPreviewHtml(markdownContent: string, filename: string):
 </html>`;
 }
 
-/**
- * Collect .md files from a directory recursively
- */
-interface CollectOptions {
-  excludeDirs?: string[];
-  maxDepth?: number;
-}
+// === Routes ===
 
-interface CollectedFile {
-  path: string;
-  name: string;
-  size: number;
-  modifiedAt: string;
-}
+export const previewRoutes: RouteDef[] = [
+  {
+    method: 'GET',
+    path: '/api/context-files/recent',
+    querySchema: RecentFilesQuerySchema,
+    description: 'Get recent .md files from plans and project',
+    tags: ['preview', 'context'],
+    handler: async (ctx) => {
+      const { session: sessionName, count } = ctx.params as z.infer<typeof RecentFilesQuerySchema>;
 
-function collectMdFiles(
-  dir: string,
-  baseDir: string,
-  options: CollectOptions = {},
-  currentDepth = 0
-): CollectedFile[] {
-  const { excludeDirs = [], maxDepth = 5 } = options;
-  const files: CollectedFile[] = [];
+      const session = ctx.sessionManager.getSession(sessionName);
+      if (!session) {
+        return err(sessionNotFound(sessionName));
+      }
 
-  if (currentDepth > maxDepth) {
-    return files;
-  }
+      const files: CollectedFile[] = [];
 
-  try {
-    const entries = readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const entryPath = join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (excludeDirs.includes(entry.name) || entry.name.startsWith('.')) {
-          continue;
-        }
-        const subFiles = collectMdFiles(entryPath, baseDir, options, currentDepth + 1);
-        files.push(...subFiles);
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        try {
-          const stat = statSync(entryPath);
-          files.push({
-            path: relative(baseDir, entryPath),
-            name: entry.name,
-            size: stat.size,
-            modifiedAt: stat.mtime.toISOString()
-          });
-        } catch {
-          // Skip files that can't be stat'd
+      // Get plans files from ~/.claude/plans/
+      const plansDir = join(homedir(), '.claude', 'plans');
+      if (existsSync(plansDir)) {
+        const planFiles = collectMdFiles(plansDir, plansDir);
+        for (const file of planFiles) {
+          files.push({ source: 'plans', ...file });
         }
       }
+
+      // Get project files from session working directory
+      const projectDir = session.cwd;
+      if (existsSync(projectDir)) {
+        const projectFiles = collectMdFiles(projectDir, projectDir, {
+          excludeDirs: ['node_modules', '.git', 'dist', 'build', '.next', 'coverage', 'vendor']
+        });
+        for (const file of projectFiles) {
+          files.push({ source: 'project', ...file });
+        }
+      }
+
+      files.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+      const limitedFiles = files.slice(0, count);
+
+      return ok({ files: limitedFiles });
     }
-  } catch {
-    // Skip directories that can't be read
+  },
+
+  {
+    method: 'GET',
+    path: '/api/context-files/content',
+    querySchema: ContentFileQuerySchema,
+    description: 'Get content of a context file',
+    tags: ['preview', 'context'],
+    handler: async (ctx) => {
+      const { source, path: filePath, session: sessionName } = ctx.params as z.infer<
+        typeof ContentFileQuerySchema
+      >;
+
+      if (source === 'project' && !sessionName) {
+        return err(validationFailed('session', 'session parameter is required for project files'));
+      }
+
+      let baseDir: string;
+      if (source === 'plans') {
+        baseDir = join(homedir(), '.claude', 'plans');
+      } else {
+        const session = ctx.sessionManager.getSession(sessionName!);
+        if (!session) {
+          return err(sessionNotFound(sessionName!));
+        }
+        baseDir = session.cwd;
+      }
+
+      const pathResult = validateSecurePath(baseDir, filePath);
+      if (!pathResult.valid) {
+        return err(pathTraversal(filePath));
+      }
+      const targetPath = pathResult.targetPath!;
+
+      if (!existsSync(targetPath)) {
+        return err(notFound('File not found'));
+      }
+
+      const stat = statSync(targetPath);
+      const MAX_FILE_SIZE = 100 * 1024;
+      if (stat.size > MAX_FILE_SIZE) {
+        return err(validationFailed('path', `File too large (max ${MAX_FILE_SIZE / 1024}KB)`));
+      }
+
+      const content = readFileSync(targetPath, 'utf-8');
+      const name = basename(targetPath);
+
+      return ok<FileContentResponse>({
+        source,
+        path: filePath,
+        name,
+        content,
+        size: stat.size,
+        modifiedAt: stat.mtime.toISOString()
+      });
+    }
+  }
+];
+
+// === File Preview Handler (returns HTML, not JSON) ===
+
+/**
+ * Handle file preview - returns HTML response directly
+ */
+export async function handleFilePreview(ctx: RouteContext): Promise<Response | null> {
+  const url = new URL(ctx.req.url);
+  const sessionName = url.searchParams.get('session');
+  const filePath = url.searchParams.get('path');
+  log.info(`Preview request: session=${sessionName}, path=${filePath}`);
+
+  if (!sessionName || !filePath) {
+    return null;
   }
 
-  return files;
+  const session = ctx.sessionManager.getSession(sessionName);
+  if (!session) {
+    log.warn(`Session not found: ${sessionName}`);
+    return null;
+  }
+
+  const baseDir = session.cwd;
+  log.info(`Preview baseDir=${baseDir}, filePath=${filePath}`);
+  const pathResult = validateSecurePath(baseDir, filePath);
+  if (!pathResult.valid) {
+    log.warn(`Invalid path: ${pathResult.error}`);
+    return null;
+  }
+  const targetPath = pathResult.targetPath!;
+  log.info(`Resolved path: ${targetPath}`);
+
+  if (!existsSync(targetPath)) {
+    log.warn(`File not found: ${targetPath}`);
+    return null;
+  }
+
+  const content = readFileSync(targetPath, 'utf-8');
+  log.info(`Serving file: ${targetPath} (${content.length} bytes)`);
+
+  const isMarkdown =
+    filePath.toLowerCase().endsWith('.md') || filePath.toLowerCase().endsWith('.markdown');
+
+  if (isMarkdown) {
+    const markdownHtml = generateMarkdownPreviewHtml(content, filePath);
+    return new Response(markdownHtml, {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        ...securityHeaders(ctx.sentryEnabled)
+      }
+    });
+  }
+
+  return new Response(content, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      ...securityHeaders(ctx.sentryEnabled)
+    }
+  });
+}
+
+// === Legacy Handler (deprecated) ===
+
+/**
+ * @deprecated Use previewRoutes with RouteRegistry instead
+ */
+export async function handlePreviewRoutes(): Promise<Response | null> {
+  return null;
 }

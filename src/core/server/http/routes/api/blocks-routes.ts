@@ -4,8 +4,9 @@
  * Handles command block operations: execute, cancel, stream.
  */
 
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { sessionNotFound, blockNotFound, validationFailed } from '@/core/errors.js';
 import type { CommandRequest } from '@/core/protocol/index.js';
 import {
   type CommandExecutorManager,
@@ -13,6 +14,8 @@ import {
 } from '@/core/terminal/command-executor-manager.js';
 import { createBlockSSEStream } from '@/features/blocks/server/block-event-emitter.js';
 import type { NativeSessionManager } from '@/core/server/session-manager.js';
+import type { RouteDef, RouteContext } from '../../route-types.js';
+import { securityHeaders } from '../../utils.js';
 
 // Command executor manager (lazy initialized)
 let executorManager: CommandExecutorManager | null = null;
@@ -27,114 +30,149 @@ export function getExecutorManager(sessionManager: NativeSessionManager): Comman
   return executorManager;
 }
 
-/**
- * Handle blocks API routes
- */
-export async function handleBlocksRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sessionManager, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // POST /api/sessions/:name/commands - Execute a command
-  const commandsMatch = apiPath.match(/^\/sessions\/([^/]+)\/commands$/);
-  if (commandsMatch?.[1] && method === 'POST') {
-    const sessionName = decodeURIComponent(commandsMatch[1]);
+const ExecuteCommandBodySchema = z.object({
+  command: z.string().min(1, 'command is required'),
+  cwd: z.string().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  mode: z.enum(['ephemeral', 'persistent']).optional()
+});
 
-    if (!sessionManager.hasSession(sessionName)) {
-      return errorResponse(`Session "${sessionName}" not found`, 404, sentryEnabled);
-    }
+const CancelBlockBodySchema = z.object({
+  signal: z.enum(['SIGTERM', 'SIGINT', 'SIGKILL']).optional().default('SIGTERM')
+});
 
-    try {
-      const body = (await req.json()) as CommandRequest;
+const GetChunksQuerySchema = z.object({
+  fromSeq: z.coerce.number().int().optional(),
+  stream: z.enum(['stdout', 'stderr', 'all']).optional().default('all'),
+  limit: z.coerce.number().int().optional()
+});
 
-      if (!body.command || typeof body.command !== 'string') {
-        return errorResponse('command is required', 400, sentryEnabled);
+// === Routes ===
+
+export const blocksRoutes: RouteDef[] = [
+  {
+    method: 'POST',
+    path: '/api/sessions/:name/commands',
+    bodySchema: ExecuteCommandBodySchema,
+    description: 'Execute a command in a session',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const sessionName = ctx.pathParams['name'];
+      if (!sessionName) {
+        return err(validationFailed('name', 'Session name is required'));
       }
 
-      const executor = getExecutorManager(sessionManager);
+      if (!ctx.sessionManager.hasSession(sessionName)) {
+        return err(sessionNotFound(sessionName));
+      }
+
+      const body = ctx.body as CommandRequest;
+      const executor = getExecutorManager(ctx.sessionManager);
       const response = await executor.executeCommand(sessionName, body);
 
-      return jsonResponse(response, { status: 202, sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok(response);
     }
-  }
+  },
 
-  // GET /api/sessions/:name/blocks - List blocks for a session
-  const sessionBlocksMatch = apiPath.match(/^\/sessions\/([^/]+)\/blocks$/);
-  if (sessionBlocksMatch?.[1] && method === 'GET') {
-    const sessionName = decodeURIComponent(sessionBlocksMatch[1]);
+  {
+    method: 'GET',
+    path: '/api/sessions/:name/blocks',
+    description: 'List blocks for a session',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const sessionName = ctx.pathParams['name'];
+      if (!sessionName) {
+        return err(validationFailed('name', 'Session name is required'));
+      }
 
-    if (!sessionManager.hasSession(sessionName)) {
-      return errorResponse(`Session "${sessionName}" not found`, 404, sentryEnabled);
+      if (!ctx.sessionManager.hasSession(sessionName)) {
+        return err(sessionNotFound(sessionName));
+      }
+
+      const executor = getExecutorManager(ctx.sessionManager);
+      const blocks = executor.getSessionBlocks(sessionName);
+
+      return ok(blocks);
     }
+  },
 
-    const executor = getExecutorManager(sessionManager);
-    const blocks = executor.getSessionBlocks(sessionName);
+  {
+    method: 'GET',
+    path: '/api/sessions/:name/integration',
+    description: 'Get OSC 633 integration status',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const sessionName = ctx.pathParams['name'];
+      if (!sessionName) {
+        return err(validationFailed('name', 'Session name is required'));
+      }
 
-    return jsonResponse(blocks, { sentryEnabled });
-  }
+      if (!ctx.sessionManager.hasSession(sessionName)) {
+        return err(sessionNotFound(sessionName));
+      }
 
-  // GET /api/sessions/:name/integration - Get OSC 633 integration status
-  const integrationMatch = apiPath.match(/^\/sessions\/([^/]+)\/integration$/);
-  if (integrationMatch?.[1] && method === 'GET') {
-    const sessionName = decodeURIComponent(integrationMatch[1]);
+      const executor = getExecutorManager(ctx.sessionManager);
+      const status = executor.getIntegrationStatus(sessionName);
 
-    if (!sessionManager.hasSession(sessionName)) {
-      return errorResponse(`Session "${sessionName}" not found`, 404, sentryEnabled);
-    }
-
-    const executor = getExecutorManager(sessionManager);
-    const status = executor.getIntegrationStatus(sessionName);
-
-    if (!status) {
-      return jsonResponse(
-        {
+      if (!status) {
+        return ok({
           osc633: false,
           status: 'unknown',
           testedAt: null,
           message: 'Integration not tested. Use persistent mode to test.'
-        },
-        { sentryEnabled }
-      );
+        });
+      }
+
+      return ok(status);
     }
+  },
 
-    return jsonResponse(status, { sentryEnabled });
-  }
+  {
+    method: 'GET',
+    path: '/api/blocks/:blockId',
+    description: 'Get a specific block',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const blockId = ctx.pathParams['blockId'];
+      if (!blockId) {
+        return err(validationFailed('blockId', 'Block ID is required'));
+      }
 
-  // GET /api/blocks/:blockId - Get a specific block
-  const blockMatch = apiPath.match(/^\/blocks\/([^/]+)$/);
-  if (blockMatch?.[1] && method === 'GET') {
-    const blockId = decodeURIComponent(blockMatch[1]);
+      const executor = getExecutorManager(ctx.sessionManager);
+      const block = executor.getBlock(blockId);
 
-    const executor = getExecutorManager(sessionManager);
-    const block = executor.getBlock(blockId);
+      if (!block) {
+        return err(blockNotFound(blockId));
+      }
 
-    if (!block) {
-      return errorResponse(`Block "${blockId}" not found`, 404, sentryEnabled);
+      return ok(block);
     }
+  },
 
-    return jsonResponse(block, { sentryEnabled });
-  }
+  {
+    method: 'POST',
+    path: '/api/blocks/:blockId/cancel',
+    bodySchema: CancelBlockBodySchema,
+    description: 'Cancel a running command',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const blockId = ctx.pathParams['blockId'];
+      if (!blockId) {
+        return err(validationFailed('blockId', 'Block ID is required'));
+      }
+      const { signal } = ctx.body as z.infer<typeof CancelBlockBodySchema>;
 
-  // POST /api/blocks/:blockId/cancel - Cancel a running command
-  const cancelMatch = apiPath.match(/^\/blocks\/([^/]+)\/cancel$/);
-  if (cancelMatch?.[1] && method === 'POST') {
-    const blockId = decodeURIComponent(cancelMatch[1]);
+      const executor = getExecutorManager(ctx.sessionManager);
+      const block = executor.getBlock(blockId);
 
-    const executor = getExecutorManager(sessionManager);
-    const block = executor.getBlock(blockId);
-
-    if (!block) {
-      return errorResponse(`Block "${blockId}" not found`, 404, sentryEnabled);
-    }
-
-    try {
-      const body = (await req.json().catch(() => ({}))) as {
-        signal?: 'SIGTERM' | 'SIGINT' | 'SIGKILL';
-      };
-      const signal = body.signal ?? 'SIGTERM';
+      if (!block) {
+        return err(blockNotFound(blockId));
+      }
 
       let response = null;
-      for (const session of sessionManager.listSessions()) {
+      for (const session of ctx.sessionManager.listSessions()) {
         const result = executor.cancelCommand(session.name, blockId, signal);
         if (result.success) {
           response = result;
@@ -143,100 +181,134 @@ export async function handleBlocksRoutes(ctx: ApiContext): Promise<Response | nu
       }
 
       if (!response) {
-        return errorResponse('Block is not running or cannot be canceled', 400, sentryEnabled);
+        return err(validationFailed('blockId', 'Block is not running or cannot be canceled'));
       }
 
-      return jsonResponse(response, { sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 500, sentryEnabled);
+      return ok(response);
     }
-  }
+  },
 
-  // POST /api/blocks/:blockId/pin - Pin a block
-  const pinMatch = apiPath.match(/^\/blocks\/([^/]+)\/pin$/);
-  if (pinMatch?.[1] && method === 'POST') {
-    const blockId = decodeURIComponent(pinMatch[1]);
+  {
+    method: 'POST',
+    path: '/api/blocks/:blockId/pin',
+    description: 'Pin a block',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const blockId = ctx.pathParams['blockId'];
+      if (!blockId) {
+        return err(validationFailed('blockId', 'Block ID is required'));
+      }
 
-    const executor = getExecutorManager(sessionManager);
-    const success = executor.pinBlock(blockId);
+      const executor = getExecutorManager(ctx.sessionManager);
+      const success = executor.pinBlock(blockId);
 
-    if (!success) {
-      return errorResponse(`Block "${blockId}" not found`, 404, sentryEnabled);
+      if (!success) {
+        return err(blockNotFound(blockId));
+      }
+
+      return ok({ success: true, blockId });
     }
+  },
 
-    return jsonResponse({ success: true, blockId }, { sentryEnabled });
-  }
+  {
+    method: 'DELETE',
+    path: '/api/blocks/:blockId/pin',
+    description: 'Unpin a block',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const blockId = ctx.pathParams['blockId'];
+      if (!blockId) {
+        return err(validationFailed('blockId', 'Block ID is required'));
+      }
 
-  // DELETE /api/blocks/:blockId/pin - Unpin a block
-  if (pinMatch?.[1] && method === 'DELETE') {
-    const blockId = decodeURIComponent(pinMatch[1]);
+      const executor = getExecutorManager(ctx.sessionManager);
+      const success = executor.unpinBlock(blockId);
 
-    const executor = getExecutorManager(sessionManager);
-    const success = executor.unpinBlock(blockId);
+      if (!success) {
+        return err(blockNotFound(blockId));
+      }
 
-    if (!success) {
-      return errorResponse(`Block "${blockId}" not found`, 404, sentryEnabled);
+      return ok({ success: true, blockId });
     }
+  },
 
-    return jsonResponse({ success: true, blockId }, { sentryEnabled });
-  }
+  {
+    method: 'GET',
+    path: '/api/blocks/:blockId/chunks',
+    querySchema: GetChunksQuerySchema,
+    description: 'Get output chunks for a block',
+    tags: ['blocks'],
+    handler: async (ctx) => {
+      const blockId = ctx.pathParams['blockId'];
+      if (!blockId) {
+        return err(validationFailed('blockId', 'Block ID is required'));
+      }
+      const { fromSeq, stream, limit } = ctx.params as z.infer<typeof GetChunksQuerySchema>;
 
-  // GET /api/blocks/:blockId/chunks - Get output chunks
-  const chunksMatch = apiPath.match(/^\/blocks\/([^/]+)\/chunks$/);
-  if (chunksMatch?.[1] && method === 'GET') {
-    const blockId = decodeURIComponent(chunksMatch[1]);
-    const params = new URL(req.url).searchParams;
+      const executor = getExecutorManager(ctx.sessionManager);
+      const block = executor.getBlock(blockId);
 
-    const executor = getExecutorManager(sessionManager);
-    const block = executor.getBlock(blockId);
+      if (!block) {
+        return err(blockNotFound(blockId));
+      }
 
-    if (!block) {
-      return errorResponse(`Block "${blockId}" not found`, 404, sentryEnabled);
-    }
-
-    const fromSeq = params.get('fromSeq') ? Number.parseInt(params.get('fromSeq')!, 10) : undefined;
-    const stream = params.get('stream') as 'stdout' | 'stderr' | 'all' | null;
-    const limit = params.get('limit') ? Number.parseInt(params.get('limit')!, 10) : undefined;
-
-    const result = executor.getBlockChunks(blockId, {
-      fromSeq,
-      stream: stream ?? 'all',
-      limit
-    });
-
-    return jsonResponse(result, { sentryEnabled });
-  }
-
-  // GET /api/blocks/:blockId/stream - SSE stream for block events
-  const streamMatch = apiPath.match(/^\/blocks\/([^/]+)\/stream$/);
-  if (streamMatch?.[1] && method === 'GET') {
-    const blockId = decodeURIComponent(streamMatch[1]);
-
-    const executor = getExecutorManager(sessionManager);
-    const block = executor.getBlock(blockId);
-
-    if (!block) {
-      return new Response(JSON.stringify({ error: `Block "${blockId}" not found` }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
+      const result = executor.getBlockChunks(blockId, {
+        fromSeq,
+        stream,
+        limit
       });
+
+      return ok(result);
     }
+  }
+];
 
-    const lastEventId = req.headers.get('Last-Event-ID');
-    const fromSeq = lastEventId ? Number.parseInt(lastEventId, 10) : undefined;
+// === SSE Stream Handler (returns streaming response, not JSON) ===
 
-    const eventEmitter = executor.getEventEmitter();
-    const sseStream = createBlockSSEStream(eventEmitter, blockId, { lastEventId: fromSeq });
+/**
+ * Handle SSE stream for block events - returns streaming response directly
+ */
+export async function handleBlockStream(ctx: RouteContext): Promise<Response | null> {
+  const url = new URL(ctx.req.url);
+  const match = url.pathname.match(/\/api\/blocks\/([^/]+)\/stream$/);
+  if (!match?.[1]) {
+    return null;
+  }
 
-    return new Response(sseStream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      }
+  const blockId = decodeURIComponent(match[1]);
+
+  const executor = getExecutorManager(ctx.sessionManager);
+  const block = executor.getBlock(blockId);
+
+  if (!block) {
+    return new Response(JSON.stringify({ error: `Block "${blockId}" not found` }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json', ...securityHeaders(ctx.sentryEnabled) }
     });
   }
 
+  const lastEventId = ctx.req.headers.get('Last-Event-ID');
+  const fromSeq = lastEventId ? Number.parseInt(lastEventId, 10) : undefined;
+
+  const eventEmitter = executor.getEventEmitter();
+  const sseStream = createBlockSSEStream(eventEmitter, blockId, { lastEventId: fromSeq });
+
+  return new Response(sseStream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      ...securityHeaders(ctx.sentryEnabled)
+    }
+  });
+}
+
+// === Legacy Handler (deprecated) ===
+
+/**
+ * @deprecated Use blocksRoutes with RouteRegistry instead
+ */
+export async function handleBlocksRoutes(): Promise<Response | null> {
   return null;
 }

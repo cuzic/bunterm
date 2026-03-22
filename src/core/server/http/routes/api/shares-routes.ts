@@ -4,59 +4,97 @@
  * Handles share link management: create, validate, revoke.
  */
 
-import type { ApiContext } from './types.js';
-import { jsonResponse, errorResponse } from '../../utils.js';
+import { z } from 'zod';
+import { ok, err } from '@/utils/result.js';
+import { sessionNotFound, notFound, validationFailed } from '@/core/errors.js';
 import { shareManager } from '../page-routes.js';
+import type { RouteDef } from '../../route-types.js';
 
-/**
- * Handle shares API routes
- */
-export async function handleSharesRoutes(ctx: ApiContext): Promise<Response | null> {
-  const { apiPath, method, req, sessionManager, sentryEnabled } = ctx;
+// === Schemas ===
 
-  // GET /api/shares - List all shares
-  if (apiPath === '/shares' && method === 'GET') {
-    const shares = shareManager.listShares();
-    return jsonResponse(shares, { sentryEnabled });
-  }
+const CreateShareBodySchema = z.object({
+  sessionName: z.string().min(1, 'sessionName is required'),
+  expiresIn: z.string().optional().default('1h')
+});
 
-  // POST /api/shares - Create a share
-  if (apiPath === '/shares' && method === 'POST') {
-    try {
-      const body = (await req.json()) as { sessionName: string; expiresIn?: string };
+// === Routes ===
 
-      if (!sessionManager.hasSession(body.sessionName)) {
-        return errorResponse(`Session "${body.sessionName}" not found`, 404, sentryEnabled);
+export const sharesRoutes: RouteDef[] = [
+  {
+    method: 'GET',
+    path: '/api/shares',
+    description: 'List all shares',
+    tags: ['shares'],
+    handler: async () => {
+      const shares = shareManager.listShares();
+      return ok(shares);
+    }
+  },
+
+  {
+    method: 'POST',
+    path: '/api/shares',
+    bodySchema: CreateShareBodySchema,
+    description: 'Create a new share link',
+    tags: ['shares'],
+    handler: async (ctx) => {
+      const { sessionName, expiresIn } = ctx.body as z.infer<typeof CreateShareBodySchema>;
+
+      if (!ctx.sessionManager.hasSession(sessionName)) {
+        return err(sessionNotFound(sessionName));
       }
 
-      const share = shareManager.createShare(body.sessionName, {
-        expiresIn: body.expiresIn ?? '1h'
-      });
-      return jsonResponse(share, { status: 201, sentryEnabled });
-    } catch (error) {
-      return errorResponse(String(error), 400, sentryEnabled);
+      const share = shareManager.createShare(sessionName, { expiresIn });
+      return ok(share);
+    }
+  },
+
+  {
+    method: 'GET',
+    path: '/api/shares/:token',
+    description: 'Validate a share link',
+    tags: ['shares'],
+    handler: async (ctx) => {
+      const token = ctx.pathParams['token'];
+      if (!token) {
+        return err(validationFailed('token', 'Token is required'));
+      }
+      const share = shareManager.validateShare(token);
+
+      if (!share) {
+        return err(notFound('Share not found or expired'));
+      }
+
+      return ok(share);
+    }
+  },
+
+  {
+    method: 'DELETE',
+    path: '/api/shares/:token',
+    description: 'Revoke a share link',
+    tags: ['shares'],
+    handler: async (ctx) => {
+      const token = ctx.pathParams['token'];
+      if (!token) {
+        return err(validationFailed('token', 'Token is required'));
+      }
+      const success = shareManager.revokeShare(token);
+
+      if (!success) {
+        return err(notFound('Share not found'));
+      }
+
+      return ok({ success: true });
     }
   }
+];
 
-  // GET /api/shares/:token - Validate a share
-  if (apiPath.startsWith('/shares/') && method === 'GET') {
-    const token = decodeURIComponent(apiPath.slice('/shares/'.length));
-    const share = shareManager.validateShare(token);
-    if (share) {
-      return jsonResponse(share, { sentryEnabled });
-    }
-    return errorResponse('Share not found or expired', 404, sentryEnabled);
-  }
+// === Legacy Handler (deprecated) ===
 
-  // DELETE /api/shares/:token - Revoke a share
-  if (apiPath.startsWith('/shares/') && method === 'DELETE') {
-    const token = decodeURIComponent(apiPath.slice('/shares/'.length));
-    const success = shareManager.revokeShare(token);
-    if (success) {
-      return jsonResponse({ success: true }, { sentryEnabled });
-    }
-    return errorResponse('Share not found', 404, sentryEnabled);
-  }
-
+/**
+ * @deprecated Use sharesRoutes with RouteRegistry instead
+ */
+export async function handleSharesRoutes(): Promise<Response | null> {
   return null;
 }
