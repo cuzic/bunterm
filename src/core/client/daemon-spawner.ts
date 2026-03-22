@@ -7,6 +7,7 @@
 import { isAbsolute, resolve } from 'node:path';
 import { ensurePm2Config } from '@/core/config/pm2-config.js';
 import { getDaemonClientDeps } from './daemon-client-deps.js';
+import { parsePm2ProcessList } from './schemas.js';
 
 interface DaemonCommand {
   executable: string;
@@ -100,8 +101,8 @@ export async function isPm2Managing(): Promise<boolean> {
       return false;
     }
     const output = result.stdout?.toString() || '';
-    const processes = JSON.parse(output);
-    return processes.some((p: { name: string }) => p.name === 'bunterm');
+    const processes = parsePm2ProcessList(output);
+    return processes.some((p) => p.name === 'bunterm');
   } catch {
     return false;
   }

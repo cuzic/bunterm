@@ -3,18 +3,14 @@
  */
 
 import { sendCommand } from '@/core/client/daemon-client.js';
+import { parseReloadResult, type ReloadResult } from '@/core/client/schemas.js';
 import { CliError } from '@/utils/errors.js';
 
 export interface ReloadOptions {
   config?: string;
 }
 
-export interface ReloadResult {
-  success: boolean;
-  reloaded: string[];
-  requiresRestart: string[];
-  error?: string;
-}
+export type { ReloadResult };
 
 function throwDaemonNotRunning(): never {
   throw new CliError('Daemon is not running');
@@ -49,7 +45,10 @@ export async function reloadCommand(_options: ReloadOptions): Promise<void> {
       throwDaemonNotRunning();
     }
 
-    const result: ReloadResult = JSON.parse(response);
+    const result = parseReloadResult(response);
+    if (!result) {
+      throw new CliError('Invalid reload response from daemon');
+    }
 
     if (!result.success) {
       throw new CliError(result.error ?? 'Reload failed');

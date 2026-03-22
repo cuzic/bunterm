@@ -20,4 +20,4 @@ export {
   stopSession,
   requestShutdown
 } from './api-client.js';
-export type { TmuxSessionResponse, TmuxSessionsResponse } from './api-client.js';
+export type { TmuxSessionResponse, TmuxSessionsResponse } from '@/core/config/types.js';

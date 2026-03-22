@@ -1,19 +1,25 @@
-import type {
-  Config,
-  SessionResponse,
-  StartSessionRequest,
-  StatusResponse
+import { z, type ZodSchema } from 'zod';
+import {
+  type Config,
+  type SessionResponse,
+  SessionResponseSchema,
+  type StartSessionRequest,
+  type StatusResponse,
+  StatusResponseSchema,
+  type TmuxSessionsResponse,
+  TmuxSessionsResponseSchema
 } from '@/core/config/types.js';
 import { buildApiUrl } from './daemon-url.js';
 
 /**
- * Make an API request to the daemon
+ * Make an API request to the daemon with schema validation
  */
 export async function apiRequest<T>(
   config: Config,
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
+  schema?: ZodSchema<T>
 ): Promise<T> {
   const url = buildApiUrl(config, path);
 
@@ -23,10 +29,19 @@ export async function apiRequest<T>(
     body: body ? JSON.stringify(body) : undefined
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
 
   if (!response.ok) {
-    throw new Error((data as { error?: string }).error ?? 'Request failed');
+    const errorData = data as { error?: string };
+    throw new Error(errorData.error ?? 'Request failed');
+  }
+
+  if (schema) {
+    const result = schema.safeParse(data);
+    if (result.success) {
+      return result.data;
+    }
+    throw new Error(`Invalid response: ${result.error.issues[0]?.message ?? 'validation failed'}`);
   }
 
   return data as T;
@@ -36,14 +51,14 @@ export async function apiRequest<T>(
  * Get daemon status
  */
 export function getStatus(config: Config): Promise<StatusResponse> {
-  return apiRequest<StatusResponse>(config, 'GET', '/api/status');
+  return apiRequest(config, 'GET', '/api/status', undefined, StatusResponseSchema);
 }
 
 /**
  * Get all sessions
  */
 export function getSessions(config: Config): Promise<SessionResponse[]> {
-  return apiRequest<SessionResponse[]>(config, 'GET', '/api/sessions');
+  return apiRequest(config, 'GET', '/api/sessions', undefined, z.array(SessionResponseSchema));
 }
 
 /**
@@ -53,7 +68,7 @@ export function startSession(
   config: Config,
   request: StartSessionRequest
 ): Promise<SessionResponse> {
-  return apiRequest<SessionResponse>(config, 'POST', '/api/sessions', request);
+  return apiRequest(config, 'POST', '/api/sessions', request, SessionResponseSchema);
 }
 
 export interface StopSessionOptions {
@@ -92,22 +107,9 @@ export async function requestShutdown(config: Config, options?: ShutdownOptions)
   }
 }
 
-export interface TmuxSessionResponse {
-  name: string;
-  windows: number;
-  created: string;
-  attached: boolean;
-  cwd?: string;
-}
-
-export interface TmuxSessionsResponse {
-  sessions: TmuxSessionResponse[];
-  installed: boolean;
-}
-
 /**
  * Get tmux sessions
  */
 export function getTmuxSessions(config: Config): Promise<TmuxSessionsResponse> {
-  return apiRequest<TmuxSessionsResponse>(config, 'GET', '/api/tmux/sessions');
+  return apiRequest(config, 'GET', '/api/tmux/sessions', undefined, TmuxSessionsResponseSchema);
 }

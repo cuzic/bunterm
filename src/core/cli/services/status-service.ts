@@ -5,6 +5,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { parsePm2ProcessList } from '@/core/client/schemas.js';
 
 /**
  * PM2 process information
@@ -31,20 +32,7 @@ export function getPm2Status(): Pm2ProcessInfo | null {
     }
 
     const output = result.stdout?.toString() || '';
-    const processes = JSON.parse(output) as Array<{
-      name: string;
-      pid: number;
-      pm_id: number;
-      pm2_env?: {
-        status: string;
-        restart_time: number;
-        pm_uptime: number;
-      };
-      monit?: {
-        memory: number;
-        cpu: number;
-      };
-    }>;
+    const processes = parsePm2ProcessList(output);
 
     const bunterm = processes.find((p) => p.name === 'bunterm');
     if (!bunterm) {
