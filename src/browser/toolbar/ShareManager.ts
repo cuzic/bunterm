@@ -7,7 +7,7 @@
 import { BaseModal } from '@/browser/shared/BaseModal.js';
 import type { Scope } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
-import { bindClickScoped, getSessionNameFromURL } from '@/browser/shared/utils.js';
+import { bindClickScoped, getSessionName } from '@/browser/shared/utils.js';
 import qrcode from 'qrcode-generator';
 import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
 
@@ -83,9 +83,8 @@ export class ShareManager extends BaseModal {
   /**
    * Get session name from config or URL
    */
-  private getSessionName(): string {
-    // Use sessionName from config if available (server-provided), otherwise extract from URL
-    return this.config.sessionName || getSessionNameFromURL(this.config.base_path);
+  private getSessionNameValue(): string {
+    return getSessionName(this.config);
   }
 
   /**
@@ -108,7 +107,7 @@ export class ShareManager extends BaseModal {
    */
   async createShare(): Promise<void> {
     const basePath = this.config.base_path;
-    const sessionName = this.getSessionName();
+    const sessionName = this.getSessionNameValue();
     const expiresIn = this.getSelectedExpiry();
 
     if (!sessionName) {

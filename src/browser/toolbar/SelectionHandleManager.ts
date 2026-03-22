@@ -164,7 +164,7 @@ export class SelectionHandleManager implements Mountable {
   /**
    * Check if handles are visible
    */
-  isVisible(): boolean {
+  get isVisible(): boolean {
     return !this.container?.classList.contains('hidden');
   }
 
