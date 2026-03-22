@@ -16,6 +16,29 @@ export class AppError extends Error {
 }
 
 /**
+ * CLI-specific error that carries an exit code.
+ * Throw this instead of calling process.exit() directly.
+ */
+export class CliError extends Error {
+  public readonly exitCode: number;
+
+  constructor(message: string, exitCode = 1) {
+    super(message);
+    this.name = 'CliError';
+    this.exitCode = exitCode;
+  }
+
+  /**
+   * Create from unknown error
+   */
+  static from(error: unknown, prefix?: string): CliError {
+    const message = getErrorMessage(error);
+    const fullMessage = prefix ? `${prefix}: ${message}` : message;
+    return new CliError(fullMessage);
+  }
+}
+
+/**
  * Extract error message from unknown error type
  */
 export function getErrorMessage(error: unknown): string {
@@ -58,11 +81,10 @@ export async function withErrorHandling<T>(
 }
 
 /**
- * Assert that hostname is provided, exit if not
+ * Assert that hostname is provided, throw CliError if not
  */
 export function requireHostname(hostname: string | undefined): asserts hostname is string {
   if (!hostname) {
-    console.error('Error: --hostname is required (or set hostname in config.yaml)');
-    process.exit(1);
+    throw new CliError('--hostname is required (or set hostname in config.yaml)');
   }
 }
