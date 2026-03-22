@@ -9,13 +9,104 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { readJsonlFile } from '@/utils/jsonl.js';
+import {
+  type CollectMdOptions,
+  type MarkdownFile,
+  collectMdFiles,
+  getPlanFiles
+} from '@/utils/markdown-scanner.js';
 import { validateSecurePath } from '@/utils/path-security.js';
 import { parseTurnByUuidFromSessionFile, parseTurnsFromSessionFile } from './parsing.js';
 import type { ClaudeSessionInfo, ClaudeTurnFull, ClaudeTurnSummary } from './types.js';
 
 // Re-export from centralized services for backward compatibility
 export { getFileDiff, getGitDiff } from '@/utils/git-service.js';
-export { collectMdFiles, getPlanFiles } from '@/utils/markdown-scanner.js';
+export { collectMdFiles, getPlanFiles, type CollectMdOptions, type MarkdownFile };
+
+// =============================================================================
+// Markdown Collection Domain Functions
+// =============================================================================
+
+/** Default exclude directories for file scanning */
+const DEFAULT_SCAN_EXCLUDE = [
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'coverage',
+  '.next',
+  '__pycache__',
+  '.venv',
+  'vendor'
+];
+
+/** Config for project overview (shallow scan) */
+const PROJECT_OVERVIEW_SCAN: CollectMdOptions = {
+  excludeDirs: DEFAULT_SCAN_EXCLUDE,
+  maxDepth: 3
+};
+
+/** Config for recent files (deep scan) */
+const RECENT_FILES_SCAN: CollectMdOptions = {
+  excludeDirs: DEFAULT_SCAN_EXCLUDE,
+  maxDepth: 10
+};
+
+/**
+ * Collect project markdown files (shallow scan for overview)
+ */
+export function collectProjectMarkdown(
+  cwd: string,
+  count: number
+): { path: string; name: string; modifiedAt: string; size: number }[] {
+  const allFiles = collectMdFiles(cwd, cwd, PROJECT_OVERVIEW_SCAN);
+  return allFiles
+    .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
+    .slice(0, count);
+}
+
+/**
+ * Collect recent markdown files (deep scan with time filter)
+ */
+export function collectRecentMarkdown(
+  cwd: string,
+  hours: number,
+  count: number
+): { path: string; name: string; modifiedAt: string; size: number }[] {
+  const cutoffTime = Date.now() - hours * 60 * 60 * 1000;
+  const allFiles = collectMdFiles(cwd, cwd, RECENT_FILES_SCAN);
+  return allFiles
+    .filter((f) => new Date(f.modifiedAt).getTime() > cutoffTime)
+    .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
+    .slice(0, count);
+}
+
+// =============================================================================
+// File Content Source Resolution
+// =============================================================================
+
+/** File content source type */
+export type FileContentSource = 'project' | 'plans';
+
+/**
+ * Resolve base directory for file content based on source
+ *
+ * @param source - 'plans' for ~/.claude/plans, 'project' for workspace
+ * @param workspaceCwd - Required when source is 'project'
+ * @returns Base directory path
+ */
+export function resolveFileContentBaseDir(
+  source: FileContentSource,
+  workspaceCwd?: string
+): string {
+  if (source === 'plans') {
+    return join(homedir(), '.claude', 'plans');
+  }
+  if (!workspaceCwd) {
+    throw new Error('workspaceCwd is required for project source');
+  }
+  return workspaceCwd;
+}
 
 /**
  * History.jsonl entry structure
@@ -209,8 +300,42 @@ export async function getClaudeTurnByUuidFromSession(
 
 // === File Content Operations ===
 
+/** Maximum file size to read (1MB) */
+const MAX_FILE_SIZE = 1024 * 1024;
+
+/** Maximum lines for preview mode */
+const PREVIEW_MAX_LINES = 30;
+
+/** Maximum lines for full content mode */
+const FULL_CONTENT_MAX_LINES = 200;
+
 /**
- * Read file content with optional truncation
+ * Check if a buffer contains binary content
+ * Uses null byte detection as primary heuristic
+ */
+function isBinaryContent(buffer: Buffer): boolean {
+  // Check first 8KB for null bytes (common in binary files)
+  const checkSize = Math.min(buffer.length, 8192);
+  for (let i = 0; i < checkSize; i++) {
+    if (buffer[i] === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Read file content with security validation and size limits
+ *
+ * ## Security Features
+ * - Path traversal prevention (via validateSecurePath)
+ * - File size limit (1MB max)
+ * - Binary file detection
+ * - Encoding error handling
+ *
+ * @param baseDir The base directory (project root or plans dir)
+ * @param filePath The relative file path
+ * @param isPreview Whether to limit lines (30 for preview, 200 for full)
  */
 export function readFileContent(
   baseDir: string,
@@ -226,10 +351,31 @@ export function readFileContent(
     return { error: 'File not found' };
   }
 
-  const fullContent = readFileSync(pathResult.targetPath, 'utf-8');
+  // Check file size before reading
+  const fileStats = statSync(pathResult.targetPath);
+  if (!fileStats.isFile()) {
+    return { error: 'Not a file' };
+  }
+  if (fileStats.size > MAX_FILE_SIZE) {
+    return { error: `File too large (max ${MAX_FILE_SIZE / 1024 / 1024}MB)` };
+  }
+
+  // Read as buffer first for binary detection
+  const buffer = readFileSync(pathResult.targetPath);
+  if (isBinaryContent(buffer)) {
+    return { error: 'Binary files not supported' };
+  }
+
+  // Convert to string (UTF-8)
+  let fullContent: string;
+  try {
+    fullContent = buffer.toString('utf-8');
+  } catch {
+    return { error: 'Unable to read file (encoding error)' };
+  }
+
   const lines = fullContent.split('\n');
-  // Use 30 lines for preview, 200 for full content
-  const maxLines = isPreview ? 30 : 200;
+  const maxLines = isPreview ? PREVIEW_MAX_LINES : FULL_CONTENT_MAX_LINES;
   const truncated = lines.length > maxLines;
 
   return {
