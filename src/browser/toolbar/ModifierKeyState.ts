@@ -28,21 +28,21 @@ export class ModifierKeyState {
   /**
    * Check if Ctrl is active
    */
-  isCtrlActive(): boolean {
+  get isCtrlActive(): boolean {
     return this.ctrlActive;
   }
 
   /**
    * Check if Alt is active
    */
-  isAltActive(): boolean {
+  get isAltActive(): boolean {
     return this.altActive;
   }
 
   /**
    * Check if Shift is active
    */
-  isShiftActive(): boolean {
+  get isShiftActive(): boolean {
     return this.shiftActive;
   }
 

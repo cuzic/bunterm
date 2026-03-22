@@ -26,7 +26,7 @@ export class TerminalController {
   /**
    * Get default font size based on device type
    */
-  getDefaultFontSize(): number {
+  get defaultFontSize(): number {
     return this.isMobile ? this.config.font_size_default_mobile : this.config.font_size_default_pc;
   }
 
@@ -67,12 +67,12 @@ export class TerminalController {
   /**
    * Get current font size
    */
-  getCurrentFontSize(): number {
+  get currentFontSize(): number {
     const term = this.findTerminal();
     if (term?.options) {
-      return term.options.fontSize ?? this.getDefaultFontSize();
+      return term.options.fontSize ?? this.defaultFontSize;
     }
-    return this.getDefaultFontSize();
+    return this.defaultFontSize;
   }
 
   /**
@@ -107,8 +107,7 @@ export class TerminalController {
    * Zoom terminal font size by delta
    */
   zoomTerminal(delta: number): boolean {
-    const currentSize = this.getCurrentFontSize();
-    return this.setFontSize(currentSize + delta);
+    return this.setFontSize(this.currentFontSize + delta);
   }
 
   /**
@@ -215,7 +214,7 @@ export class TerminalController {
    * Check if xterm.js has scrollback content beyond visible rows
    * Returns false if buffer length equals rows (e.g., when tmux manages buffer)
    */
-  hasScrollback(): boolean {
+  get hasScrollback(): boolean {
     const term = this.findTerminal() as Terminal & { rows?: number };
     if (!term?.buffer?.active) {
       return false;
