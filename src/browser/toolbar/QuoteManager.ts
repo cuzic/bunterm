@@ -12,8 +12,9 @@ import {
   bindClickScoped,
   escapeHtml,
   formatRelativeTime,
-  getSessionNameFromURL
+  getSessionName
 } from '@/browser/shared/utils.js';
+import { fetchJSON } from './ApiClient.js';
 import type {
   ClaudeSessionInfo,
   ClaudeTurnFull,
@@ -289,7 +290,7 @@ export class QuoteManager implements Mountable {
    */
   private async fetchAllData(): Promise<void> {
     const basePath = this.config.base_path;
-    const sessionName = getSessionNameFromURL(this.config.base_path);
+    const sessionName = getSessionName(this.config);
 
     // First, fetch Claude sessions from history.jsonl
     await this.fetchClaudeSessions(basePath);
@@ -316,15 +317,10 @@ export class QuoteManager implements Mountable {
    * Fetch Claude sessions from history.jsonl
    */
   private async fetchClaudeSessions(basePath: string): Promise<void> {
-    try {
-      const response = await fetch(`${basePath}/api/claude-quotes/sessions?limit=10`);
-      if (response.ok) {
-        const data = await response.json();
-        this.claudeSessions = data.sessions || [];
-      }
-    } catch (_error) {
-      this.claudeSessions = [];
-    }
+    const data = await fetchJSON<{ sessions: ClaudeSessionInfo[] }>(
+      `${basePath}/api/claude-quotes/sessions?limit=10`
+    );
+    this.claudeSessions = data?.sessions ?? [];
   }
 
   /**
@@ -336,68 +332,40 @@ export class QuoteManager implements Mountable {
       return;
     }
 
-    try {
-      const response = await fetch(
-        `${basePath}/api/claude-quotes/recent?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}&count=20`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        this.turns = data.turns || [];
-      } else {
-        this.turns = [];
-      }
-    } catch (_error) {
-      this.turns = [];
-    }
+    const data = await fetchJSON<{ turns: ClaudeTurnSummary[] }>(
+      `${basePath}/api/claude-quotes/recent?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}&count=20`
+    );
+    this.turns = data?.turns ?? [];
   }
 
   /**
    * Fetch project markdown files (deep search, sorted by modification time)
    */
   private async fetchProjectMarkdown(basePath: string, sessionName: string): Promise<void> {
-    try {
-      // Use recent-markdown endpoint with long time range for deep search
-      const response = await fetch(
-        `${basePath}/api/claude-quotes/recent-markdown?session=${encodeURIComponent(sessionName)}&count=30&hours=8760`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        this.projectMarkdown = data.files || [];
-      }
-    } catch (_error) {
-      this.projectMarkdown = [];
-    }
+    // Use recent-markdown endpoint with long time range for deep search
+    const data = await fetchJSON<{ files: MarkdownFile[] }>(
+      `${basePath}/api/claude-quotes/recent-markdown?session=${encodeURIComponent(sessionName)}&count=30&hours=8760`
+    );
+    this.projectMarkdown = data?.files ?? [];
   }
 
   /**
    * Fetch plan files
    */
   private async fetchPlans(basePath: string): Promise<void> {
-    try {
-      const response = await fetch(`${basePath}/api/claude-quotes/plans?count=10`);
-      if (response.ok) {
-        const data = await response.json();
-        this.plans = data.files || [];
-      }
-    } catch (_error) {
-      this.plans = [];
-    }
+    const data = await fetchJSON<{ files: MarkdownFile[] }>(
+      `${basePath}/api/claude-quotes/plans?count=10`
+    );
+    this.plans = data?.files ?? [];
   }
 
   /**
    * Fetch git diff
    */
   private async fetchGitDiff(basePath: string, sessionName: string): Promise<void> {
-    try {
-      const response = await fetch(
-        `${basePath}/api/claude-quotes/git-diff?session=${encodeURIComponent(sessionName)}`
-      );
-      if (response.ok) {
-        this.gitDiff = await response.json();
-      }
-    } catch (_error) {
-      this.gitDiff = null;
-    }
+    this.gitDiff = await fetchJSON<GitDiffResponse>(
+      `${basePath}/api/claude-quotes/git-diff?session=${encodeURIComponent(sessionName)}`
+    );
   }
 
   /**
@@ -865,7 +833,7 @@ export class QuoteManager implements Mountable {
     }
 
     const basePath = this.config.base_path;
-    const sessionName = getSessionNameFromURL(this.config.base_path);
+    const sessionName = getSessionName(this.config);
     const parts: string[] = [];
 
     this.elements.copyBtn.disabled = true;
@@ -877,33 +845,29 @@ export class QuoteManager implements Mountable {
         parts.push('## Claude Code\n');
 
         for (const uuid of this.selectedTurnUuids) {
-          try {
-            const response = await fetch(
-              `${basePath}/api/claude-quotes/turn/${encodeURIComponent(uuid)}?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}`
-            );
-            if (response.ok) {
-              const turn: ClaudeTurnFull = await response.json();
+          const turn = await fetchJSON<ClaudeTurnFull>(
+            `${basePath}/api/claude-quotes/turn/${encodeURIComponent(uuid)}?claudeSessionId=${encodeURIComponent(this.selectedClaudeSession.sessionId)}&projectPath=${encodeURIComponent(this.selectedClaudeSession.projectPath)}`
+          );
+          if (turn) {
+            // Only include assistant content
+            parts.push(turn.assistantContent);
 
-              // Only include assistant content
-              parts.push(turn.assistantContent);
-
-              if (turn.toolUses.length > 0) {
-                const toolNames = turn.toolUses.map((t) => {
-                  if (t.name === 'Edit' || t.name === 'Write') {
-                    const path = (t.input?.file_path || t.input?.path || '') as string;
-                    return `${t.name} (${path})`;
-                  }
-                  return t.name;
-                });
-                parts.push('');
-                parts.push(`[Used tools: ${toolNames.join(', ')}]`);
-              }
-
+            if (turn.toolUses.length > 0) {
+              const toolNames = turn.toolUses.map((t) => {
+                if (t.name === 'Edit' || t.name === 'Write') {
+                  const path = (t.input?.file_path || t.input?.path || '') as string;
+                  return `${t.name} (${path})`;
+                }
+                return t.name;
+              });
               parts.push('');
-              parts.push('---');
-              parts.push('');
+              parts.push(`[Used tools: ${toolNames.join(', ')}]`);
             }
-          } catch (_error) {}
+
+            parts.push('');
+            parts.push('---');
+            parts.push('');
+          }
         }
       }
 
@@ -913,27 +877,23 @@ export class QuoteManager implements Mountable {
           const [source, ...pathParts] = key.split(':');
           const path = pathParts.join(':');
 
-          try {
-            const response = await fetch(
-              `${basePath}/api/claude-quotes/file-content?source=${source}&path=${encodeURIComponent(path)}&session=${encodeURIComponent(sessionName)}`
-            );
-            if (response.ok) {
-              const data = await response.json();
-
-              const headerLabels: Record<string, string> = {
-                project: 'Project',
-                plans: 'Plan'
-              };
-              parts.push(`## ${headerLabels[source] || source}: ${path}\n`);
-              parts.push('```markdown');
-              parts.push(data.content);
-              if (data.truncated) {
-                parts.push(`\n... [truncated, ${data.totalLines} total lines]`);
-              }
-              parts.push('```');
-              parts.push('');
+          const data = await fetchJSON<{ content: string; truncated?: boolean; totalLines?: number }>(
+            `${basePath}/api/claude-quotes/file-content?source=${source}&path=${encodeURIComponent(path)}&session=${encodeURIComponent(sessionName)}`
+          );
+          if (data) {
+            const headerLabels: Record<string, string> = {
+              project: 'Project',
+              plans: 'Plan'
+            };
+            parts.push(`## ${headerLabels[source] || source}: ${path}\n`);
+            parts.push('```markdown');
+            parts.push(data.content);
+            if (data.truncated) {
+              parts.push(`\n... [truncated, ${data.totalLines} total lines]`);
             }
-          } catch (_error) {}
+            parts.push('```');
+            parts.push('');
+          }
         }
       }
 
@@ -949,19 +909,16 @@ export class QuoteManager implements Mountable {
         parts.push('## Git Diff\n');
 
         for (const filePath of this.selectedGitFiles) {
-          try {
-            const response = await fetch(
-              `${basePath}/api/claude-quotes/git-diff-file?session=${encodeURIComponent(sessionName)}&path=${encodeURIComponent(filePath)}`
-            );
-            if (response.ok) {
-              const data = await response.json();
-              parts.push(`### ${data.path}\n`);
-              parts.push('```diff');
-              parts.push(data.diff);
-              parts.push('```');
-              parts.push('');
-            }
-          } catch (_error) {}
+          const data = await fetchJSON<{ path: string; diff: string }>(
+            `${basePath}/api/claude-quotes/git-diff-file?session=${encodeURIComponent(sessionName)}&path=${encodeURIComponent(filePath)}`
+          );
+          if (data) {
+            parts.push(`### ${data.path}\n`);
+            parts.push('```diff');
+            parts.push(data.diff);
+            parts.push('```');
+            parts.push('');
+          }
         }
       }
 
@@ -1009,20 +966,10 @@ export class QuoteManager implements Mountable {
    */
   private async fetchFilePreview(source: string, path: string): Promise<string | null> {
     const basePath = this.config.base_path;
-    const sessionName = getSessionNameFromURL(this.config.base_path);
-
-    try {
-      const response = await fetch(
-        `${basePath}/api/claude-quotes/file-content?source=${source}&path=${encodeURIComponent(path)}&session=${encodeURIComponent(sessionName)}&preview=true`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        return data.content || null;
-      }
-    } catch (_error) {
-      // Ignore errors
-    }
-    return null;
+    const sessionName = getSessionName(this.config);
+    const url = `${basePath}/api/claude-quotes/file-content?source=${source}&path=${encodeURIComponent(path)}&session=${encodeURIComponent(sessionName)}&preview=true`;
+    const data = await fetchJSON<{ content?: string }>(url);
+    return data?.content ?? null;
   }
 
   /**
@@ -1030,25 +977,16 @@ export class QuoteManager implements Mountable {
    */
   private async fetchGitDiffPreview(filePath: string): Promise<string | null> {
     const basePath = this.config.base_path;
-    const sessionName = getSessionNameFromURL(this.config.base_path);
-
-    try {
-      const response = await fetch(
-        `${basePath}/api/claude-quotes/git-diff-file?session=${encodeURIComponent(sessionName)}&path=${encodeURIComponent(filePath)}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        // Truncate to first 30 lines for preview
-        const lines = (data.diff || '').split('\n').slice(0, 30);
-        if (lines.length === 30) {
-          lines.push('...');
-        }
-        return lines.join('\n');
-      }
-    } catch (_error) {
-      // Ignore errors
+    const sessionName = getSessionName(this.config);
+    const url = `${basePath}/api/claude-quotes/git-diff-file?session=${encodeURIComponent(sessionName)}&path=${encodeURIComponent(filePath)}`;
+    const data = await fetchJSON<{ diff?: string }>(url);
+    if (!data?.diff) return null;
+    // Truncate to first 30 lines for preview
+    const lines = data.diff.split('\n').slice(0, 30);
+    if (lines.length === 30) {
+      lines.push('...');
     }
-    return null;
+    return lines.join('\n');
   }
 
   /**
