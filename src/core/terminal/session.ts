@@ -223,7 +223,7 @@ export class TerminalSession implements AsyncDisposable {
     this.broadcaster.bufferOutput(message.data);
 
     // Append to active block if exists
-    const activeBlockId = this.blockModel.getActiveBlockId();
+    const activeBlockId = this.blockModel.activeBlockId;
     if (activeBlockId && this.blockUIEnabled) {
       this.blockModel.appendOutput(activeBlockId, message.data);
       this.broadcaster.broadcast(createBlockOutputMessage(activeBlockId, message.data));
@@ -264,7 +264,7 @@ export class TerminalSession implements AsyncDisposable {
         // Command finished - end the current block
         {
           const exitCode = parseExitCode(seq.data);
-          const activeBlockId = this.blockModel.getActiveBlockId();
+          const activeBlockId = this.blockModel.activeBlockId;
           if (activeBlockId) {
             const endedAt = new Date().toISOString();
             this.blockModel.endBlock(activeBlockId, exitCode, this.currentLine);
@@ -500,7 +500,7 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Get session info
    */
-  getInfo(): TerminalSessionInfo {
+  get info(): TerminalSessionInfo {
     return {
       name: this.name,
       pid: this.proc?.pid ?? 0,
@@ -515,7 +515,7 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Get buffered output for AI features
    */
-  getOutputBuffer(): string[] {
+  get outputBuffer(): string[] {
     return this.broadcaster.getOutputBuffer();
   }
 
@@ -529,8 +529,8 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Get all blocks
    */
-  getBlocks(): Block[] {
-    return this.blockModel.getAllBlocks();
+  get blocks(): Block[] {
+    return this.blockModel.allBlocks;
   }
 
   /**
@@ -543,8 +543,8 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Get the active (running) block
    */
-  getActiveBlock(): Block | null {
-    return this.blockModel.getActiveBlock();
+  get activeBlock(): Block | null {
+    return this.blockModel.activeBlock;
   }
 
   /**
@@ -557,7 +557,7 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Check if block UI is enabled
    */
-  isBlockUIEnabled(): boolean {
+  get isBlockUIEnabled(): boolean {
     return this.blockUIEnabled;
   }
 

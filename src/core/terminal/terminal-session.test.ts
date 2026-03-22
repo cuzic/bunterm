@@ -61,7 +61,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
       outputBufferSize: 500
     });
 
-    const info = session.getInfo();
+    const info = session.info;
     expect(info.cols).toBe(120);
     expect(info.rows).toBe(40);
   });
@@ -105,7 +105,7 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
 
     await session.start();
 
-    const info = session.getInfo();
+    const info = session.info;
     expect(info.name).toBe('info-session');
     expect(info.cwd).toBe(process.cwd());
     expect(info.cols).toBe(100);
@@ -188,11 +188,11 @@ describe.skipIf(!hasPtySupport)('TerminalSession with real PTY', () => {
     // Wait for process to complete and output to be buffered
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    const buffer = session.getOutputBuffer();
+    const buffer = session.outputBuffer;
     expect(Array.isArray(buffer)).toBe(true);
 
     session.clearOutputBuffer();
-    expect(session.getOutputBuffer()).toHaveLength(0);
+    expect(session.outputBuffer).toHaveLength(0);
   });
 });
 
