@@ -5,12 +5,12 @@
  * Uses validated schemas from claude-watcher for type safety.
  */
 
-import { readJsonlFile } from '@/utils/jsonl.js';
-import type { ClaudeTurnFull, ClaudeTurnSummary } from './types.js';
 import {
   type ClaudeAssistantContent,
   ClaudeSessionEntrySchema
 } from '@/features/claude-watcher/server/schemas.js';
+import { readJsonlFile } from '@/utils/jsonl.js';
+import type { ClaudeTurnFull, ClaudeTurnSummary } from './types.js';
 
 /**
  * Parsed assistant content (domain type)
