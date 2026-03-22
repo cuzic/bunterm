@@ -42,32 +42,6 @@ export interface ClaudeTurnFull {
   }>;
 }
 
-/**
- * Markdown file info (for project markdown and plans)
- */
-export interface MarkdownFile {
-  path: string;
-  relativePath?: string;
-  name: string;
-  modifiedAt: string;
-  size: number;
-}
-
-/**
- * Git diff file entry
- */
-export interface GitDiffFile {
-  path: string;
-  status: 'M' | 'A' | 'D' | 'R';
-  additions: number;
-  deletions: number;
-}
-
-/**
- * Git diff response
- */
-export interface GitDiffResponse {
-  files: GitDiffFile[];
-  fullDiff: string;
-  summary: string;
-}
+// Re-export types from centralized services
+export type { MarkdownFile } from '@/utils/markdown-scanner.js';
+export type { GitDiffFile, GitDiffResponse } from '@/utils/git-service.js';

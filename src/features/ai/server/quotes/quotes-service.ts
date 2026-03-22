@@ -5,21 +5,17 @@
  * Handles Claude session discovery, turn retrieval, and file operations.
  */
 
-import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { readJsonlFile } from '@/utils/jsonl.js';
 import { validateSecurePath } from '@/utils/path-security.js';
 import { parseTurnByUuidFromSessionFile, parseTurnsFromSessionFile } from './parsing.js';
-import type {
-  ClaudeSessionInfo,
-  ClaudeTurnFull,
-  ClaudeTurnSummary,
-  GitDiffFile,
-  GitDiffResponse,
-  MarkdownFile
-} from './types.js';
+import type { ClaudeSessionInfo, ClaudeTurnFull, ClaudeTurnSummary } from './types.js';
+
+// Re-export from centralized services for backward compatibility
+export { getFileDiff, getGitDiff } from '@/utils/git-service.js';
+export { collectMdFiles, getPlanFiles } from '@/utils/markdown-scanner.js';
 
 /**
  * History.jsonl entry structure
@@ -29,14 +25,6 @@ interface HistoryEntry {
   project?: string;
   timestamp?: number;
   display?: string;
-}
-
-/**
- * Options for collecting markdown files
- */
-interface CollectMdOptions {
-  excludeDirs?: string[];
-  maxDepth?: number;
 }
 
 /**
@@ -219,73 +207,7 @@ export async function getClaudeTurnByUuidFromSession(
   return parseTurnByUuidFromSessionFile(sessionFile, uuid);
 }
 
-// === Markdown File Operations ===
-
-/**
- * Collect markdown files from a directory
- */
-export function collectMdFiles(
-  dir: string,
-  baseDir: string,
-  options: CollectMdOptions = {},
-  currentDepth = 0
-): MarkdownFile[] {
-  const { excludeDirs = [], maxDepth = 5 } = options;
-
-  if (currentDepth > maxDepth) {
-    return [];
-  }
-
-  const files: MarkdownFile[] = [];
-
-  try {
-    const entries = readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (!excludeDirs.includes(entry.name) && !entry.name.startsWith('.')) {
-          files.push(...collectMdFiles(fullPath, baseDir, options, currentDepth + 1));
-        }
-      } else if (entry.isFile() && entry.name.endsWith('.md')) {
-        const stat = statSync(fullPath);
-        const relativePath = fullPath.slice(baseDir.length + 1);
-        files.push({
-          path: relativePath,
-          relativePath,
-          name: entry.name,
-          modifiedAt: stat.mtime.toISOString(),
-          size: stat.size
-        });
-      }
-    }
-  } catch {
-    // Skip directories we can't read
-  }
-
-  return files;
-}
-
-/**
- * Get plan files from ~/.claude/plans
- */
-export function getPlanFiles(count: number): MarkdownFile[] {
-  const plansDir = join(homedir(), '.claude', 'plans');
-  if (!existsSync(plansDir)) {
-    return [];
-  }
-
-  return readdirSync(plansDir)
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => {
-      const fullPath = join(plansDir, f);
-      const stat = statSync(fullPath);
-      return { path: f, name: f, modifiedAt: stat.mtime.toISOString(), size: stat.size };
-    })
-    .sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime())
-    .slice(0, count);
-}
+// === File Content Operations ===
 
 /**
  * Read file content with optional truncation
@@ -315,125 +237,4 @@ export function readFileContent(
     truncated,
     totalLines: lines.length
   };
-}
-
-// === Git Operations ===
-
-/**
- * Get git diff information
- */
-export function getGitDiff(cwd: string): Promise<GitDiffResponse> {
-  return new Promise((resolve) => {
-    // Get both staged and unstaged changes
-    const proc = spawn('git', ['diff', '--numstat', 'HEAD'], { cwd });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', async (code) => {
-      if (code !== 0) {
-        resolve({ files: [], fullDiff: '', summary: stderr || 'No git repository' });
-        return;
-      }
-
-      // Parse numstat output
-      const files: GitDiffFile[] = [];
-      const lines = stdout
-        .trim()
-        .split('\n')
-        .filter((l) => l.trim());
-
-      for (const line of lines) {
-        const [additions, deletions, path] = line.split('\t');
-        if (path) {
-          files.push({
-            path,
-            status: 'M' as const, // Simplified - could detect A/D/R
-            additions: Number.parseInt(additions ?? '0', 10) || 0,
-            deletions: Number.parseInt(deletions ?? '0', 10) || 0
-          });
-        }
-      }
-
-      // Get full diff (limited size)
-      const fullDiff = await getFullDiff(cwd);
-
-      const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
-      const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
-      const summary = `${files.length} files, +${totalAdditions}/-${totalDeletions}`;
-
-      resolve({ files, fullDiff, summary });
-    });
-
-    proc.on('error', () => {
-      resolve({ files: [], fullDiff: '', summary: 'Git not available' });
-    });
-  });
-}
-
-/**
- * Get full git diff (limited to 50KB)
- */
-function getFullDiff(cwd: string): Promise<string> {
-  return new Promise((resolve) => {
-    // Include both staged and unstaged changes
-    const stagedProc = spawn('git', ['diff', '--staged'], { cwd });
-    const unstagedProc = spawn('git', ['diff'], { cwd });
-
-    let staged = '';
-    let unstaged = '';
-
-    stagedProc.stdout.on('data', (data) => {
-      staged += data.toString();
-    });
-
-    unstagedProc.stdout.on('data', (data) => {
-      unstaged += data.toString();
-    });
-
-    let completed = 0;
-    const checkComplete = () => {
-      completed++;
-      if (completed === 2) {
-        const combined = staged + unstaged;
-        // Limit to 50KB
-        resolve(combined.slice(0, 50 * 1024));
-      }
-    };
-
-    stagedProc.on('close', checkComplete);
-    unstagedProc.on('close', checkComplete);
-    stagedProc.on('error', () => resolve(staged.trim()));
-  });
-}
-
-/**
- * Get diff for a specific file
- */
-export function getFileDiff(cwd: string, filePath: string): Promise<string> {
-  return new Promise((resolve) => {
-    const proc = spawn('git', ['diff', 'HEAD', '--', filePath], { cwd });
-
-    let stdout = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.on('close', () => {
-      resolve(stdout.trim());
-    });
-
-    proc.on('error', () => {
-      resolve('');
-    });
-  });
 }
