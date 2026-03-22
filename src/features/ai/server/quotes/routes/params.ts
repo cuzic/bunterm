@@ -1,35 +1,13 @@
 /**
  * Route Parameter Schemas
  *
- * Zod schemas for validating and parsing route parameters.
- * All parameters are validated at the boundary before business logic.
- *
- * ## Validation Policy
- * - Invalid parameters return 400 error (no silent fallback to defaults)
- * - Missing optional parameters use defaults
- * - Invalid format (e.g., "abc" for count) returns error
- *
- * ## Shared Schema Policy
- *
- * Only add to shared schemas if ALL of these apply:
- * 1. Used by 3+ routes with identical validation rules
- * 2. The validation is truly the same (not "similar but slightly different")
- * 3. The schema is small and focused (single responsibility)
- *
- * Do NOT share if:
- * - The validation might diverge between routes
- * - It's only used by 1-2 routes (just inline it)
- * - The schema has route-specific constraints
- *
- * When in doubt, start with inline validation and extract later.
+ * Zod schemas for route-specific parameters (count, hours, path, etc.).
+ * Locator params are validated by resolveWorkspaceFromParams().
  */
 
 import { z } from 'zod';
 
-// === Shared Schemas ===
-//
-// These are small, reusable validators for common parameter types.
-// Each is used by 3+ routes with identical semantics.
+// === Shared Field Schemas ===
 
 /**
  * Strict count parameter - returns error on invalid input

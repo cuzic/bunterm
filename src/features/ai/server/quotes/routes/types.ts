@@ -12,24 +12,7 @@ import type { NativeSessionManager } from '@/core/server/session-manager.js';
 import { type Result, err, ok } from '@/utils/result.js';
 import { failureResponse } from './response.js';
 
-/**
- * Context passed to quote route handlers
- *
- * ## Field Usage
- * - params: Used by ALL routes for parameter parsing
- * - headers: Used by ALL routes for response CORS headers
- * - sessionManager: Used by MOST routes (for bunterm session lookup)
- *   - Not used by: plans-route, sessions-route (these don't need bunterm session)
- *
- * ## Adding New Dependencies
- *
- * Before adding a new field, ask:
- * 1. Is it needed by most (>50%) routes? If yes, add to context.
- * 2. Is it needed by only 1-2 routes? Pass as function parameter instead.
- * 3. Can it be derived from existing fields? Don't add redundant data.
- *
- * Avoid making context a "god object" that holds everything.
- */
+/** Context passed to quote route handlers */
 export interface QuoteRouteContext {
   params: URLSearchParams;
   headers: Record<string, string>;
