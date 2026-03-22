@@ -99,22 +99,6 @@ export const RecentParamsSchema = z.object({
 export type RecentParams = z.infer<typeof RecentParamsSchema>;
 
 /**
- * /turn/:uuid route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
-export const TurnParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional()
-});
-export type TurnParams = z.infer<typeof TurnParamsSchema>;
-
-/**
  * /project-markdown route parameters
  *
  * Locator (one of):
@@ -132,22 +116,6 @@ export const ProjectMarkdownParamsSchema = z.object({
   count: strictCountSchema(10, 50)
 });
 export type ProjectMarkdownParams = z.infer<typeof ProjectMarkdownParamsSchema>;
-
-/**
- * /git-diff route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
-export const GitDiffParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional()
-});
-export type GitDiffParams = z.infer<typeof GitDiffParamsSchema>;
 
 /**
  * /git-diff-file route parameters
