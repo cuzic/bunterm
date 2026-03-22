@@ -165,6 +165,18 @@ Bun.Terminal API を使用した組み込み PTY 実装:
 - Node protocol imports (`node:fs`, `node:path` 等)
 - Biome でフォーマット・リント
 
+### 型の厳格さ
+
+- **ドメイン型では optional を避ける** - discriminated union を使う
+- **境界層で検証** - Raw 型から Domain 型へ変換
+- **`?.` は境界のみ** - DOM操作、外部入力パース、テストでのみ使用
+- **`??` はデフォルト値のみ** - エラーマスキングに使わない
+
+詳細は以下を参照:
+- [docs/domain-models.md](docs/domain-models.md) - ドメインモデル定義
+- [docs/optional-field-inventory.md](docs/optional-field-inventory.md) - optional 使用ポリシー
+- [docs/error-handling.md](docs/error-handling.md) - エラーハンドリングポリシー
+
 ### ブラウザアーキテクチャ (browser/)
 
 ブラウザ側コードは `browser/` ディレクトリに集約。詳細は **[docs/browser-api.md](docs/browser-api.md)** を参照。
