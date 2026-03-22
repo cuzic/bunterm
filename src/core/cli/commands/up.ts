@@ -5,17 +5,14 @@
 import { startSession as apiStartSession, ensureDaemon, getSessions } from '@/core/client/index.js';
 import { loadConfig } from '@/core/config/config.js';
 import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
+import { type UpOptions, UpOptionsSchema, parseCliOptions } from '@/core/cli/schemas.js';
 import { attachSession } from '@/tmux.js';
 import { CliError, getErrorMessage } from '@/utils/errors.js';
 
-export interface UpOptions {
-  name?: string;
-  config?: string;
-  attach?: boolean;
-  detach?: boolean;
-}
+export type { UpOptions };
 
-export async function upCommand(options: UpOptions): Promise<void> {
+export async function upCommand(rawOptions: unknown): Promise<void> {
+  const options = parseCliOptions(rawOptions, UpOptionsSchema, 'up');
   const config = loadConfig(options.config);
   const dir = process.cwd();
   const name = options.name ?? dir.split('/').pop() ?? 'default';
