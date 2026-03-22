@@ -1,66 +1,42 @@
-import { execSync, spawn } from 'node:child_process';
-import { getSessions, isDaemonRunning } from '@/core/client/index.js';
-import { loadConfig } from '@/core/config/config.js';
-import type { SessionResponse } from '@/core/config/types.js';
-
 /**
- * Check if tmux is installed on the system
+ * Attach command - Attach to a tmux session
+ *
+ * Returns exit code from tmux for proper propagation.
  */
-function isTmuxInstalled(): boolean {
-  try {
-    execSync('which tmux', { stdio: ['pipe', 'pipe', 'pipe'] });
-    return true;
-  } catch {
-    return false;
-  }
-}
+
+import { createInterface } from 'node:readline/promises';
+import {
+  attachToTmuxSession,
+  discoverSessions,
+  isTmuxInstalled
+} from '@/core/cli/services/attach-service.js';
+import { CliError } from '@/utils/errors.js';
 
 export interface AttachOptions {
   config?: string;
 }
 
+/**
+ * Attach to a tmux session.
+ * Returns the exit code from tmux for propagation to the entrypoint.
+ */
 export async function attachCommand(
   name: string | undefined,
   options: AttachOptions
-): Promise<void> {
+): Promise<number | void> {
   // If no name provided, show selection UI
   if (!name) {
-    await interactiveAttach(options);
-    return;
+    return interactiveAttach(options);
   }
 
   // Attach to named session
-  await attachToSession(name);
+  return attachToSession(name);
 }
 
-async function interactiveAttach(_options: AttachOptions): Promise<void> {
-  // Check if daemon is running to get session list
-  const running = await isDaemonRunning();
+async function interactiveAttach(options: AttachOptions): Promise<number | void> {
+  const sessions = await discoverSessions(options.config);
 
-  let sessions: SessionResponse[] = [];
-  if (running) {
-    try {
-      sessions = await getSessions(loadConfig(_options.config));
-    } catch {
-      // Ignore errors
-    }
-  }
-
-  // Also get tmux sessions directly
-  const tmuxSessions = getTmuxSessions();
-
-  // Merge session lists (prefer daemon info)
-  const allSessions = new Map<string, string>();
-  for (const session of sessions) {
-    allSessions.set(session.name, session.dir);
-  }
-  for (const name of tmuxSessions) {
-    if (!allSessions.has(name)) {
-      allSessions.set(name, '');
-    }
-  }
-
-  if (allSessions.size === 0) {
+  if (sessions.length === 0) {
     if (isTmuxInstalled()) {
       console.log('No sessions available.');
     } else {
@@ -71,28 +47,27 @@ async function interactiveAttach(_options: AttachOptions): Promise<void> {
 
   // Simple selection UI
   console.log('Available sessions:');
-  const sessionList = Array.from(allSessions.entries());
-  sessionList.forEach(([name, dir], index) => {
-    const dirInfo = dir ? ` (${dir})` : '';
-    console.log(`  ${index + 1}. ${name}${dirInfo}`);
+  sessions.forEach((session, index) => {
+    const dirInfo = session.dir ? ` (${session.dir})` : '';
+    console.log(`  ${index + 1}. ${session.name}${dirInfo}`);
   });
 
-  // Read user input
-  const readline = await import('node:readline');
-  const rl = readline.createInterface({
+  // Read user input using readline/promises
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
-  rl.question('\nSelect session (number or name): ', async (answer) => {
+  try {
+    const answer = await rl.question('\nSelect session (number or name): ');
     rl.close();
 
     const num = Number.parseInt(answer, 10);
     let sessionName: string;
 
-    if (!Number.isNaN(num) && num >= 1 && num <= sessionList.length) {
-      const entry = sessionList[num - 1];
-      sessionName = entry ? entry[0] : answer.trim();
+    if (!Number.isNaN(num) && num >= 1 && num <= sessions.length) {
+      const entry = sessions[num - 1];
+      sessionName = entry ? entry.name : answer.trim();
     } else {
       sessionName = answer.trim();
     }
@@ -101,41 +76,19 @@ async function interactiveAttach(_options: AttachOptions): Promise<void> {
       return;
     }
 
-    await attachToSession(sessionName);
-  });
+    return attachToSession(sessionName);
+  } catch {
+    // User cancelled (Ctrl+C)
+    rl.close();
+    return;
+  }
 }
 
-async function attachToSession(name: string): Promise<void> {
+async function attachToSession(name: string): Promise<number> {
   // Check if tmux is installed
   if (!isTmuxInstalled()) {
-    process.exit(1);
+    throw new CliError('tmux is not installed');
   }
 
-  // Check if inside tmux
-  const insideTmux = !!process.env['TMUX'];
-
-  const args = insideTmux ? ['switch-client', '-t', name] : ['attach-session', '-t', name];
-
-  const tmux = spawn('tmux', args, {
-    stdio: 'inherit'
-  });
-
-  tmux.on('exit', (code) => {
-    process.exit(code ?? 0);
-  });
-}
-
-function getTmuxSessions(): string[] {
-  try {
-    const output = execSync('tmux list-sessions -F "#{session_name}"', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-    return output
-      .trim()
-      .split('\n')
-      .filter((s) => s.length > 0);
-  } catch {
-    return [];
-  }
+  return attachToTmuxSession(name);
 }
