@@ -181,7 +181,7 @@ export class PreviewPane implements Disposable {
   /**
    * Check if pane is visible
    */
-  isVisible(): boolean {
+  get isVisible(): boolean {
     return this.elements?.pane ? !this.elements.pane.classList.contains('hidden') : false;
   }
 
@@ -227,14 +227,14 @@ export class PreviewPane implements Disposable {
   /**
    * Get the current URL
    */
-  getCurrentUrl(): string | null {
+  get currentUrlValue(): string | null {
     return this.currentUrl;
   }
 
   /**
    * Get the current width
    */
-  getWidth(): number {
+  get currentWidth(): number {
     return this.width;
   }
 

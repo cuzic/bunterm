@@ -179,14 +179,14 @@ export class FileWatcherClient {
   /**
    * Check if connected (terminal client is available and connected)
    */
-  isConnected(): boolean {
+  get isConnected(): boolean {
     return window.__TERMINAL_CLIENT__?.isConnected ?? false;
   }
 
   /**
    * Get connection state
    */
-  getState(): 'disconnected' | 'connecting' | 'connected' {
+  get state(): 'disconnected' | 'connecting' | 'connected' {
     if (!window.__TERMINAL_CLIENT__) {
       return 'disconnected';
     }

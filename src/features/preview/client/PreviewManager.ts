@@ -265,15 +265,15 @@ export class PreviewManager implements Mountable {
   /**
    * Get current file
    */
-  getCurrentFile(): CurrentFile | null {
+  get currentFileValue(): CurrentFile | null {
     return this.currentFile;
   }
 
   /**
    * Check if pane is visible
    */
-  isVisible(): boolean {
-    return this.pane.isVisible();
+  get isVisible(): boolean {
+    return this.pane.isVisible;
   }
 
   /**
