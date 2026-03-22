@@ -21,7 +21,7 @@ function generateBlockId(): string {
  */
 export class BlockModel {
   private blocks: Block[] = [];
-  private activeBlockId: string | null = null;
+  private _activeBlockId: string | null = null;
   private currentCwd = '';
 
   constructor(initialCwd = '') {
@@ -33,8 +33,8 @@ export class BlockModel {
    */
   startBlock(command: string, startLine: number): Block {
     // If there's an active block, close it first (shouldn't happen normally)
-    if (this.activeBlockId) {
-      this.endBlock(this.activeBlockId, 0, startLine - 1);
+    if (this._activeBlockId) {
+      this.endBlock(this._activeBlockId, 0, startLine - 1);
     }
 
     const block: Block = {
@@ -48,7 +48,7 @@ export class BlockModel {
     };
 
     this.blocks.push(block);
-    this.activeBlockId = block.id;
+    this._activeBlockId = block.id;
 
     // Limit the number of blocks to prevent memory issues
     if (this.blocks.length > MAX_BLOCKS) {
@@ -72,8 +72,8 @@ export class BlockModel {
     block.endLine = endLine;
     block.status = exitCode === 0 ? 'success' : 'error';
 
-    if (this.activeBlockId === blockId) {
-      this.activeBlockId = null;
+    if (this._activeBlockId === blockId) {
+      this._activeBlockId = null;
     }
 
     return block;
@@ -106,24 +106,24 @@ export class BlockModel {
   /**
    * Get the active block
    */
-  getActiveBlock(): Block | null {
-    if (!this.activeBlockId) {
+  get activeBlock(): Block | null {
+    if (!this._activeBlockId) {
       return null;
     }
-    return this.blocks.find((b) => b.id === this.activeBlockId) ?? null;
+    return this.blocks.find((b) => b.id === this._activeBlockId) ?? null;
   }
 
   /**
    * Get the active block ID
    */
-  getActiveBlockId(): string | null {
-    return this.activeBlockId;
+  get activeBlockId(): string | null {
+    return this._activeBlockId;
   }
 
   /**
    * Get all blocks
    */
-  getAllBlocks(): Block[] {
+  get allBlocks(): Block[] {
     return [...this.blocks];
   }
 
@@ -137,10 +137,10 @@ export class BlockModel {
   /**
    * Get session state
    */
-  getSession(): BlockSession {
+  get session(): BlockSession {
     return {
       blocks: [...this.blocks],
-      activeBlockId: this.activeBlockId
+      activeBlockId: this._activeBlockId
     };
   }
 
@@ -149,7 +149,7 @@ export class BlockModel {
    */
   clear(): void {
     this.blocks = [];
-    this.activeBlockId = null;
+    this._activeBlockId = null;
   }
 
   /**
