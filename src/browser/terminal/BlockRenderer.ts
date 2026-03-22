@@ -209,7 +209,7 @@ export class BlockRenderer implements Disposable {
 
       // Cmd/Ctrl+B - Toggle bookmark on focused block
       if (modKey && e.key === 'b' && !e.shiftKey && !e.altKey) {
-        const focusedId = this.options.blockManager.getFocusedBlockId();
+        const focusedId = this.options.blockManager.focusedBlock;
         if (focusedId) {
           e.preventDefault();
           this.options.blockManager.toggleBookmark(focusedId);
@@ -260,8 +260,8 @@ export class BlockRenderer implements Disposable {
    * Re-run the focused or first selected block
    */
   private rerunFocusedOrSelectedBlock(): void {
-    const focusedId = this.options.blockManager.getFocusedBlockId();
-    const selectedIds = this.options.blockManager.getSelectedBlockIds();
+    const focusedId = this.options.blockManager.focusedBlock;
+    const selectedIds = this.options.blockManager.selectedBlockIds;
 
     const blockId = focusedId ?? selectedIds[0];
     if (!blockId) {
@@ -280,8 +280,8 @@ export class BlockRenderer implements Disposable {
    * Edit and re-run the focused or first selected block
    */
   private editAndRerunBlock(): void {
-    const focusedId = this.options.blockManager.getFocusedBlockId();
-    const selectedIds = this.options.blockManager.getSelectedBlockIds();
+    const focusedId = this.options.blockManager.focusedBlock;
+    const selectedIds = this.options.blockManager.selectedBlockIds;
 
     const blockId = focusedId ?? selectedIds[0];
     if (!blockId) {
@@ -372,7 +372,7 @@ export class BlockRenderer implements Disposable {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.options.blockManager.setFilter(filter);
+        this.options.blockManager.filter = filter;
       });
 
       this.filterToolbar.appendChild(btn);

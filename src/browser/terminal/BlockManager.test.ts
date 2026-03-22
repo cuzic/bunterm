@@ -86,7 +86,7 @@ describe('BlockManager', () => {
       manager.handleBlockList(blocks);
 
       expect(manager.count).toBe(3);
-      expect(manager.getAllBlocks()).toHaveLength(3);
+      expect(manager.allBlocks).toHaveLength(3);
     });
   });
 
@@ -215,7 +215,7 @@ describe('BlockManager', () => {
     test('should get blocks matching search', () => {
       manager.search('hello');
 
-      const matchingBlocks = manager.getBlocksMatchingSearch();
+      const matchingBlocks = manager.blocksMatchingSearch;
 
       expect(matchingBlocks.length).toBeGreaterThan(0);
       expect(matchingBlocks.every((b) => b.id === 'block-1' || b.id === 'block-3')).toBe(true);
@@ -280,10 +280,10 @@ describe('BlockManager', () => {
     });
 
     test('should filter by status', () => {
-      manager.setFilter('error');
+      manager.filter = 'error';
 
-      expect(manager.getFilteredBlocks()).toHaveLength(1);
-      expect(manager.getFilteredBlocks()[0].id).toBe('block-2');
+      expect(manager.filteredBlocks).toHaveLength(1);
+      expect(manager.filteredBlocks[0].id).toBe('block-2');
     });
 
     test('should get block counts', () => {
@@ -308,18 +308,18 @@ describe('BlockManager', () => {
 
     test('should focus next block', () => {
       manager.focusFirstBlock();
-      expect(manager.getFocusedBlockId()).toBe('block-1');
+      expect(manager.focusedBlock).toBe('block-1');
 
       manager.focusNextBlock();
-      expect(manager.getFocusedBlockId()).toBe('block-2');
+      expect(manager.focusedBlock).toBe('block-2');
     });
 
     test('should focus previous block', () => {
       manager.focusLastBlock();
-      expect(manager.getFocusedBlockId()).toBe('block-3');
+      expect(manager.focusedBlock).toBe('block-3');
 
       manager.focusPreviousBlock();
-      expect(manager.getFocusedBlockId()).toBe('block-2');
+      expect(manager.focusedBlock).toBe('block-2');
     });
   });
 
@@ -360,7 +360,7 @@ describe('BlockManager', () => {
       manager.bookmarkBlock('block-1');
       manager.bookmarkBlock('block-3');
 
-      const bookmarked = manager.getBookmarkedBlocks();
+      const bookmarked = manager.bookmarkedBlocks;
 
       expect(bookmarked).toHaveLength(2);
       expect(bookmarked.some((b) => b.id === 'block-1')).toBe(true);
@@ -407,7 +407,7 @@ describe('BlockManager', () => {
       manager.focusBlock('block-1');
       manager.focusNextBookmark();
 
-      expect(manager.getFocusedBlockId()).toBe('block-3');
+      expect(manager.focusedBlock).toBe('block-3');
     });
 
     test('should navigate to previous bookmarked block', () => {
@@ -417,7 +417,7 @@ describe('BlockManager', () => {
       manager.focusBlock('block-3');
       manager.focusPreviousBookmark();
 
-      expect(manager.getFocusedBlockId()).toBe('block-1');
+      expect(manager.focusedBlock).toBe('block-1');
     });
 
     test('should wrap around when navigating bookmarks', () => {
@@ -427,7 +427,7 @@ describe('BlockManager', () => {
       manager.focusBlock('block-3');
       manager.focusNextBookmark();
 
-      expect(manager.getFocusedBlockId()).toBe('block-1');
+      expect(manager.focusedBlock).toBe('block-1');
     });
 
     test('should ignore bookmark operations for non-existent blocks', () => {
@@ -441,7 +441,7 @@ describe('BlockManager', () => {
       manager.bookmarkBlock('block-1');
       manager.bookmarkBlock('block-3');
 
-      const ids = manager.getBookmarkedBlockIds();
+      const ids = manager.bookmarkedBlockIds;
 
       expect(ids).toHaveLength(2);
       expect(ids).toContain('block-1');
@@ -919,7 +919,7 @@ src/types.ts:5:1 - error TS2304
 
     test('should set long-running threshold', () => {
       manager.setLongRunningThreshold(10000); // 10 seconds
-      expect(manager.getLongRunningThreshold()).toBe(10000);
+      expect(manager.longRunningThresholdMs).toBe(10000);
     });
 
     test('should detect long-running commands', () => {
@@ -935,7 +935,7 @@ src/types.ts:5:1 - error TS2304
       });
       manager.handleBlockStart(block);
 
-      const longRunning = manager.getLongRunningBlocks();
+      const longRunning = manager.longRunningBlocks;
       expect(longRunning).toHaveLength(1);
       expect(longRunning[0].id).toBe('block-1');
     });
@@ -951,7 +951,7 @@ src/types.ts:5:1 - error TS2304
       });
       manager.handleBlockStart(block);
 
-      const longRunning = manager.getLongRunningBlocks();
+      const longRunning = manager.longRunningBlocks;
       expect(longRunning).toHaveLength(0);
     });
 
@@ -973,7 +973,7 @@ src/types.ts:5:1 - error TS2304
       manager.handleBlockStart(runningBlock);
       manager.handleBlockStart(completedBlock);
 
-      const running = manager.getRunningBlocks();
+      const running = manager.runningBlocks;
       expect(running).toHaveLength(1);
       expect(running[0].id).toBe('block-1');
     });
