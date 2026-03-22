@@ -119,20 +119,16 @@ export type FileContentParams = z.infer<typeof FileContentParamsSchema>;
 
 // === Parse Helper ===
 
-/**
- * Parse result type for parameter validation
- */
-export type ParseResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
+import { type Result, ok, err } from '@/utils/result.js';
 
 /**
  * Parse URLSearchParams with a Zod schema
+ * Returns Result<T, string> for type-safe error handling
  */
 export function parseSearchParams<T>(
   params: URLSearchParams,
   schema: z.ZodSchema<T>
-): ParseResult<T> {
+): Result<T, string> {
   const raw: Record<string, string | undefined> = {};
   params.forEach((value, key) => {
     raw[key] = value;
@@ -140,10 +136,10 @@ export function parseSearchParams<T>(
 
   const result = schema.safeParse(raw);
   if (result.success) {
-    return { ok: true, data: result.data };
+    return ok(result.data);
   }
 
   const issue = result.error.issues[0];
   const field = issue?.path.join('.') || 'parameter';
-  return { ok: false, error: `Invalid ${field}: ${issue?.message ?? 'validation failed'}` };
+  return err(`Invalid ${field}: ${issue?.message ?? 'validation failed'}`);
 }

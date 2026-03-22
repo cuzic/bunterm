@@ -16,7 +16,7 @@ import { PlansParamsSchema, parseSearchParams } from './params.js';
  */
 export function handlePlansRoute(ctx: QuoteRouteContext): Response {
   const parsed = parseSearchParams(ctx.params, PlansParamsSchema);
-  const count = parsed.ok ? parsed.data.count : 10;
+  const count = parsed.ok ? parsed.value.count : 10;
 
   try {
     const files = getPlanFiles(count);

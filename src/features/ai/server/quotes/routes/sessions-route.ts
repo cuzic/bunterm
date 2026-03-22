@@ -16,7 +16,7 @@ import { SessionsParamsSchema, parseSearchParams } from './params.js';
  */
 export function handleSessionsRoute(ctx: QuoteRouteContext): Response {
   const parsed = parseSearchParams(ctx.params, SessionsParamsSchema);
-  const limit = parsed.ok ? parsed.data.limit : 10;
+  const limit = parsed.ok ? parsed.value.limit : 10;
 
   try {
     return successResponse({ sessions: getRecentClaudeSessions(limit) }, ctx.headers);

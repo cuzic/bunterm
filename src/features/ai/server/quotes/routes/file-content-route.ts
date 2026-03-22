@@ -22,7 +22,7 @@ export function handleFileContentRoute(ctx: QuoteRouteContext): Response {
     return failureResponse(parsed.error, ctx.headers, 400);
   }
 
-  const { source, path: filePath, session: sessionName, preview: isPreview } = parsed.data;
+  const { source, path: filePath, session: sessionName, preview: isPreview } = parsed.value;
 
   let baseDir: string;
   if (source === 'plans') {
