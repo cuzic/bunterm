@@ -45,93 +45,36 @@ const strictCountSchema = (defaultVal: number, max: number) =>
     .refine((val) => val >= 1, { message: 'must be at least 1' })
     .refine((val) => val <= max, { message: `must be at most ${max}` });
 
-/** Session name parameter */
-const sessionNameSchema = z.string().min(1, 'session is required').max(64);
-
-/** Claude session ID parameter */
-const claudeSessionIdSchema = z.string().min(1, 'claudeSessionId is required');
-
-/** Project path parameter */
-const projectPathSchema = z.string().min(1, 'projectPath is required');
-
 /** File path parameter */
 const filePathSchema = z.string().min(1, 'path is required');
 
-// === Route Parameter Schemas ===
+// === Route-Specific Parameter Schemas ===
+//
+// These schemas validate route-specific params only.
+// Locator params (session, claudeSessionId, projectPath) are validated
+// by resolveWorkspaceFromParams() / resolveClaudeFromParams() in the route.
 
-/**
- * /recent-markdown route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Optional: count (default: 20), hours (default: 24)
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
+/** /recent-markdown: count (default: 20), hours (default: 24) */
 export const RecentMarkdownParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional(),
   count: strictCountSchema(20, 50),
   hours: strictCountSchema(24, 168)
 });
 export type RecentMarkdownParams = z.infer<typeof RecentMarkdownParamsSchema>;
 
-/**
- * /recent route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Optional: count (default: 20)
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
+/** /recent: count (default: 20) */
 export const RecentParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional(),
   count: strictCountSchema(20, 50)
 });
 export type RecentParams = z.infer<typeof RecentParamsSchema>;
 
-/**
- * /project-markdown route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Optional: count (default: 10)
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
+/** /project-markdown: count (default: 10) */
 export const ProjectMarkdownParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional(),
   count: strictCountSchema(10, 50)
 });
 export type ProjectMarkdownParams = z.infer<typeof ProjectMarkdownParamsSchema>;
 
-/**
- * /git-diff-file route parameters
- *
- * Locator (one of):
- * - bunterm: session
- * - Claude: claudeSessionId + projectPath
- *
- * Requires: path
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams().
- */
+/** /git-diff-file: path (required) */
 export const GitDiffFileParamsSchema = z.object({
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional(),
   path: filePathSchema
 });
 export type GitDiffFileParams = z.infer<typeof GitDiffFileParamsSchema>;
@@ -155,30 +98,16 @@ export const PlansParamsSchema = z.object({
 export type PlansParams = z.infer<typeof PlansParamsSchema>;
 
 /**
- * /file-content route parameters
+ * /file-content: source (required), path (required), preview (default: false)
  *
- * Requires: source, path
- *
- * When source='project':
- *   Locator (one of):
- *   - bunterm: session
- *   - Claude: claudeSessionId + projectPath
- *
- * When source='plans':
- *   No locator needed (uses ~/.claude/plans)
- *
- * Optional: preview (default: false)
- *
- * Session/locator fields are validated by resolveWorkspaceFromParams() (for source='project').
+ * source='project' requires locator (validated by resolveWorkspaceFromParams)
+ * source='plans' uses ~/.claude/plans (no locator needed)
  */
 export const FileContentParamsSchema = z.object({
   source: z.enum(['project', 'plans'], {
     error: 'source must be "project" or "plans"'
   }),
   path: filePathSchema,
-  session: sessionNameSchema.optional(),
-  claudeSessionId: claudeSessionIdSchema.optional(),
-  projectPath: projectPathSchema.optional(),
   preview: z
     .string()
     .optional()
