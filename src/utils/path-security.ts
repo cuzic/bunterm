@@ -174,19 +174,44 @@ export type PathValidationResult =
  * Validate that a file path is within the allowed base directory.
  * Prevents directory traversal attacks (e.g., ../../../etc/passwd).
  *
+ * ## Security Checks
+ * 1. Dangerous patterns (null bytes, URL encoding, etc.)
+ * 2. Path traversal (../, symlink escapes)
+ * 3. Path prefix validation
+ *
  * @param baseDir The base directory that paths must be within
  * @param filePath The relative file path to validate
  * @returns Validation result with resolved path or error message
  */
 export function validateSecurePath(baseDir: string, filePath: string): PathValidationResult {
+  // Check for dangerous patterns first
+  if (containsDangerousPatterns(filePath)) {
+    return { valid: false, error: 'Invalid path: contains dangerous characters' };
+  }
+
   // Resolve baseDir to absolute path to handle relative paths like "."
   const absBaseDir = resolve(baseDir);
   const targetPath = resolve(absBaseDir, filePath);
 
   // Security: ensure path is within base directory
   // Use absBaseDir + '/' to prevent matching /home/user/projectfoo when baseDir is /home/user/project
-  if (!targetPath.startsWith(absBaseDir + '/') && targetPath !== absBaseDir) {
-    return { valid: false, error: 'Invalid path' };
+  if (!targetPath.startsWith(`${absBaseDir}/`) && targetPath !== absBaseDir) {
+    return { valid: false, error: 'Path traversal not allowed' };
+  }
+
+  // For existing files, also check realpath to prevent symlink attacks
+  if (existsSync(targetPath)) {
+    try {
+      const realPath = realpathSync(targetPath);
+      const realBase = realpathSync(absBaseDir);
+      if (!realPath.startsWith(`${realBase}/`) && realPath !== realBase) {
+        log.warn(`Symlink escape attempt blocked: ${filePath}`);
+        return { valid: false, error: 'Path traversal not allowed' };
+      }
+    } catch {
+      // If realpath fails, the file may have been deleted or is inaccessible
+      return { valid: false, error: 'Path not accessible' };
+    }
   }
 
   return { valid: true, targetPath };
