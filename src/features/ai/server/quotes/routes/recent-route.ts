@@ -10,7 +10,8 @@ import {
   successResponse,
   failureResponse,
   handleError,
-  resolveSession
+  resolveSession,
+  resolveSessionV2
 } from './types.js';
 import {
   collectMdFiles,
@@ -57,33 +58,20 @@ export async function handleRecentMarkdownRoute(ctx: QuoteRouteContext): Promise
  */
 export async function handleRecentRoute(ctx: QuoteRouteContext): Promise<Response> {
   const claudeSessionId = ctx.params.get('claudeSessionId');
-  const projectPath = ctx.params.get('projectPath');
   const count = Math.min(Number.parseInt(ctx.params.get('count') ?? '20', 10), 50);
 
-  // Use claudeSessionId + projectPath if provided (new approach)
-  if (claudeSessionId && projectPath) {
-    try {
-      const turns = await getRecentClaudeTurnsFromSession(projectPath, claudeSessionId, count);
-      return successResponse({ turns }, ctx.headers);
-    } catch (error) {
-      return handleError(error, ctx.headers);
-    }
-  }
-
-  // Fallback: legacy approach using bunterm session name
-  const sessionResult = resolveSession(ctx);
+  // Use unified session resolver
+  const sessionResult = resolveSessionV2(ctx, 'prefer-claude');
   if (!sessionResult.ok) {
-    return failureResponse(
-      sessionResult.status === 400
-        ? 'Either (claudeSessionId + projectPath) or session parameter is required'
-        : sessionResult.error,
-      ctx.headers,
-      sessionResult.status
-    );
+    return failureResponse(sessionResult.error.error, ctx.headers, sessionResult.error.status);
   }
 
   try {
-    const turns = await getRecentClaudeTurns(sessionResult.cwd, count);
+    // Use different service methods based on resolution mode
+    const turns =
+      sessionResult.value.mode === 'claude'
+        ? await getRecentClaudeTurnsFromSession(sessionResult.value.cwd, claudeSessionId!, count)
+        : await getRecentClaudeTurns(sessionResult.value.cwd, count);
     return successResponse({ turns }, ctx.headers);
   } catch (error) {
     return handleError(error, ctx.headers);
