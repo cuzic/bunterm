@@ -4,16 +4,20 @@
  * Parses Claude Code session JSONL entries into WebSocket messages.
  */
 
+import {
+  type ClaudeAssistantContent,
+  type ClaudeHistoryEntry,
+  type ClaudeSessionEntry,
+  type ClaudeUserMessage,
+  parseHistoryEntry as parseHistoryEntrySchema,
+  parseSessionEntry as parseSessionEntrySchema
+} from './schemas.js';
 import type {
-  ClaudeAssistantContent,
   ClaudeAssistantTextWS,
-  ClaudeHistoryEntry,
-  ClaudeSessionEntry,
   ClaudeThinkingWS,
   ClaudeToolResultBlock,
   ClaudeToolResultWS,
   ClaudeToolUseWS,
-  ClaudeUserMessage,
   ClaudeUserMessageWS,
   ClaudeWatcherMessage
 } from './types.js';
@@ -34,30 +38,14 @@ const DEFAULT_OPTIONS: Required<ParserOptions> = {
  * Parse a history.jsonl line
  */
 export function parseHistoryEntry(line: string): ClaudeHistoryEntry | null {
-  try {
-    const entry = JSON.parse(line) as ClaudeHistoryEntry;
-    if (typeof entry.display !== 'string' || typeof entry.timestamp !== 'number') {
-      return null;
-    }
-    return entry;
-  } catch {
-    return null;
-  }
+  return parseHistoryEntrySchema(line);
 }
 
 /**
  * Parse a session.jsonl line
  */
 export function parseSessionEntry(line: string): ClaudeSessionEntry | null {
-  try {
-    const entry = JSON.parse(line) as ClaudeSessionEntry;
-    if (!entry.type || !entry.uuid || !entry.message) {
-      return null;
-    }
-    return entry;
-  } catch {
-    return null;
-  }
+  return parseSessionEntrySchema(line);
 }
 
 /**

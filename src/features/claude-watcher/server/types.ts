@@ -24,7 +24,7 @@ export interface ClaudeSessionEntry {
   parentUuid: string | null;
   timestamp: string; // ISO 8601
   sessionId: string;
-  cwd: string;
+  cwd?: string;
   version?: string;
   gitBranch?: string;
   slug?: string;
