@@ -1,7 +1,12 @@
+/**
+ * Up command - Start session for current directory
+ */
+
 import { startSession as apiStartSession, ensureDaemon, getSessions } from '@/core/client/index.js';
-import { getFullPath, loadConfig } from '@/core/config/config.js';
+import { loadConfig } from '@/core/config/config.js';
+import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
 import { attachSession } from '@/tmux.js';
-import { getErrorMessage } from '@/utils/errors.js';
+import { CliError, getErrorMessage } from '@/utils/errors.js';
 
 export interface UpOptions {
   name?: string;
@@ -27,8 +32,7 @@ export async function upCommand(options: UpOptions): Promise<void> {
       dir
     });
 
-    const fullPath = getFullPath(config, session.path);
-    const url = `http://localhost:${config.daemon_port}${fullPath}/`;
+    const url = buildSessionUrl(config, session.path);
     console.log(`Session started: ${session.name}`);
     console.log(`URL: ${url}`);
 
@@ -44,8 +48,7 @@ export async function upCommand(options: UpOptions): Promise<void> {
       const existing = sessions.find((s) => s.name === name);
 
       if (existing) {
-        const fullPath = getFullPath(config, existing.path);
-        const url = `http://localhost:${config.daemon_port}${fullPath}/`;
+        const url = buildSessionUrl(config, existing.path);
         console.log(`Session '${name}' is already running.`);
         console.log(`URL: ${url}`);
       } else {
@@ -57,7 +60,6 @@ export async function upCommand(options: UpOptions): Promise<void> {
       }
       return;
     }
-    console.error(`Failed to start session: ${message}`);
-    process.exit(1);
+    throw new CliError(`Failed to start session: ${message}`);
   }
 }

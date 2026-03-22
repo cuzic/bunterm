@@ -1,6 +1,11 @@
+/**
+ * Down command - Stop session for current directory
+ */
+
 import { ensureDaemon, getSessions, shutdownDaemon, stopSession } from '@/core/client/index.js';
 import { loadConfig } from '@/core/config/config.js';
-import { handleCliError } from '@/utils/errors.js';
+import { requireSessionForCwd } from '@/core/cli/helpers/session-resolver.js';
+import { CliError } from '@/utils/errors.js';
 
 export interface DownOptions {
   config?: string;
@@ -9,37 +14,32 @@ export interface DownOptions {
 
 export async function downCommand(options: DownOptions): Promise<void> {
   const config = loadConfig(options.config);
-  const dir = process.cwd();
 
   // Ensure daemon is running
   await ensureDaemon(options.config, config.daemon_manager);
 
   // Find session for current directory
-  const sessions = await getSessions(config);
-  const session = sessions.find((s) => s.dir === dir);
-
-  if (!session) {
-    if (sessions.length > 0) {
-      for (const _s of sessions) {
-      }
-    } else {
-    }
-    process.exit(1);
-  }
+  const session = await requireSessionForCwd(config);
 
   try {
     await stopSession(config, session.name, { killTmux: options.killTmux });
+
     if (options.killTmux) {
+      console.log(`Session '${session.name}' stopped and tmux session killed`);
     } else {
+      console.log(`Session '${session.name}' stopped`);
     }
 
     // Check if there are any remaining sessions
     const remainingSessions = await getSessions(config);
     if (remainingSessions.length === 0) {
       await shutdownDaemon();
+      console.log('Daemon stopped (no remaining sessions)');
     }
   } catch (error) {
-    handleCliError('Failed to stop session', error);
-    process.exit(1);
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw CliError.from(error, 'Failed to stop session');
   }
 }
