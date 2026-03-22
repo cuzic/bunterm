@@ -21,11 +21,14 @@ export class AppError extends Error {
  */
 export class CliError extends Error {
   public readonly exitCode: number;
+  /** If true, don't print any error message (used for JSON output that already reported the error) */
+  public readonly silent: boolean;
 
-  constructor(message: string, exitCode = 1) {
+  constructor(message: string, exitCode = 1, silent = false) {
     super(message);
     this.name = 'CliError';
     this.exitCode = exitCode;
+    this.silent = silent;
   }
 
   /**
@@ -35,6 +38,13 @@ export class CliError extends Error {
     const message = getErrorMessage(error);
     const fullMessage = prefix ? `${prefix}: ${message}` : message;
     return new CliError(fullMessage);
+  }
+
+  /**
+   * Create a silent failure (for JSON mode where error is already in output)
+   */
+  static silent(exitCode = 1): CliError {
+    return new CliError('', exitCode, true);
   }
 }
 
