@@ -121,7 +121,11 @@ export type DeployOptions = z.infer<typeof DeployOptionsSchema>;
 // === Share Command ===
 
 export const ShareCreateOptionsSchema = z.object({
-  expires: z.string().regex(/^\d+[smhd]$/, 'Invalid duration format (e.g., 1h, 30m, 7d)').optional().default('1h')
+  expires: z
+    .string()
+    .regex(/^\d+[smhd]$/, 'Invalid duration format (e.g., 1h, 30m, 7d)')
+    .optional()
+    .default('1h')
 });
 
 export type ShareCreateOptions = z.infer<typeof ShareCreateOptionsSchema>;
@@ -170,6 +174,15 @@ export const CaddyStatusOptionsSchema = z.object({
 });
 
 export type CaddyStatusOptions = z.infer<typeof CaddyStatusOptionsSchema>;
+
+// === OTP Command ===
+
+export const OtpOptionsSchema = z.object({
+  config: ConfigPathSchema,
+  ttl: z.number().int().min(30).max(300).optional()
+});
+
+export type OtpOptions = z.infer<typeof OtpOptionsSchema>;
 
 // === Parse Helpers ===
 
