@@ -103,6 +103,7 @@ export class FileOpsSidebar {
     const closeBtn = document.getElementById('tui-file-ops-close');
     if (closeBtn) {
       const handler = () => this.hide();
+      // biome-ignore lint: cleaned up via cleanupFns
       closeBtn.addEventListener('click', handler);
       this.cleanupFns.push(() => closeBtn.removeEventListener('click', handler));
     }
@@ -110,6 +111,7 @@ export class FileOpsSidebar {
     const clearBtn = document.getElementById('tui-file-ops-clear');
     if (clearBtn) {
       const handler = () => this.clear();
+      // biome-ignore lint: cleaned up via cleanupFns
       clearBtn.addEventListener('click', handler);
       this.cleanupFns.push(() => clearBtn.removeEventListener('click', handler));
     }
@@ -299,14 +301,21 @@ export class FileOpsSidebar {
     const fileName = op.filePath.split('/').pop() || op.filePath;
     const statusClass = op.status === 'pending' ? 'pending' : op.status === 'error' ? 'error' : '';
 
-    item.innerHTML = `
-      <span class="file-ops-icon">${icon}</span>
-      <div class="file-ops-info">
-        <span class="file-ops-filename">${this.escapeHtml(fileName)}</span>
-        <span class="file-ops-path">${this.escapeHtml(op.filePath)}</span>
-      </div>
-      <span class="file-ops-status ${statusClass}"></span>
-    `;
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'file-ops-icon';
+    iconSpan.textContent = icon;
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'file-ops-info';
+    const fileNameSpan = document.createElement('span');
+    fileNameSpan.className = 'file-ops-filename';
+    fileNameSpan.textContent = fileName;
+    const pathSpan = document.createElement('span');
+    pathSpan.className = 'file-ops-path';
+    pathSpan.textContent = op.filePath;
+    infoDiv.append(fileNameSpan, pathSpan);
+    const statusSpan = document.createElement('span');
+    statusSpan.className = `file-ops-status ${statusClass}`.trim();
+    item.replaceChildren(iconSpan, infoDiv, statusSpan);
 
     // Click handler to show popup (tracked for cleanup)
     const clickHandler = () => {
@@ -317,6 +326,7 @@ export class FileOpsSidebar {
         rect.top + rect.height / 2
       );
     };
+    // biome-ignore lint: cleaned up via itemClickHandlers
     item.addEventListener('click', clickHandler);
     this.itemClickHandlers.set(op.id, { element: item, handler: clickHandler });
 
@@ -358,15 +368,6 @@ export class FileOpsSidebar {
       default:
         return '\u{1F4C4}'; // 📄
     }
-  }
-
-  /**
-   * Escape HTML special characters
-   */
-  private escapeHtml(str: string): string {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   }
 
   /**
@@ -420,12 +421,15 @@ export class FileOpsSidebar {
       startX = e.clientX;
       startWidth = this.currentWidth;
 
+      // biome-ignore lint: removed in onMouseUp handler
       document.addEventListener('mousemove', onMouseMove);
+      // biome-ignore lint: self-removing in onMouseUp handler
       document.addEventListener('mouseup', onMouseUp);
       document.body.style.cursor = 'ew-resize';
       document.body.style.userSelect = 'none';
     };
 
+    // biome-ignore lint: cleaned up via cleanupFns
     resizer.addEventListener('mousedown', onMouseDown);
     this.cleanupFns.push(() => resizer.removeEventListener('mousedown', onMouseDown));
 
@@ -468,10 +472,13 @@ export class FileOpsSidebar {
         this.callbacks.onWidthChange?.(this.currentWidth);
       };
 
+      // biome-ignore lint: removed in onTouchEnd handler
       document.addEventListener('touchmove', onTouchMove, { passive: true });
+      // biome-ignore lint: self-removing in onTouchEnd handler
       document.addEventListener('touchend', onTouchEnd);
     };
 
+    // biome-ignore lint: cleaned up via cleanupFns
     resizer.addEventListener('touchstart', onTouchStart, { passive: true });
     this.cleanupFns.push(() => resizer.removeEventListener('touchstart', onTouchStart));
   }

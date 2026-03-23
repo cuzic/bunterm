@@ -321,21 +321,34 @@ export class PathLinkManager {
 
     const popup = document.createElement('div');
     popup.className = 'path-link-popup hidden';
-    popup.innerHTML = `
-      <div class="popup-header">
-        <span class="popup-icon">📄</span>
-        <span class="popup-path"></span>
-      </div>
-      <div class="popup-actions">
-        <button data-action="preview">👁️ Preview</button>
-        <button data-action="copy-content">📝 Copy Content</button>
-        <button data-action="download">📥 Download</button>
-        <button data-action="copy">📋 Copy Path</button>
-        <button data-action="copy-full">📋 Copy Full Path</button>
-      </div>
-    `;
+    const header = document.createElement('div');
+    header.className = 'popup-header';
+    const popupIcon = document.createElement('span');
+    popupIcon.className = 'popup-icon';
+    popupIcon.textContent = '📄';
+    const popupPath = document.createElement('span');
+    popupPath.className = 'popup-path';
+    header.append(popupIcon, popupPath);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'popup-actions';
+    const actionDefs = [
+      { action: 'preview', label: '👁️ Preview' },
+      { action: 'copy-content', label: '📝 Copy Content' },
+      { action: 'download', label: '📥 Download' },
+      { action: 'copy', label: '📋 Copy Path' },
+      { action: 'copy-full', label: '📋 Copy Full Path' }
+    ];
+    for (const def of actionDefs) {
+      const btn = document.createElement('button');
+      btn.dataset['action'] = def.action;
+      btn.textContent = def.label;
+      actionsDiv.appendChild(btn);
+    }
+    popup.append(header, actionsDiv);
 
     // Add event listeners for actions
+    // biome-ignore lint: temporary popup element, removed on close
     popup.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const action = target.getAttribute('data-action');
@@ -346,10 +359,12 @@ export class PathLinkManager {
     });
 
     // Prevent popup from closing when hovering over it
+    // biome-ignore lint: temporary popup element, removed on close
     popup.addEventListener('mouseenter', () => {
       this.clearHideTimer();
     });
 
+    // biome-ignore lint: temporary popup element, removed on close
     popup.addEventListener('mouseleave', () => {
       this.scheduleHidePopup();
     });
@@ -455,6 +470,7 @@ export class PathLinkManager {
       }
     };
 
+    // biome-ignore lint: cleaned up via disposables
     document.addEventListener('click', handler);
     this.disposables.push({
       dispose: () => document.removeEventListener('click', handler)
@@ -467,6 +483,7 @@ export class PathLinkManager {
       }
     };
 
+    // biome-ignore lint: cleaned up via disposables
     document.addEventListener('keydown', escHandler);
     this.disposables.push({
       dispose: () => document.removeEventListener('keydown', escHandler)

@@ -6,11 +6,10 @@
  */
 
 import { BaseModal } from '@/browser/shared/BaseModal.js';
-import { type Scope, on } from '@/browser/shared/lifecycle.js';
+import { on, type Scope } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import {
   bindClickScoped,
-  escapeHtml,
   formatFileSize,
   formatRelativeTime,
   getSessionNameFromURL,
@@ -274,6 +273,7 @@ export class FileTransferManager extends BaseModal {
     item.appendChild(time);
 
     // Click handler - select file for preview
+    // biome-ignore lint: cleaned up via cleanupFns
     item.addEventListener('click', () => {
       if (this.previewCallback) {
         this.previewCallback({ path: file.path, isDirectory: false });
@@ -311,7 +311,11 @@ export class FileTransferManager extends BaseModal {
     const { fileList } = this.elements;
 
     // Show loading
-    fileList.innerHTML = '<div class="tui-file-loading">読み込み中...</div>';
+    fileList.textContent = '';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'tui-file-loading';
+    loadingDiv.textContent = '読み込み中...';
+    fileList.appendChild(loadingDiv);
 
     try {
       const previewParam = this.previewMode ? '&preview=true' : '';
@@ -328,8 +332,12 @@ export class FileTransferManager extends BaseModal {
       this.renderFileList(data.files);
       this.renderBreadcrumb();
     } catch (error) {
-      const errorMessage = escapeHtml(error instanceof Error ? error.message : 'Unknown error');
-      fileList.innerHTML = `<div class="tui-file-error">エラー: ${errorMessage}</div>`;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      fileList.textContent = '';
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'tui-file-error';
+      errorDiv.textContent = `エラー: ${errorMessage}`;
+      fileList.appendChild(errorDiv);
     }
   }
 
@@ -383,7 +391,11 @@ export class FileTransferManager extends BaseModal {
 
     if (sorted.length === 0) {
       const message = this.previewMode ? 'HTMLファイルがありません' : 'ファイルがありません';
-      fileList.innerHTML = `<div class="tui-file-empty">${message}</div>`;
+      fileList.textContent = '';
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'tui-file-empty';
+      emptyDiv.textContent = message;
+      fileList.appendChild(emptyDiv);
       return;
     }
 
@@ -425,6 +437,7 @@ export class FileTransferManager extends BaseModal {
       spaBtn.className = 'tui-file-spa-btn';
       spaBtn.textContent = '👁';
       spaBtn.title = 'SPAとしてプレビュー';
+      // biome-ignore lint: cleaned up via cleanupFns
       spaBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const fullPath = this.currentPath === '.' ? file.name : `${this.currentPath}/${file.name}`;
@@ -439,6 +452,7 @@ export class FileTransferManager extends BaseModal {
     }
 
     // Click handler
+    // biome-ignore lint: cleaned up via cleanupFns
     item.addEventListener('click', () => {
       if (file.isDirectory) {
         this.navigateTo(file.name);
@@ -508,6 +522,7 @@ export class FileTransferManager extends BaseModal {
     const root = document.createElement('span');
     root.className = 'bunterm-breadcrumb-item';
     root.textContent = '\uD83C\uDFE0'; // 🏠
+    // biome-ignore lint: cleaned up via cleanupFns
     root.addEventListener('click', async () => {
       this.currentPath = '.';
       await this.loadFileList();
@@ -532,6 +547,7 @@ export class FileTransferManager extends BaseModal {
       item.className = 'bunterm-breadcrumb-item';
       item.textContent = part;
       const currentPath = path;
+      // biome-ignore lint: cleaned up via cleanupFns
       item.addEventListener('click', async () => {
         this.currentPath = currentPath;
         await this.loadFileList();

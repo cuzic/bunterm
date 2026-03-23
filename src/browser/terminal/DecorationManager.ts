@@ -296,7 +296,7 @@ export class DecorationManager implements Disposable {
     }
 
     element.className = classes.join(' ');
-    element.innerHTML = block.type === 'claude' ? '\uD83D\uDCAC' : STATUS_ICONS[block.status]; // 💬 for Claude
+    element.textContent = block.type === 'claude' ? '\uD83D\uDCAC' : STATUS_ICONS[block.status]; // 💬 for Claude
     element.style.backgroundColor = block.type === 'claude' ? '' : STATUS_COLORS[block.status];
     element.title = this.getStatusTitle(block);
 
@@ -347,15 +347,19 @@ export class DecorationManager implements Disposable {
             { action: 'ai', icon: '\uD83E\uDD16', title: 'Send to AI' } // 🤖
           ];
 
-    element.innerHTML = actions
-      .map(
-        (a) =>
-          `<button class="block-action" data-action="${a.action}" title="${a.title}">${a.icon}</button>`
-      )
-      .join('');
+    element.replaceChildren();
+    for (const a of actions) {
+      const button = document.createElement('button');
+      button.className = 'block-action';
+      button.dataset['action'] = a.action;
+      button.title = a.title;
+      button.textContent = a.icon;
+      element.appendChild(button);
+    }
 
     // Attach click handlers
     element.querySelectorAll('.block-action').forEach((btn) => {
+      // biome-ignore lint: temporary DOM element, removed with parent
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = (btn as HTMLElement).dataset['action'];
@@ -388,7 +392,7 @@ export class DecorationManager implements Disposable {
     const element = decoration.statusDecoration.element;
 
     // Update icon
-    element.innerHTML = decoration.type === 'claude' ? '\uD83D\uDCAC' : STATUS_ICONS[status];
+    element.textContent = decoration.type === 'claude' ? '\uD83D\uDCAC' : STATUS_ICONS[status];
 
     // Update background color for command blocks
     if (decoration.type !== 'claude') {

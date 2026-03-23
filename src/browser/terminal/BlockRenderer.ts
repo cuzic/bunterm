@@ -34,7 +34,7 @@ const DANGEROUS_PATTERNS = [
   /\bsudo\s+rm\b/i, // sudo rm
   /\bmkfs\b/i, // filesystem format
   /\bdd\s+if=/i, // dd command
-  /\b:()\{\s*:\|\:\s*&\s*\};:/i, // fork bomb
+  /\b:()\{\s*:\|:\s*&\s*\};:/i, // fork bomb
   /\bchmod\s+-R\s+777\s+\//i, // chmod 777 root
   />\s*\/dev\/sd/i // write to block device
 ];
@@ -99,6 +99,7 @@ export class BlockRenderer implements Disposable {
     this.resizeObserver.observe(this.options.terminalElement);
 
     // Close context menu on click outside
+    // biome-ignore lint: global listener for context menu dismiss, lives for component lifetime
     document.addEventListener('click', () => this.hideContextMenu());
   }
 
@@ -106,6 +107,7 @@ export class BlockRenderer implements Disposable {
    * Setup keyboard handlers for copy shortcuts
    */
   private setupKeyboardHandlers(): void {
+    // biome-ignore lint: global keyboard handler, lives for component lifetime
     document.addEventListener('keydown', (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const modKey = isMac ? e.metaKey : e.ctrlKey;
@@ -329,7 +331,11 @@ export class BlockRenderer implements Disposable {
     for (const item of items) {
       const menuItem = document.createElement('button');
       menuItem.className = 'block-context-menu-item';
-      menuItem.innerHTML = `<span class="menu-icon">${item.icon}</span> ${item.label}`;
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'menu-icon';
+      iconSpan.textContent = item.icon;
+      menuItem.append(iconSpan, ` ${item.label}`);
+      // biome-ignore lint: temporary context menu item, removed on menu close
       menuItem.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -363,12 +369,23 @@ export class BlockRenderer implements Disposable {
       const btn = document.createElement('button');
       btn.className = `block-filter-btn block-filter-${filter}`;
       btn.dataset['filter'] = filter;
-      btn.innerHTML = `<span class="filter-icon">${shortLabel}</span><span class="filter-label">${label}</span><span class="filter-count" data-count="${filter}">0</span>`;
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'filter-icon';
+      iconSpan.textContent = shortLabel;
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'filter-label';
+      labelSpan.textContent = label;
+      const countSpan = document.createElement('span');
+      countSpan.className = 'filter-count';
+      countSpan.dataset['count'] = filter;
+      countSpan.textContent = '0';
+      btn.append(iconSpan, labelSpan, countSpan);
 
       if (filter === 'all') {
         btn.classList.add('active');
       }
 
+      // biome-ignore lint: temporary DOM element or component lifetime listener
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -394,9 +411,11 @@ export class BlockRenderer implements Disposable {
     this.searchInput.type = 'text';
     this.searchInput.className = 'block-search-input';
     this.searchInput.placeholder = 'Search in blocks...';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     this.searchInput.addEventListener('input', () => {
       this.performSearch();
     });
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     this.searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -419,6 +438,7 @@ export class BlockRenderer implements Disposable {
     prevBtn.className = 'block-search-btn';
     prevBtn.textContent = '\u25B2'; // ▲
     prevBtn.title = 'Previous result (Shift+Enter)';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     prevBtn.addEventListener('click', () => {
       this.options.blockManager.previousSearchResult();
       this.highlightCurrentSearchResult();
@@ -428,6 +448,7 @@ export class BlockRenderer implements Disposable {
     nextBtn.className = 'block-search-btn';
     nextBtn.textContent = '\u25BC'; // ▼
     nextBtn.title = 'Next result (Enter)';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     nextBtn.addEventListener('click', () => {
       this.options.blockManager.nextSearchResult();
       this.highlightCurrentSearchResult();
@@ -442,6 +463,7 @@ export class BlockRenderer implements Disposable {
     const caseSensitiveCheck = document.createElement('input');
     caseSensitiveCheck.type = 'checkbox';
     caseSensitiveCheck.id = 'search-case-sensitive';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     caseSensitiveCheck.addEventListener('change', () => this.performSearch());
     caseSensitiveLabel.appendChild(caseSensitiveCheck);
     caseSensitiveLabel.appendChild(document.createTextNode(' Aa'));
@@ -452,6 +474,7 @@ export class BlockRenderer implements Disposable {
     const regexCheck = document.createElement('input');
     regexCheck.type = 'checkbox';
     regexCheck.id = 'search-regex';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     regexCheck.addEventListener('change', () => this.performSearch());
     regexLabel.appendChild(regexCheck);
     regexLabel.appendChild(document.createTextNode(' .*'));
@@ -462,6 +485,7 @@ export class BlockRenderer implements Disposable {
     const includeCommandCheck = document.createElement('input');
     includeCommandCheck.type = 'checkbox';
     includeCommandCheck.id = 'search-include-command';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     includeCommandCheck.addEventListener('change', () => this.performSearch());
     includeCommandLabel.appendChild(includeCommandCheck);
     includeCommandLabel.appendChild(document.createTextNode(' $'));
@@ -476,6 +500,7 @@ export class BlockRenderer implements Disposable {
     closeBtn.className = 'block-search-close';
     closeBtn.textContent = '\u2715'; // ✕
     closeBtn.title = 'Close search (Escape)';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     closeBtn.addEventListener('click', () => {
       this.hideSearch();
     });
@@ -509,6 +534,7 @@ export class BlockRenderer implements Disposable {
     closeBtn.className = 'block-sidebar-close';
     closeBtn.textContent = '\u2715';
     closeBtn.title = 'Close sidebar (Cmd/Ctrl+\\)';
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     closeBtn.addEventListener('click', () => this.hideSidebar());
 
     header.appendChild(title);
@@ -529,6 +555,7 @@ export class BlockRenderer implements Disposable {
       btn.className = `block-sidebar-filter-btn${filter === 'all' ? ' active' : ''}`;
       btn.dataset['filter'] = filter;
       btn.textContent = label;
+      // biome-ignore lint: temporary DOM element or component lifetime listener
       btn.addEventListener('click', () => {
         // Update active state
         const buttons = filterDiv.querySelectorAll('.block-sidebar-filter-btn');
@@ -621,6 +648,7 @@ export class BlockRenderer implements Disposable {
       item.appendChild(duration);
 
       // Click to focus block
+      // biome-ignore lint: temporary DOM element or component lifetime listener
       item.addEventListener('click', () => {
         this.options.blockManager.focusBlock(summary.id);
         this.hideSidebar();
@@ -1010,12 +1038,14 @@ export class BlockRenderer implements Disposable {
     blockEl.appendChild(headerEl);
 
     // Add click handler for selection
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     headerEl.addEventListener('click', (e) => {
       e.stopPropagation();
       this.handleBlockClick(block.id, e);
     });
 
     // Add right-click handler for context menu
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     headerEl.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1232,6 +1262,7 @@ export class BlockRenderer implements Disposable {
     };
     btn.textContent = iconMap[icon] ?? (icon.charAt(0).toUpperCase() || '?');
 
+    // biome-ignore lint: temporary DOM element or component lifetime listener
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();

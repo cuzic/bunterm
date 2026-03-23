@@ -46,17 +46,34 @@ export class DebugPanel {
     // Create panel
     DebugPanel.panel = document.createElement('div');
     DebugPanel.panel.id = 'debug-panel';
-    DebugPanel.panel.innerHTML = `
-      <div id="debug-header">
-        <span>Debug Console</span>
-        <div id="debug-actions">
-          <button id="debug-copy" title="Copy logs">📋</button>
-          <button id="debug-clear" title="Clear logs">🗑️</button>
-          <button id="debug-close" title="Close">×</button>
-        </div>
-      </div>
-      <div id="debug-logs"></div>
-    `;
+    const debugHeader = document.createElement('div');
+    debugHeader.id = 'debug-header';
+
+    const headerLabel = document.createElement('span');
+    headerLabel.textContent = 'Debug Console';
+    debugHeader.appendChild(headerLabel);
+
+    const actions = document.createElement('div');
+    actions.id = 'debug-actions';
+
+    for (const [id, title, text] of [
+      ['debug-copy', 'Copy logs', '📋'],
+      ['debug-clear', 'Clear logs', '🗑️'],
+      ['debug-close', 'Close', '×']
+    ] as const) {
+      const btn = document.createElement('button');
+      btn.id = id;
+      btn.title = title;
+      btn.textContent = text;
+      actions.appendChild(btn);
+    }
+    debugHeader.appendChild(actions);
+
+    const logs = document.createElement('div');
+    logs.id = 'debug-logs';
+
+    DebugPanel.panel.appendChild(debugHeader);
+    DebugPanel.panel.appendChild(logs);
 
     // Add styles
     const style = document.createElement('style');
@@ -199,7 +216,13 @@ export class DebugPanel {
     if (DebugPanel.logContainer) {
       const div = document.createElement('div');
       div.className = 'debug-log';
-      div.innerHTML = `<span class="debug-log-time">${time}</span>${DebugPanel.escapeHtml(message)}`;
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'debug-log-time';
+      timeSpan.textContent = time;
+      div.appendChild(timeSpan);
+
+      div.appendChild(document.createTextNode(message));
       DebugPanel.logContainer.appendChild(div);
 
       // Auto-scroll to bottom
@@ -230,12 +253,5 @@ export class DebugPanel {
     if (DebugPanel.logContainer) {
       DebugPanel.logContainer.innerHTML = '';
     }
-  }
-
-  /**
-   * Escape HTML special characters
-   */
-  private static escapeHtml(str: string): string {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }

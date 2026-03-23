@@ -43,6 +43,7 @@ export function createModalController(options: ModalControllerOptions): ModalCon
   const handlers: Array<{ element: EventTarget; type: string; handler: EventListener }> = [];
 
   const addHandler = (element: EventTarget, type: string, handler: EventListener) => {
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     element.addEventListener(type, handler);
     handlers.push({ element, type, handler });
   };

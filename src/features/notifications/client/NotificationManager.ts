@@ -4,12 +4,12 @@
  * Handles Web Push notification subscription and management.
  */
 
+import { z } from 'zod';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
 import { getSessionNameFromURL } from '@/browser/shared/utils.js';
-import { type ToolbarApiClient, createApiClient } from '@/browser/toolbar/ApiClient.js';
-import { type StorageManager, createStorageManager } from '@/browser/toolbar/StorageManager.js';
-import { z } from 'zod';
+import { createApiClient, type ToolbarApiClient } from '@/browser/toolbar/ApiClient.js';
+import { createStorageManager, type StorageManager } from '@/browser/toolbar/StorageManager.js';
 
 // Schema for notification subscription storage
 const subscriptionSchema = z

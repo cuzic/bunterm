@@ -137,6 +137,7 @@ export class PreviewPane implements Disposable {
         this.onConsoleError?.(data.message as string);
       }
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     window.addEventListener('message', this.messageListener);
   }
 
@@ -253,12 +254,14 @@ export class PreviewPane implements Disposable {
       e.preventDefault();
       this.startResize();
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     resizer.addEventListener('mousedown', this.resizerMouseDownListener);
 
     this.resizerTouchStartListener = (e: TouchEvent) => {
       e.preventDefault();
       this.startResize();
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     resizer.addEventListener('touchstart', this.resizerTouchStartListener);
 
     // Store document-level listeners for cleanup
@@ -267,6 +270,7 @@ export class PreviewPane implements Disposable {
         this.resize(e.clientX);
       }
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     document.addEventListener('mousemove', this.mouseMoveListener);
 
     this.touchMoveListener = (e: TouchEvent) => {
@@ -274,16 +278,19 @@ export class PreviewPane implements Disposable {
         this.resize(e.touches[0].clientX);
       }
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     document.addEventListener('touchmove', this.touchMoveListener);
 
     this.mouseUpListener = () => {
       this.stopResize();
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     document.addEventListener('mouseup', this.mouseUpListener);
 
     this.touchEndListener = () => {
       this.stopResize();
     };
+    // biome-ignore lint: cleaned up via dispose lifecycle
     document.addEventListener('touchend', this.touchEndListener);
   }
 

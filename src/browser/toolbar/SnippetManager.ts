@@ -5,13 +5,13 @@
  * Provides CRUD operations with localStorage persistence.
  */
 
+import { z } from 'zod';
 import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { Snippet, SnippetElements } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
 import { bindBackdropClose, bindClickScoped, generateUniqueId } from '@/browser/shared/utils.js';
-import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
-import { type StorageManager, createStorageManager } from './StorageManager.js';
+import { createStorageManager, type StorageManager } from './StorageManager.js';
 
 // Schema for snippet storage
 const snippetSchema = z.object({
@@ -451,6 +451,7 @@ export class SnippetManager implements Mountable {
     runBtn.className = 'tui-snippet-item-run';
     runBtn.textContent = '\u25B6'; // ▶
     runBtn.title = '実行';
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     runBtn.addEventListener('click', (e) => {
       e.preventDefault();
       this.runSnippet(snippet.id);
@@ -460,6 +461,7 @@ export class SnippetManager implements Mountable {
     editBtn.className = 'tui-snippet-item-edit';
     editBtn.textContent = '\u270E'; // ✎
     editBtn.title = '編集';
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     editBtn.addEventListener('click', (e) => {
       e.preventDefault();
       this.showEditForm(item, snippet);
@@ -469,6 +471,7 @@ export class SnippetManager implements Mountable {
     deleteBtn.className = 'tui-snippet-item-delete';
     deleteBtn.textContent = '\uD83D\uDDD1'; // 🗑
     deleteBtn.title = '削除';
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     deleteBtn.addEventListener('click', (e) => {
       e.preventDefault();
       if (confirm(`「${snippet.name}」を削除しますか？`)) {
@@ -520,6 +523,7 @@ export class SnippetManager implements Mountable {
     const saveBtn = document.createElement('button');
     saveBtn.className = 'tui-snippet-item-edit-save';
     saveBtn.textContent = '保存';
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     saveBtn.addEventListener('click', (e) => {
       e.preventDefault();
       const newName = nameInput.value.trim();
@@ -531,6 +535,7 @@ export class SnippetManager implements Mountable {
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'キャンセル';
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     cancelBtn.addEventListener('click', (e) => {
       e.preventDefault();
       item.classList.remove('editing');
@@ -544,6 +549,7 @@ export class SnippetManager implements Mountable {
     form.appendChild(buttons);
 
     // Handle Ctrl+Enter to save
+    // biome-ignore lint: cleaned up via Mountable lifecycle
     commandInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.ctrlKey) {
         e.preventDefault();

@@ -4,12 +4,12 @@
  * Handles read-only share link creation from the browser.
  */
 
+import qrcode from 'qrcode-generator';
 import { BaseModal } from '@/browser/shared/BaseModal.js';
 import type { Scope } from '@/browser/shared/lifecycle.js';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import { bindClickScoped, getSessionName } from '@/browser/shared/utils.js';
-import qrcode from 'qrcode-generator';
-import { type ToolbarApiClient, createApiClient } from './ApiClient.js';
+import { createApiClient, type ToolbarApiClient } from './ApiClient.js';
 
 export class ShareManager extends BaseModal {
   private config: TerminalUiConfig;

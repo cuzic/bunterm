@@ -31,6 +31,7 @@ export class DeferredClipboardProvider implements IClipboardProvider {
 
     // Try to copy on focus (user activation context)
     if (this.options.autoRetryOnFocus) {
+      // biome-ignore lint: cleaned up in dispose() via removeEventListener
       window.addEventListener('focus', this.handleFocus);
     }
   }
@@ -95,7 +96,9 @@ export class DeferredClipboardProvider implements IClipboardProvider {
       element.removeEventListener('keydown', handler);
     };
 
+    // biome-ignore lint: { once: true } auto-removes listener after first invocation
     element.addEventListener('click', handler, { once: true });
+    // biome-ignore lint: { once: true } auto-removes listener after first invocation
     element.addEventListener('keydown', handler, { once: true });
 
     return cleanup;

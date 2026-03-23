@@ -7,8 +7,8 @@
  * Note: WebLinksAddon is bundled from npm, no CDN dependency.
  */
 
-import type { Terminal, WebLinksAddon } from '@/browser/shared/types.js';
 import { WebLinksAddon as WebLinksAddonClass } from '@xterm/addon-web-links';
+import type { Terminal, WebLinksAddon } from '@/browser/shared/types.js';
 
 export class LinkManager {
   private webLinksAddon: WebLinksAddon | null = null;

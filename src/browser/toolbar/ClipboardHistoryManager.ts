@@ -5,6 +5,7 @@
  * Shows history popup on long press of paste button.
  */
 
+import { z } from 'zod';
 import { LongPressHandler } from '@/browser/shared/LongPressHandler.js';
 import type { Mountable, Scope } from '@/browser/shared/lifecycle.js';
 import type { ClipboardHistoryItem } from '@/browser/shared/types.js';
@@ -15,9 +16,8 @@ import {
   renderEmptyState,
   truncateText
 } from '@/browser/shared/utils.js';
-import { z } from 'zod';
 import type { InputHandler } from './InputHandler.js';
-import { type StorageManager, createStorageManager } from './StorageManager.js';
+import { createStorageManager, type StorageManager } from './StorageManager.js';
 
 const MAX_HISTORY_ITEMS = 10;
 const LONG_PRESS_DURATION = 500; // ms
@@ -69,13 +69,23 @@ export class ClipboardHistoryManager implements Mountable {
     this.popup = document.createElement('div');
     this.popup.id = 'tui-clipboard-history';
     this.popup.className = 'hidden';
-    this.popup.innerHTML = `
-      <div id="tui-clipboard-history-header">
-        <span>履歴</span>
-        <button id="tui-clipboard-history-close">×</button>
-      </div>
-      <div id="tui-clipboard-history-list"></div>
-    `;
+    const header = document.createElement('div');
+    header.id = 'tui-clipboard-history-header';
+
+    const headerLabel = document.createElement('span');
+    headerLabel.textContent = '履歴';
+    header.appendChild(headerLabel);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'tui-clipboard-history-close';
+    closeBtn.textContent = '×';
+    header.appendChild(closeBtn);
+
+    const list = document.createElement('div');
+    list.id = 'tui-clipboard-history-list';
+
+    this.popup.appendChild(header);
+    this.popup.appendChild(list);
     document.body.appendChild(this.popup);
   }
 
@@ -215,6 +225,7 @@ export class ClipboardHistoryManager implements Mountable {
       // Replace newlines with spaces for single-line display
       el.textContent = truncateText(item.text.replace(/\n/g, ' '), 50);
       el.title = item.text;
+      // biome-ignore lint: cleaned up via Mountable lifecycle
       el.addEventListener('click', () => this.sendFromHistory(item.id));
       list.appendChild(el);
     }

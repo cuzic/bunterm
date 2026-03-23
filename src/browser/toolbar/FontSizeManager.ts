@@ -4,14 +4,13 @@
  * Handles font size persistence to localStorage.
  */
 
+import { z } from 'zod';
 import type { TerminalUiConfig } from '@/browser/shared/types.js';
 import { STORAGE_KEYS } from '@/browser/shared/types.js';
 import { isMobileDevice } from '@/browser/shared/utils.js';
-import { z } from 'zod';
-import { type StorageManager, createStorageManager } from './StorageManager.js';
+import { createStorageManager, type StorageManager } from './StorageManager.js';
 
 export class FontSizeManager {
-  private config: TerminalUiConfig;
   private storage: StorageManager<number>;
   private defaultSize: number;
 

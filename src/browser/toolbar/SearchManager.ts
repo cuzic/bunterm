@@ -6,15 +6,14 @@
  * Note: SearchAddon is bundled from npm, no CDN dependency.
  */
 
-import type { SearchAddon, Terminal } from '@/browser/shared/types.js';
 import { SearchAddon as SearchAddonClass } from '@xterm/addon-search';
+import type { SearchAddon, Terminal } from '@/browser/shared/types.js';
 
 export class SearchManager {
   private searchAddon: SearchAddon | null = null;
   private caseSensitive = false;
   private regex = false;
   private currentMatchIndex = 0;
-  private totalMatches = 0;
 
   private searchBar: HTMLElement | null = null;
   private searchInput: HTMLInputElement | null = null;
