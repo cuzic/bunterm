@@ -9,7 +9,9 @@ import {
   setDaemonState
 } from '@/core/config/state.js';
 import type { Config } from '@/core/config/types.js';
-import { type NativeTerminalServer, createNativeTerminalServer } from '@/core/server/server.js';
+import { InMemoryCookieSessionStore } from '@/core/server/auth/cookie-session.js';
+import { setAuthSessionRouteDeps } from '@/core/server/http/routes/api/auth-session-routes.js';
+import { createNativeTerminalServer, type NativeTerminalServer } from '@/core/server/server.js';
 import { createLogger, setLogFile } from '@/utils/logger.js';
 import { captureException, initSentry } from '@/utils/sentry.js';
 import { VERSION } from '@/version.js';
@@ -107,6 +109,13 @@ async function startNativeTerminalDaemon(
   } catch (error) {
     log.error(`Failed to start native terminal server: ${error}`);
     throw error;
+  }
+
+  // Initialize auth session route deps if auth is enabled
+  if (config.security?.auth_enabled) {
+    const cookieSessionStore = new InMemoryCookieSessionStore();
+    setAuthSessionRouteDeps({ cookieSessionStore });
+    log.info('Auth session route deps initialized');
   }
 
   // Save daemon state

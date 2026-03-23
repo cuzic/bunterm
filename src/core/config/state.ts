@@ -79,6 +79,7 @@ export function loadState(): State {
   }
 
   try {
+    // biome-ignore lint: sync read at startup
     const content = readFileSync(stateFile, 'utf-8');
     const parsed: unknown = JSON.parse(content);
 

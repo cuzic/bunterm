@@ -1,9 +1,9 @@
 // Import test setup FIRST to set environment variables before any other imports
-import { TEST_STATE_DIR, cleanupTestState, resetTestState } from '@/test-setup.js';
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cleanupTestState, resetTestState, TEST_STATE_DIR } from '@/test-setup.js';
 
 describe('state', () => {
   beforeEach(() => {

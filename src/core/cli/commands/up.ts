@@ -2,10 +2,10 @@
  * Up command - Start session for current directory
  */
 
+import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
+import { parseCliOptions, type UpOptions, UpOptionsSchema } from '@/core/cli/schemas.js';
 import { startSession as apiStartSession, ensureDaemon, getSessions } from '@/core/client/index.js';
 import { loadConfig } from '@/core/config/config.js';
-import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
-import { type UpOptions, UpOptionsSchema, parseCliOptions } from '@/core/cli/schemas.js';
 import { attachSession } from '@/tmux.js';
 import { CliError, getErrorMessage } from '@/utils/errors.js';
 

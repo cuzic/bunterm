@@ -5,9 +5,9 @@
  */
 
 import { z } from 'zod';
-import { ok, err } from '@/utils/result.js';
 import { sessionNotFound } from '@/core/errors.js';
-import type { RouteDef } from '../../route-types.js';
+import type { RouteDef } from '@/core/server/http/route-types.js';
+import { err, ok } from '@/utils/result.js';
 
 // === Schemas ===
 
