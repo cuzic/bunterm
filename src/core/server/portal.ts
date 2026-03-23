@@ -559,9 +559,12 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
   const sessionItems = sessions
     .map((session) => {
       const fullPath = getFullPath(config, session.path);
-      return `      <li class="session">
+      return `      <li class="session" data-session-name="${escapeHtml(session.name)}">
         <a href="${fullPath}/" target="_blank">
-          <span class="name">${escapeHtml(session.name)}</span>
+          <span class="session-header">
+            <span class="name">${escapeHtml(session.name)}</span>
+            <span class="agent-badge agent-badge--unknown" data-agent-badge="${escapeHtml(session.name)}"></span>
+          </span>
           <span class="info">${escapeHtml(session.dir)}</span>
         </a>
       </li>`;

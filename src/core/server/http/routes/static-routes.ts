@@ -4,8 +4,9 @@
  * Handles serving of static assets: JS bundles, CSS, PWA files.
  */
 
-import { generateEtag, securityHeaders, serveStaticFile } from '../utils.js';
-import { getIconPng, getIconSvg, getManifestJson, getServiceWorker } from '../../pwa.js';
+import { generateEtag, securityHeaders, serveStaticFile } from '@/core/server/http/utils.js';
+import { getIconPng, getIconSvg, getManifestJson, getServiceWorker } from '@/core/server/pwa.js';
+import { serveTimelineCss, serveTimelineJs } from '@/features/agent-timeline/client/index.js';
 
 export interface StaticRoutesConfig {
   basePath: string;
@@ -120,6 +121,15 @@ export function handleStaticRoutes(
   // CSS
   if (pathname === `${basePath}/xterm.css`) {
     return serveStaticFile(req, 'xterm.css', 'text/css', 'xterm.css not found');
+  }
+
+  // Agent timeline static files
+  if (pathname === `${basePath}/agents/timeline.js`) {
+    return serveTimelineJs(req);
+  }
+
+  if (pathname === `${basePath}/agents/timeline.css`) {
+    return serveTimelineCss(req);
   }
 
   return null;

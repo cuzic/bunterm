@@ -1,12 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { daemonNotRunning, sessionNotFound, pathTraversal } from '@/core/errors.js';
+import { daemonNotRunning, pathTraversal, sessionNotFound } from '@/core/errors.js';
 import { err, ok } from '@/utils/result.js';
-import {
-  domainErrorResponse,
-  errorResponse,
-  jsonResponse,
-  resultResponse
-} from './utils.js';
+import { domainErrorResponse, errorResponse, jsonResponse, resultResponse } from './utils.js';
 
 describe('HTTP response utilities', () => {
   describe('jsonResponse', () => {

@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type AnyDomainError, toHttpStatus } from '@/core/errors.js';
 import { createLogger } from '@/utils/logger.js';
-import { type Result, isErr } from '@/utils/result.js';
+import { isErr, type Result } from '@/utils/result.js';
 
 const log = createLogger('http-utils');
 
@@ -45,6 +45,7 @@ export function loadStaticFile(filename: string, fallbackMessage: string): Cache
   try {
     // Go up from http/utils.ts to server/, then to dist/
     const distPath = join(__dirname, '../../../../dist', filename);
+    // biome-ignore lint: sync read for file caching
     content = readFileSync(distPath, 'utf-8');
     log.debug(`Loaded ${filename} from dist`);
   } catch {
@@ -121,11 +122,7 @@ export function jsonResponse(
 /**
  * Create error JSON response
  */
-export function errorResponse(
-  error: string,
-  status: number,
-  sentryEnabled = false
-): Response {
+export function errorResponse(error: string, status: number, sentryEnabled = false): Response {
   return jsonResponse({ error }, { status, sentryEnabled });
 }
 
@@ -169,7 +166,10 @@ export function resultResponse<T>(
 
   if (isErr(result)) {
     const status = toHttpStatus(result.error);
-    return jsonResponse({ error: result.error.message, code: result.error.code }, { status, sentryEnabled });
+    return jsonResponse(
+      { error: result.error.message, code: result.error.code },
+      { status, sentryEnabled }
+    );
   }
 
   return jsonResponse(result.value, { sentryEnabled });
@@ -178,10 +178,7 @@ export function resultResponse<T>(
 /**
  * Create domain error response from error object
  */
-export function domainErrorResponse(
-  error: AnyDomainError,
-  sentryEnabled = false
-): Response {
+export function domainErrorResponse(error: AnyDomainError, sentryEnabled = false): Response {
   const status = toHttpStatus(error);
   return jsonResponse({ error: error.message, code: error.code }, { status, sentryEnabled });
 }
