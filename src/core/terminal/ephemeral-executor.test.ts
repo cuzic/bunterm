@@ -4,8 +4,8 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { createBlockStore } from '@/features/blocks/server/block-store.js';
-import { type EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
 import type { ExecutorEvent } from './ephemeral-executor.js';
+import { createEphemeralExecutor, type EphemeralExecutor } from './ephemeral-executor.js';
 
 describe('EphemeralExecutor', () => {
   let executor: EphemeralExecutor;
@@ -181,6 +181,7 @@ describe('EphemeralExecutor', () => {
     it('should emit events for command execution', async () => {
       const events: ExecutorEvent[] = [];
 
+      // biome-ignore lint: test code
       executor.addEventListener((event) => {
         events.push(event);
       });
@@ -197,6 +198,7 @@ describe('EphemeralExecutor', () => {
     it('should emit stdout events', async () => {
       const events: ExecutorEvent[] = [];
 
+      // biome-ignore lint: test code
       executor.addEventListener((event) => {
         events.push(event);
       });
@@ -213,6 +215,7 @@ describe('EphemeralExecutor', () => {
       const events: ExecutorEvent[] = [];
       const listener = (event: ExecutorEvent) => events.push(event);
 
+      // biome-ignore lint: test code
       executor.addEventListener(listener);
       executor.removeEventListener(listener);
 

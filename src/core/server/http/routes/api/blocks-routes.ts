@@ -5,27 +5,41 @@
  */
 
 import { z } from 'zod';
-import { ok, err } from '@/utils/result.js';
-import { sessionNotFound, blockNotFound, validationFailed } from '@/core/errors.js';
+import { blockNotFound, sessionNotFound, validationFailed } from '@/core/errors.js';
 import type { CommandRequest } from '@/core/protocol/index.js';
+import type { RouteContext, RouteDef } from '@/core/server/http/route-types.js';
+import { securityHeaders } from '@/core/server/http/utils.js';
+import type { NativeSessionManager } from '@/core/server/session-manager.js';
 import {
   type CommandExecutorManager,
   createCommandExecutorManager
 } from '@/core/terminal/command-executor-manager.js';
-import { createBlockSSEStream } from '@/features/blocks/server/block-event-emitter.js';
-import type { NativeSessionManager } from '@/core/server/session-manager.js';
-import type { RouteDef, RouteContext } from '../../route-types.js';
-import { securityHeaders } from '../../utils.js';
+import {
+  type BlockEventEmitter,
+  createBlockEventEmitter,
+  createBlockSSEStream
+} from '@/features/blocks/server/block-event-emitter.js';
+import { createBlockStore } from '@/features/blocks/server/block-store.js';
+import { createRedactor } from '@/features/blocks/server/output-redactor.js';
+import { err, ok } from '@/utils/result.js';
 
 // Command executor manager (lazy initialized)
 let executorManager: CommandExecutorManager | null = null;
+let sharedEventEmitter: BlockEventEmitter | null = null;
 
 /**
  * Get or create the command executor manager
  */
 export function getExecutorManager(sessionManager: NativeSessionManager): CommandExecutorManager {
   if (!executorManager) {
-    executorManager = createCommandExecutorManager(sessionManager);
+    const redactor = createRedactor({ enabled: true });
+    const blockStore = createBlockStore(undefined, redactor);
+    const eventEmitter = createBlockEventEmitter();
+    sharedEventEmitter = eventEmitter;
+    executorManager = createCommandExecutorManager(sessionManager, {
+      blockStore,
+      eventEmitter
+    });
   }
   return executorManager;
 }
@@ -290,8 +304,13 @@ export async function handleBlockStream(ctx: RouteContext): Promise<Response | n
   const lastEventId = ctx.req.headers.get('Last-Event-ID');
   const fromSeq = lastEventId ? Number.parseInt(lastEventId, 10) : undefined;
 
-  const eventEmitter = executor.getEventEmitter();
-  const sseStream = createBlockSSEStream(eventEmitter, blockId, { lastEventId: fromSeq });
+  if (!sharedEventEmitter) {
+    return new Response(JSON.stringify({ error: 'Event emitter not initialized' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...securityHeaders(ctx.sentryEnabled) }
+    });
+  }
+  const sseStream = createBlockSSEStream(sharedEventEmitter, blockId, { lastEventId: fromSeq });
 
   return new Response(sseStream, {
     headers: {

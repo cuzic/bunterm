@@ -14,19 +14,13 @@ import type {
   CommandRequest,
   CommandResponse,
   ExtendedBlock,
-  IntegrationStatus,
-  RetentionPolicy
+  IntegrationStatus
 } from '@/core/protocol/index.js';
 import type { NativeSessionManager } from '@/core/server/session-manager.js';
 import type { TerminalSession } from '@/core/terminal/session.js';
-import {
-  type BlockEventEmitter,
-  createBlockEventEmitter
-} from '@/features/blocks/server/block-event-emitter.js';
-import { type BlockStore, createBlockStore } from '@/features/blocks/server/block-store.js';
-import { type OutputRedactor, createRedactor } from '@/features/blocks/server/output-redactor.js';
-import { type EphemeralExecutor, createEphemeralExecutor } from './ephemeral-executor.js';
-import { type PersistentExecutor, createPersistentExecutor } from './persistent-executor.js';
+import { createEphemeralExecutor, type EphemeralExecutor } from './ephemeral-executor.js';
+import { createPersistentExecutor, type PersistentExecutor } from './persistent-executor.js';
+import type { ExecutorBlockEventEmitter, ExecutorBlockStore } from './session-plugins.js';
 
 /**
  * Session executor state
@@ -41,22 +35,20 @@ interface SessionExecutors {
  */
 export class CommandExecutorManager {
   private readonly sessionManager: NativeSessionManager;
-  private readonly blockStore: BlockStore;
-  private readonly eventEmitter: BlockEventEmitter;
-  private readonly redactor: OutputRedactor;
+  private readonly blockStore: ExecutorBlockStore;
+  private readonly eventEmitter: ExecutorBlockEventEmitter;
   private readonly executors: Map<string, SessionExecutors> = new Map();
 
   constructor(
     sessionManager: NativeSessionManager,
-    options?: {
-      retentionPolicy?: RetentionPolicy;
-      redactionEnabled?: boolean;
+    deps: {
+      blockStore: ExecutorBlockStore;
+      eventEmitter: ExecutorBlockEventEmitter;
     }
   ) {
     this.sessionManager = sessionManager;
-    this.redactor = createRedactor({ enabled: options?.redactionEnabled ?? true });
-    this.blockStore = createBlockStore(options?.retentionPolicy, this.redactor);
-    this.eventEmitter = createBlockEventEmitter();
+    this.blockStore = deps.blockStore;
+    this.eventEmitter = deps.eventEmitter;
   }
 
   /**
@@ -96,6 +88,7 @@ export class CommandExecutorManager {
     };
     const onEvent = (event: any) => eventHandlers[event.type]?.(event);
 
+    // biome-ignore lint: server-side process lifetime listener
     executor.addEventListener(onEvent);
     try {
       return await executor.execute(request);
@@ -119,6 +112,7 @@ export class CommandExecutorManager {
     };
     const onEvent = (event: any) => eventHandlers[event.type]?.(event);
 
+    // biome-ignore lint: server-side process lifetime listener
     executor.addEventListener(onEvent);
     try {
       return await executor.execute(request);
@@ -236,14 +230,14 @@ export class CommandExecutorManager {
   /**
    * Get the event emitter
    */
-  getEventEmitter(): BlockEventEmitter {
+  getEventEmitter(): ExecutorBlockEventEmitter {
     return this.eventEmitter;
   }
 
   /**
    * Get the block store
    */
-  getBlockStore(): BlockStore {
+  getBlockStore(): ExecutorBlockStore {
     return this.blockStore;
   }
 
@@ -298,10 +292,10 @@ export class CommandExecutorManager {
  */
 export function createCommandExecutorManager(
   sessionManager: NativeSessionManager,
-  options?: {
-    retentionPolicy?: RetentionPolicy;
-    redactionEnabled?: boolean;
+  deps: {
+    blockStore: ExecutorBlockStore;
+    eventEmitter: ExecutorBlockEventEmitter;
   }
 ): CommandExecutorManager {
-  return new CommandExecutorManager(sessionManager, options);
+  return new CommandExecutorManager(sessionManager, deps);
 }

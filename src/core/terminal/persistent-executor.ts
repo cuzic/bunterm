@@ -18,7 +18,7 @@ import type {
   OutputChunk
 } from '@/core/protocol/index.js';
 import type { TerminalSession } from '@/core/terminal/session.js';
-import { type BlockStore, createBlockStore } from '@/features/blocks/server/block-store.js';
+import type { ExecutorBlockStore } from './session-plugins.js';
 
 /** Timeout for OSC 633 marker detection (ms) */
 const MARKER_TIMEOUT_MS = 2000;
@@ -60,7 +60,7 @@ interface PendingCommand {
  */
 export class PersistentExecutor {
   private readonly session: TerminalSession;
-  private readonly blockStore: BlockStore;
+  private readonly blockStore: ExecutorBlockStore;
   private readonly _sessionName: string;
 
   private integrationStatus: IntegrationStatus | null = null;
@@ -73,10 +73,10 @@ export class PersistentExecutor {
   // Track block output from OSC 633
   private currentBlockId: string | null = null;
 
-  constructor(session: TerminalSession, blockStore?: BlockStore) {
+  constructor(session: TerminalSession, blockStore: ExecutorBlockStore) {
     this.session = session;
     this._sessionName = session.name;
-    this.blockStore = blockStore ?? createBlockStore();
+    this.blockStore = blockStore;
   }
 
   /**
@@ -519,7 +519,7 @@ export class PersistentExecutor {
   /**
    * Get the block store
    */
-  get store(): BlockStore {
+  get store(): ExecutorBlockStore {
     return this.blockStore;
   }
 
@@ -536,7 +536,7 @@ export class PersistentExecutor {
  */
 export function createPersistentExecutor(
   session: TerminalSession,
-  blockStore?: BlockStore
+  blockStore: ExecutorBlockStore
 ): PersistentExecutor {
   return new PersistentExecutor(session, blockStore);
 }

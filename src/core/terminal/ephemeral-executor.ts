@@ -9,6 +9,7 @@
  * - Environment isolation
  */
 
+import type { Subprocess } from 'bun';
 import type {
   CommandRequest,
   CommandResponse,
@@ -16,8 +17,7 @@ import type {
   GitInfo,
   OutputChunk
 } from '@/core/protocol/index.js';
-import { type BlockStore, createBlockStore } from '@/features/blocks/server/block-store.js';
-import type { Subprocess } from 'bun';
+import type { ExecutorBlockStore } from './session-plugins.js';
 
 /** Default timeout: 5 minutes */
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -46,16 +46,16 @@ interface RunningCommand {
  * EphemeralExecutor runs commands in isolated processes
  */
 export class EphemeralExecutor {
-  private readonly blockStore: BlockStore;
+  private readonly blockStore: ExecutorBlockStore;
   private readonly sessionName: string;
   private readonly defaultCwd: string;
   private readonly runningCommands: Map<string, RunningCommand> = new Map();
   private readonly eventListeners: Set<ExecutorEventCallback> = new Set();
 
-  constructor(sessionName: string, defaultCwd: string, blockStore?: BlockStore) {
+  constructor(sessionName: string, defaultCwd: string, blockStore: ExecutorBlockStore) {
     this.sessionName = sessionName;
     this.defaultCwd = defaultCwd;
-    this.blockStore = blockStore ?? createBlockStore();
+    this.blockStore = blockStore;
   }
 
   /**
@@ -344,7 +344,7 @@ export class EphemeralExecutor {
   /**
    * Get the block store
    */
-  getBlockStore(): BlockStore {
+  getBlockStore(): ExecutorBlockStore {
     return this.blockStore;
   }
 
@@ -364,7 +364,7 @@ export class EphemeralExecutor {
 export function createEphemeralExecutor(
   sessionName: string,
   defaultCwd: string,
-  blockStore?: BlockStore
+  blockStore: ExecutorBlockStore
 ): EphemeralExecutor {
   return new EphemeralExecutor(sessionName, defaultCwd, blockStore);
 }
