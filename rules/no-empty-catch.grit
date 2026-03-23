@@ -1,0 +1,9 @@
+language js;
+
+`catch ($e) {}` where {
+  register_diagnostic(
+    span = $e,
+    message = "Empty catch block silently swallows errors. Add logging or re-throw.",
+    severity = "error"
+  )
+}

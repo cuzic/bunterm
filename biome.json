@@ -1,8 +1,14 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
+  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "plugins": [
+    "./rules/no-parent-relative-import.grit",
+    "./rules/no-empty-catch.grit",
+    "./rules/no-innerhtml-assignment.grit",
+    "./rules/no-sync-fs-in-routes.grit",
+    "./rules/no-as-any.grit",
+    "./rules/no-direct-add-event-listener.grit"
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -12,10 +18,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "all": true,
-      "nursery": {
-        "all": false
-      },
+      "nursery": {},
       "complexity": {
         "noExcessiveCognitiveComplexity": {
           "level": "error",
@@ -47,13 +50,16 @@
     "globals": ["Bun", "React", "Timer"]
   },
   "files": {
-    "ignore": ["node_modules/**", "dist/**", "coverage/**", "*.min.js"]
+    "includes": ["**", "!**/node_modules/**", "!**/dist/**", "!**/coverage/**", "!**/*.min.js"]
   },
   "overrides": [
     {
-      "include": ["**/*.test.ts", "**/*.spec.ts", "tests/**/*.ts", "e2e/**/*.ts"],
+      "includes": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**/*.ts", "**/e2e/**/*.ts"],
       "linter": {
         "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          },
           "suspicious": {
             "noExplicitAny": "off",
             "noConsole": "off",
@@ -67,29 +73,55 @@
       }
     },
     {
-      "include": [
-        "src/index.ts",
-        "src/ui.ts",
-        "src/core/cli/**/*.ts",
-        "src/core/daemon/**/*.ts",
-        "src/utils/errors.ts",
-        "src/utils/logger.ts"
+      "includes": ["**/*.js"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noInnerDeclarations": "off"
+          },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
+          "suspicious": {
+            "noControlCharactersInRegex": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/src/index.ts",
+        "**/src/ui.ts",
+        "**/src/core/cli/**/*.ts",
+        "**/src/core/daemon/**/*.ts",
+        "**/src/utils/errors.ts",
+        "**/src/utils/logger.ts",
+        "**/src/utils/qr-terminal.ts"
       ],
       "linter": {
         "rules": {
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off"
+          },
           "suspicious": {
             "noConsole": "off",
-            "noConsoleLog": "off",
             "noEmptyBlockStatements": "off"
           }
         }
       }
     },
     {
-      "include": [
-        "**/index.ts",
-        "src/core/config/state-store.ts"
-      ],
+      "includes": ["**/index.ts", "**/src/core/config/state-store.ts"],
       "linter": {
         "rules": {
           "performance": {
@@ -100,12 +132,12 @@
       }
     },
     {
-      "include": [
-        "src/core/server/**/*.ts",
-        "src/core/terminal/**/*.ts",
-        "src/core/protocol/**/*.ts",
-        "src/core/client/**/*.ts",
-        "src/features/**/server/**/*.ts"
+      "includes": [
+        "**/src/core/server/**/*.ts",
+        "**/src/core/terminal/**/*.ts",
+        "**/src/core/protocol/**/*.ts",
+        "**/src/core/client/**/*.ts",
+        "**/src/features/**/server/**/*.ts"
       ],
       "linter": {
         "rules": {
@@ -133,11 +165,12 @@
       }
     },
     {
-      "include": ["src/browser/**/*.ts", "src/browser/**/*.tsx"],
+      "includes": ["**/src/browser/**/*.ts", "**/src/browser/**/*.tsx"],
       "linter": {
         "rules": {
           "a11y": {
-            "useKeyWithClickEvents": "off"
+            "useKeyWithClickEvents": "off",
+            "noStaticElementInteractions": "off"
           },
           "complexity": {
             "noExcessiveCognitiveComplexity": "off",
@@ -159,13 +192,15 @@
           "suspicious": {
             "noEmptyBlockStatements": "off",
             "noAssignInExpressions": "off",
-            "noControlCharactersInRegex": "off"
+            "noControlCharactersInRegex": "off",
+            "noArrayIndexKey": "off",
+            "useIterableCallbackReturn": "off"
           }
         }
       }
     },
     {
-      "include": ["src/features/**/client/**/*.ts"],
+      "includes": ["**/src/features/**/client/**/*.ts"],
       "linter": {
         "rules": {
           "suspicious": {

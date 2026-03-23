@@ -1,0 +1,11 @@
+language js;
+
+`$el.innerHTML = $val` where {
+  $val <: not `''`,
+  $val <: not `""`,
+  register_diagnostic(
+    span = $val,
+    message = "Avoid innerHTML assignment with dynamic values. Use textContent or DOM API (createElement) instead to prevent XSS.",
+    severity = "warning"
+  )
+}

@@ -1,0 +1,9 @@
+language js;
+
+`readFileSync($args)` where {
+  register_diagnostic(
+    span = $args,
+    message = "Avoid sync fs calls in async handlers. Use Bun.file().text() or fs.promises instead.",
+    severity = "warning"
+  )
+}

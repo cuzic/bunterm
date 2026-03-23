@@ -1,0 +1,9 @@
+language js;
+
+`$target.addEventListener($args)` where {
+  register_diagnostic(
+    span = $target,
+    message = "Avoid direct addEventListener. Use scope.on(target, type, handler) for automatic cleanup.",
+    severity = "warning"
+  )
+}

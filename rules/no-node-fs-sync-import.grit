@@ -1,0 +1,9 @@
+language js;
+
+`import $_ from 'node:fs'` where {
+  register_diagnostic(
+    span = $_,
+    message = "Prefer 'node:fs/promises' over 'node:fs'. Sync fs calls block the event loop.",
+    severity = "warning"
+  )
+}

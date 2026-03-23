@@ -55,7 +55,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.8",
     "@playwright/test": "^1.58.2",
     "@types/bun": "latest",
     "@types/http-proxy": "^1.17.14",

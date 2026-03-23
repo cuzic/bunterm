@@ -1,0 +1,9 @@
+language js;
+
+`$expr as any` where {
+  register_diagnostic(
+    span = $expr,
+    message = "Avoid 'as any'. Use proper type narrowing, type guards, or explicit interface instead.",
+    severity = "warning"
+  )
+}
