@@ -2,7 +2,6 @@
 
 import { program } from 'commander';
 import { wrapCommand } from '@/core/cli/command-runner.js';
-import { attachCommand } from '@/core/cli/commands/attach.js';
 import {
   caddyRemoveCommand,
   caddySetupCommand,
@@ -51,15 +50,12 @@ program
   .description('Start session for current directory')
   .option('-n, --name <name>', 'Override session name')
   .option('-c, --config <path>', 'Config file path')
-  .option('-a, --attach', 'Attach to tmux session after starting')
-  .option('-d, --detach', 'Do not attach to tmux session')
   .action(wrapCommand((options) => upCommand(options)));
 
 program
   .command('down')
   .description('Stop session for current directory')
   .option('-c, --config <path>', 'Config file path')
-  .option('--kill-tmux', 'Also terminate the tmux session')
   .action(wrapCommand((options) => downCommand(options)));
 
 program
@@ -79,12 +75,6 @@ program
   .option('--json', 'Output as JSON')
   .action(wrapCommand((options) => listCommand(options)));
 
-program
-  .command('attach [name]')
-  .description('Attach to a tmux session directly')
-  .option('-c, --config <path>', 'Config file path')
-  .action(wrapCommand((name, options) => attachCommand(name, options)));
-
 // === Daemon control ===
 
 program
@@ -102,7 +92,6 @@ program
   .description('Stop the daemon')
   .option('-c, --config <path>', 'Config file path')
   .option('-s, --stop-sessions', 'Stop all sessions before shutting down')
-  .option('--kill-tmux', 'Also terminate tmux sessions (requires -s)')
   .action(wrapCommand((options) => shutdownCommand(options)));
 
 program

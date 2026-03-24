@@ -18,9 +18,7 @@ export const ConfigPathSchema = z.string().optional();
 
 export const UpOptionsSchema = z.object({
   name: z.string().min(1).max(64).optional(),
-  config: ConfigPathSchema,
-  attach: z.boolean().optional(),
-  detach: z.boolean().optional()
+  config: ConfigPathSchema
 });
 
 export type UpOptions = z.infer<typeof UpOptionsSchema>;
@@ -28,8 +26,7 @@ export type UpOptions = z.infer<typeof UpOptionsSchema>;
 // === Down Command ===
 
 export const DownOptionsSchema = z.object({
-  config: ConfigPathSchema,
-  killTmux: z.boolean().optional()
+  config: ConfigPathSchema
 });
 
 export type DownOptions = z.infer<typeof DownOptionsSchema>;
@@ -54,14 +51,6 @@ export const ListOptionsSchema = z.object({
 
 export type ListOptions = z.infer<typeof ListOptionsSchema>;
 
-// === Attach Command ===
-
-export const AttachOptionsSchema = z.object({
-  config: ConfigPathSchema
-});
-
-export type AttachOptions = z.infer<typeof AttachOptionsSchema>;
-
 // === Daemon Command ===
 
 export const DaemonOptionsSchema = z.object({
@@ -77,8 +66,7 @@ export type DaemonOptions = z.infer<typeof DaemonOptionsSchema>;
 
 export const ShutdownOptionsSchema = z.object({
   config: ConfigPathSchema,
-  stopSessions: z.boolean().optional(),
-  killTmux: z.boolean().optional()
+  stopSessions: z.boolean().optional()
 });
 
 export type ShutdownOptions = z.infer<typeof ShutdownOptionsSchema>;

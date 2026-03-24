@@ -9,7 +9,6 @@ import { CliError } from '@/utils/errors.js';
 
 export interface DownOptions {
   config?: string;
-  killTmux?: boolean;
 }
 
 export async function downCommand(options: DownOptions): Promise<void> {
@@ -23,12 +22,7 @@ export async function downCommand(options: DownOptions): Promise<void> {
 
   try {
     await stopSession(config, session.name);
-
-    if (options.killTmux) {
-      console.log(`Session '${session.name}' stopped and tmux session killed`);
-    } else {
-      console.log(`Session '${session.name}' stopped`);
-    }
+    console.log(`Session '${session.name}' stopped`);
 
     // Check if there are any remaining sessions
     const remainingSessions = await getSessions(config);

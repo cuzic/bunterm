@@ -6,7 +6,6 @@ import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
 import { parseCliOptions, type UpOptions, UpOptionsSchema } from '@/core/cli/schemas.js';
 import { startSession as apiStartSession, ensureDaemon, getSessions } from '@/core/client/index.js';
 import { loadConfig } from '@/core/config/config.js';
-import { attachSession } from '@/tmux.js';
 import { CliError, getErrorMessage } from '@/utils/errors.js';
 
 export type { UpOptions };
@@ -16,9 +15,6 @@ export async function upCommand(rawOptions: unknown): Promise<void> {
   const config = loadConfig(options.config);
   const dir = process.cwd();
   const name = options.name ?? dir.split('/').pop() ?? 'default';
-
-  // Determine whether to attach
-  const shouldAttach = options.detach ? false : (options.attach ?? config.auto_attach);
 
   // Ensure daemon is running
   await ensureDaemon(options.config, config.daemon_manager);
@@ -32,10 +28,6 @@ export async function upCommand(rawOptions: unknown): Promise<void> {
     const url = buildSessionUrl(config, session.path);
     console.log(`Session started: ${session.name}`);
     console.log(`URL: ${url}`);
-
-    if (shouldAttach) {
-      await attachSession(session.name);
-    }
   } catch (error) {
     const message = getErrorMessage(error);
     // Handle "already exists" or "already running" errors
@@ -50,10 +42,6 @@ export async function upCommand(rawOptions: unknown): Promise<void> {
         console.log(`URL: ${url}`);
       } else {
         console.log(`Session '${name}' is already running.`);
-      }
-
-      if (shouldAttach) {
-        await attachSession(name);
       }
       return;
     }
