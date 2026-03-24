@@ -301,7 +301,11 @@ export const DEFAULT_STATIC_OFFLOAD_CONFIG: StaticOffloadConfig = {
 };
 
 export const ConfigSchema = z.object({
-  base_path: z.string().startsWith('/').default('/bunterm'),
+  base_path: z
+    .string()
+    .startsWith('/')
+    .default('/bunterm')
+    .transform((v) => v.replace(/\/+$/, '')),
   daemon_port: z.number().int().min(1024).max(65535).default(7680),
   listen_addresses: z.array(z.string()).default(['127.0.0.1', '::1']),
   listen_sockets: z.array(z.string()).default([]),
@@ -389,54 +393,3 @@ export interface ResolvedSession {
   running: boolean;
   pid?: number;
 }
-
-// === API リクエスト/レスポンス ===
-
-export interface StartSessionRequest {
-  name: string;
-  dir: string;
-  path?: string; // 省略時は name から生成
-}
-
-export const SessionResponseSchema = z.object({
-  name: z.string(),
-  port: z.number(),
-  path: z.string(),
-  fullPath: z.string(),
-  dir: z.string(),
-  pid: z.number(),
-  started_at: z.string(),
-  tmuxSession: z.string().optional()
-});
-
-export type SessionResponse = z.infer<typeof SessionResponseSchema>;
-
-export const StatusResponseSchema = z.object({
-  daemon: DaemonStateSchema,
-  sessions: z.array(SessionResponseSchema)
-});
-
-export type StatusResponse = z.infer<typeof StatusResponseSchema>;
-
-export const ErrorResponseSchema = z.object({
-  error: z.string()
-});
-
-export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
-
-export const TmuxSessionResponseSchema = z.object({
-  name: z.string(),
-  windows: z.number(),
-  created: z.string(),
-  attached: z.boolean(),
-  cwd: z.string().optional()
-});
-
-export type TmuxSessionResponse = z.infer<typeof TmuxSessionResponseSchema>;
-
-export const TmuxSessionsResponseSchema = z.object({
-  sessions: z.array(TmuxSessionResponseSchema),
-  installed: z.boolean()
-});
-
-export type TmuxSessionsResponse = z.infer<typeof TmuxSessionsResponseSchema>;

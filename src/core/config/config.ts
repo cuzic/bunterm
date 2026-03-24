@@ -4,9 +4,6 @@ import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { type Config, ConfigSchema } from './types.js';
 
-/** Regex to strip trailing slash */
-const TRAILING_SLASH_REGEX = /\/$/;
-
 function getConfigPaths(): string[] {
   return [
     join(process.cwd(), 'bunterm.yaml'),
@@ -68,14 +65,9 @@ export function loadConfig(configPath?: string): Config {
   return result.data;
 }
 
-export function normalizeBasePath(basePath: string): string {
-  return basePath.replace(TRAILING_SLASH_REGEX, '');
-}
-
 export function getFullPath(config: Config, sessionPath: string): string {
-  const basePath = normalizeBasePath(config.base_path);
   const path = sessionPath.startsWith('/') ? sessionPath : `/${sessionPath}`;
-  return `${basePath}${path}`;
+  return `${config.base_path}${path}`;
 }
 
 export function findSessionDefinition(config: Config, name: string) {

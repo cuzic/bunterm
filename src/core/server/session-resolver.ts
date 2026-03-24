@@ -1,4 +1,3 @@
-import { normalizeBasePath } from '@/core/config/config.js';
 import { getAllSessions, getSession, getSessionByDir } from '@/core/config/state.js';
 import type { Config, SessionDefinition, SessionState } from '@/core/config/types.js';
 
@@ -31,7 +30,7 @@ export class SessionResolver {
    */
   byPath(urlPath: string): SessionState | null {
     const sessions = getAllSessions();
-    const basePath = normalizeBasePath(this.config.base_path);
+    const basePath = this.config.base_path;
 
     for (const session of sessions) {
       const sessionFullPath = `${basePath}${session.path}`;

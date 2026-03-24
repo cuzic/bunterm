@@ -1,4 +1,4 @@
-import { getFullPath, normalizeBasePath } from '@/core/config/config.js';
+import { getFullPath } from '@/core/config/config.js';
 import type { Config, SessionState } from '@/core/config/types.js';
 import {
   escapeHtml,
@@ -8,7 +8,7 @@ import {
 } from '@/core/server/portal-utils.js';
 
 export function generateStaticPortalHtml(config: Config, sessions: SessionState[]): string {
-  const basePath = normalizeBasePath(config.base_path);
+  const basePath = config.base_path;
   const sessionItems = sessions
     .map((session) => {
       const fullPath = getFullPath(config, session.path);

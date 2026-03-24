@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TEST_CONFIG_DIR } from '@/test-setup.js';
 import { findSessionDefinition, getFullPath, loadConfig } from './config.js';
+import { ConfigSchema } from './types.js';
 
 // Top-level regex patterns for linter compliance
 const FAILED_TO_LOAD_CONFIG_REGEX = /Failed to load config/;
@@ -168,9 +169,10 @@ terminal_ui:
       expect(getFullPath(config, '/room1')).toBe('/bunterm/room1');
     });
 
-    test('handles base_path with trailing slash', () => {
-      const config = { base_path: '/bunterm/', daemon_port: 7680 };
+    test('ConfigSchema normalizes base_path trailing slash', () => {
+      const config = ConfigSchema.parse({ base_path: '/bunterm/' });
 
+      expect(config.base_path).toBe('/bunterm');
       expect(getFullPath(config, '/seminar')).toBe('/bunterm/seminar');
     });
 
