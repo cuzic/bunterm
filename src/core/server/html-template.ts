@@ -50,7 +50,6 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     sessionPath,
     isShared,
     isNativeTerminal: true,
-    tmuxMode: config.tmux_mode,
     cwd
   });
 

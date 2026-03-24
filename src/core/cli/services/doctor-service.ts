@@ -106,7 +106,7 @@ export class TmuxCheck implements DoctorCheck {
       name: this.name,
       ok: true, // tmux is optional
       message: 'tmux not found (optional)',
-      hint: 'Install tmux to enable "bunterm attach" command'
+      hint: 'Install tmux to use portal tmux session list'
     };
   }
 }

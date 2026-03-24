@@ -83,8 +83,6 @@ export interface TerminalUiConfig {
   reconnect_interval: number;
   preview_allowed_extensions?: string[];
   sentry?: ClientSentryConfig;
-  /** tmux mode: 'none' | 'auto' | 'new' | 'attach' */
-  tmuxMode?: string;
   /** Session name (provided by server in native terminal mode) */
   sessionName?: string;
   /** Session path (provided by server in native terminal mode) */

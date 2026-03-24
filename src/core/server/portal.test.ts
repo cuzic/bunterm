@@ -8,10 +8,8 @@ describe('portal', () => {
     daemon_port: 7680,
     listen_addresses: ['127.0.0.1'],
     listen_sockets: [],
-    auto_attach: true,
     sessions: [],
     caddy_admin_api: 'http://localhost:2019',
-    tmux_mode: 'auto',
     terminal_ui: {
       font_size_default_mobile: 32,
       font_size_default_pc: 14,

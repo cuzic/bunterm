@@ -10,7 +10,6 @@ describe('SessionResolver', () => {
     base_path: '/bunterm',
     daemon_port: 7680,
     listen_addresses: ['127.0.0.1'],
-    auto_attach: true,
     sessions: [
       { name: 'config-session', dir: '/home/user/config', path: '/config' },
       { name: 'another-session', dir: '/home/user/another', path: '/another' }
