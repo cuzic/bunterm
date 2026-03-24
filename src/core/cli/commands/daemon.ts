@@ -20,8 +20,7 @@ async function startSessions(config: Config, sessionDefs: SessionDefinition[]): 
     try {
       const session = await apiStartSession(config, {
         name: sessionDef.name,
-        dir: sessionDef.dir,
-        path: sessionDef.path
+        dir: sessionDef.dir
       });
 
       const fullPath = getFullPath(config, session.path);
