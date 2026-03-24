@@ -67,7 +67,7 @@ export async function getSessions(config: Config) {
  */
 export async function startSession(
   config: Config,
-  request: { name: string; dir?: string; tmuxSession?: string }
+  request: { name: string; dir?: string; command?: string | string[] }
 ) {
   const client = createClient(getDaemonUrl(config));
   const response = await client.api.sessions.post(request);

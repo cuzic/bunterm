@@ -22,8 +22,7 @@ const mockSessionManager = {
     pid: 5678,
     cwd: opts.dir
   }),
-  stopSession: async (_name: string) => {},
-  findSessionByTmuxSession: () => null
+  stopSession: async (_name: string) => {}
 };
 
 const mockConfig = { daemon_port: 7680, base_path: '' };

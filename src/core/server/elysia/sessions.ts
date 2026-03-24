@@ -19,8 +19,7 @@ const SessionInfoSchema = t.Object({
   path: t.String(),
   dir: t.String(),
   started_at: t.String(),
-  clients: t.Optional(t.Number()),
-  tmuxSession: t.Optional(t.String())
+  clients: t.Optional(t.Number())
 });
 
 const StatusResponseSchema = t.Object({
@@ -38,8 +37,7 @@ const SessionListItemSchema = t.Object({
   port: t.Number(),
   path: t.String(),
   dir: t.String(),
-  started_at: t.String(),
-  tmuxSession: t.Optional(t.String())
+  started_at: t.String()
 });
 
 const TmuxSessionInfoSchema = t.Object({
@@ -58,7 +56,7 @@ const TmuxSessionsResponseSchema = t.Object({
 const CreateSessionBodySchema = t.Object({
   name: t.String({ minLength: 1 }),
   dir: t.Optional(t.String()),
-  tmuxSession: t.Optional(t.String())
+  command: t.Optional(t.Union([t.String(), t.Array(t.String())]))
 });
 
 const CreateSessionResponseSchema = t.Object({
@@ -66,7 +64,6 @@ const CreateSessionResponseSchema = t.Object({
   pid: t.Number(),
   path: t.String(),
   dir: t.String(),
-  tmuxSession: t.Optional(t.String()),
   existing: t.Boolean()
 });
 
@@ -115,8 +112,7 @@ export const sessionsPlugin = new Elysia({ prefix: '/api' })
         port: 0,
         path: `/${s.name}`,
         dir: s.dir,
-        started_at: s.startedAt,
-        tmuxSession: s.tmuxSession
+        started_at: s.startedAt
       }));
     },
     { response: t.Array(SessionListItemSchema) }
@@ -160,39 +156,7 @@ export const sessionsPlugin = new Elysia({ prefix: '/api' })
   .post(
     '/sessions',
     async ({ sessionManager, config, body, set }) => {
-      const { name, dir, tmuxSession } = body;
-
-      // If tmuxSession is specified, check for existing wrapper FIRST
-      if (tmuxSession) {
-        const tmuxClient = createTmuxClient();
-        if (!tmuxClient.isInstalled()) {
-          set.status = 400;
-          return { error: 'TMUX_NOT_INSTALLED', message: 'tmux is not installed' };
-        }
-        if (!tmuxClient.sessionExists(tmuxSession)) {
-          set.status = 404;
-          return {
-            error: 'TMUX_SESSION_NOT_FOUND',
-            message: `tmux session '${tmuxSession}' not found`
-          };
-        }
-
-        // Check if there's already a bunterm session wrapping this tmux session
-        const existingSessionName = sessionManager.findSessionByTmuxSession(tmuxSession);
-        if (existingSessionName) {
-          const existingSession = sessionManager.getSession(existingSessionName);
-          if (existingSession) {
-            return {
-              name: existingSession.name,
-              pid: existingSession.pid ?? 0,
-              path: `/${existingSessionName}`,
-              dir: existingSession.cwd,
-              tmuxSession,
-              existing: true
-            };
-          }
-        }
-      }
+      const { name, dir, command } = body;
 
       // Check if session name already exists
       if (sessionManager.hasSession(name)) {
@@ -207,7 +171,7 @@ export const sessionsPlugin = new Elysia({ prefix: '/api' })
         name,
         dir: dir || process.cwd(),
         path: `${config.base_path}/${name}`,
-        tmuxSession
+        command
       });
 
       set.status = 201;
@@ -216,7 +180,6 @@ export const sessionsPlugin = new Elysia({ prefix: '/api' })
         pid: session.pid ?? 0,
         path: `/${name}`,
         dir: session.cwd,
-        tmuxSession,
         existing: false
       };
     },
@@ -224,8 +187,6 @@ export const sessionsPlugin = new Elysia({ prefix: '/api' })
       body: CreateSessionBodySchema,
       response: {
         201: CreateSessionResponseSchema,
-        400: ErrorResponseSchema,
-        404: ErrorResponseSchema,
         409: ErrorResponseSchema
       }
     }
