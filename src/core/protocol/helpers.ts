@@ -19,7 +19,6 @@ import type {
   ExitMessage,
   FileChangeMessage,
   OutputMessage,
-  PaneCountChangeMessage,
   PongMessage,
   TitleMessage
 } from './messages.js';
@@ -222,14 +221,4 @@ export function createBlockOutputMessage(blockId: string, data: string): BlockOu
  */
 export function createBlockListMessage(blocks: Block[]): BlockListMessage {
   return { type: 'blockList', blocks };
-}
-
-/**
- * Create a pane count change message
- */
-export function createPaneCountChangeMessage(
-  count: number,
-  panes: { id: string; command: string; title: string }[]
-): PaneCountChangeMessage {
-  return { type: 'paneCountChange', count, panes };
 }

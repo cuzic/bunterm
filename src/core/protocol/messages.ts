@@ -103,12 +103,6 @@ export interface FileChangeMessage {
   timestamp: number;
 }
 
-export interface PaneCountChangeMessage {
-  type: 'paneCountChange';
-  count: number;
-  panes: { id: string; command: string; title: string }[];
-}
-
 // === Session Types ===
 
 export interface TerminalSessionOptions {

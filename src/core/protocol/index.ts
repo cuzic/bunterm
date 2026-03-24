@@ -55,7 +55,6 @@ export {
   createExitMessage,
   createFileChangeMessage,
   createOutputMessage,
-  createPaneCountChangeMessage,
   createPongMessage,
   createTitleMessage,
   parseClientMessage,
@@ -78,7 +77,6 @@ export type {
   NativeTerminalWebSocketData,
   // Server messages
   OutputMessage,
-  PaneCountChangeMessage,
   PingMessage,
   PongMessage,
   ResizeMessage,
@@ -114,7 +112,6 @@ import type {
   ExitMessage,
   FileChangeMessage,
   OutputMessage,
-  PaneCountChangeMessage,
   PongMessage,
   TitleMessage
 } from './messages.js';
@@ -149,5 +146,4 @@ export type ServerMessage =
   | AIFinalMessage
   | AIErrorMessage
   | AIRunStartedMessage
-  | PaneCountChangeMessage
   | ClaudeWatcherMessage;

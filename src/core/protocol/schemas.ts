@@ -238,12 +238,6 @@ export const ClaudeSessionEndWSSchema = z.object({
   timestamp: z.string()
 });
 
-export const PaneCountChangeMessageSchema = z.object({
-  type: z.literal('paneCountChange'),
-  count: z.number(),
-  panes: z.array(z.object({ id: z.string(), command: z.string(), title: z.string() }))
-});
-
 export const ServerMessageSchema = z.discriminatedUnion('type', [
   // Core messages
   OutputMessageSchema,
@@ -253,7 +247,6 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   ErrorMessageSchema,
   BellMessageSchema,
   FileChangeMessageSchema,
-  PaneCountChangeMessageSchema,
   // Block messages
   BlockStartMessageSchema,
   BlockEndMessageSchema,

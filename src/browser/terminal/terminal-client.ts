@@ -10,7 +10,7 @@
 
 import type { Terminal as XtermTerminal } from '@xterm/xterm';
 import { match, P } from 'ts-pattern';
-import { copyToClipboard, isMobileDevice } from '@/browser/shared/utils.js';
+import { copyToClipboard } from '@/browser/shared/utils.js';
 import { parseServerMessage } from '@/core/protocol/index.js';
 import { type Block, BlockManager } from './BlockManager.js';
 import { BlockRenderer } from './BlockRenderer.js';
@@ -717,12 +717,7 @@ export class TerminalClient implements Disposable {
             );
           }
         )
-        .with({ type: 'paneCountChange' }, (msg) => {
-          if (isMobileDevice() && msg.count >= 3) {
-            const basePath = window.location.pathname.split('/').slice(0, -2).join('/');
-            window.location.href = `${basePath}/agents/`;
-          }
-        })
+        // TODO: Replace with claude-watcher session count based redirect for agent teams
         .otherwise(() => {
           // Unknown message type - ignore
         });
