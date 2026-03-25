@@ -1,0 +1,9 @@
+language js;
+
+`import { $$$IMPORTS } from 'zod'` where {
+  register_diagnostic(
+    span = $IMPORTS,
+    message = "Avoid Zod in Elysia routes. Eden Treaty requires TypeBox for type inference. Use @sinclair/typebox instead.",
+    severity = "error"
+  )
+}

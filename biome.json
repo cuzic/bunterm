@@ -7,7 +7,13 @@
     "./rules/no-innerhtml-assignment.grit",
     "./rules/no-sync-fs-in-routes.grit",
     "./rules/no-as-any.grit",
-    "./rules/no-direct-add-event-listener.grit"
+    "./rules/no-direct-add-event-listener.grit",
+    "./rules/no-node-fs-sync-import.grit",
+    "./rules/no-as-never-in-elysia.grit",
+    "./rules/no-store-cast-in-elysia.grit",
+    "./rules/no-zod-in-elysia.grit",
+    "./rules/no-raw-api-fetch.grit",
+    "./rules/no-module-singleton-in-elysia.grit"
   ],
   "formatter": {
     "enabled": true,

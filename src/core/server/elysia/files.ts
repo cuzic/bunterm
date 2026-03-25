@@ -8,6 +8,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
+// biome-ignore lint: existsSync used for quick path validation in handlers
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

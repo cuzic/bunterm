@@ -1,6 +1,7 @@
 /**
  * Directory browser for session creation from portal
  */
+// biome-ignore lint: type-only import, Dirent is only used as a type annotation
 import type { Dirent } from 'node:fs';
 import { existsSync, lstatSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';

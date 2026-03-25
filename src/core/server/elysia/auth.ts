@@ -61,10 +61,10 @@ export const authRoutesPlugin = new Elysia({ prefix: '/api' })
   .post(
     '/auth/otp/generate',
     async ({ query, store, error }) => {
-      const s = store as Record<string, unknown>;
-      const otpManager = s['otpManager'] as
-        | import('@/core/server/auth/otp-manager.js').OtpManager
-        | undefined;
+      // TODO: migrate to coreContext plugin for typed store access
+      const otpManager = (
+        store as { otpManager?: import('@/core/server/auth/otp-manager.js').OtpManager }
+      ).otpManager;
       if (!otpManager) {
         return error(500, { error: 'OTP_NOT_CONFIGURED', message: 'OTP manager not initialized' });
       }

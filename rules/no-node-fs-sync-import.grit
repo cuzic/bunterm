@@ -1,8 +1,9 @@
 language js;
 
-`import $_ from 'node:fs'` where {
+`import $_ from $MODULE` where {
+  $MODULE <: `'node:fs'`,
   register_diagnostic(
-    span = $_,
+    span = $MODULE,
     message = "Prefer 'node:fs/promises' over 'node:fs'. Sync fs calls block the event loop.",
     severity = "warning"
   )

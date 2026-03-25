@@ -8,6 +8,7 @@
  */
 
 import { createHash } from 'node:crypto';
+// biome-ignore lint: startup-time sync read, files cached in memory
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, join } from 'node:path';

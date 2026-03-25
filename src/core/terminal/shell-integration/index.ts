@@ -5,6 +5,7 @@
  * They are compatible with VS Code's terminal integration protocol.
  */
 
+// biome-ignore lint: startup-time sync read, script file cached in memory
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

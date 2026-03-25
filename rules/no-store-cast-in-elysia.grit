@@ -1,0 +1,12 @@
+language js;
+
+// Prevent unsafe store casts like `store as Record<string, unknown>`.
+// Use coreContext plugin for typed store access instead.
+`$expr as Record<string, unknown>` where {
+  $expr <: contains `store`,
+  register_diagnostic(
+    span = $expr,
+    message = "Avoid casting store to Record<string, unknown>. Use coreContext plugin for typed store access.",
+    severity = "warning"
+  )
+}

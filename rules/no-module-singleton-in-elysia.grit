@@ -1,0 +1,9 @@
+language js;
+
+`let $name: $type | null = null` where {
+  register_diagnostic(
+    span = $name,
+    message = "Avoid module-level singletons. Use Elysia .state() or coreContext for dependency injection.",
+    severity = "warning"
+  )
+}

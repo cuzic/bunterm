@@ -1,0 +1,10 @@
+language js;
+
+`fetch($url)` where {
+  $url <: contains `/api/`,
+  register_diagnostic(
+    span = $url,
+    message = "Use Eden Treaty client instead of raw fetch for API calls. See core/client/eden-client.ts.",
+    severity = "warning"
+  )
+}

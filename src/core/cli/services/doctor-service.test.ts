@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, mock } from 'bun:test';
 import type { Config } from '@/core/config/types.js';
 import {
   DEFAULT_AI_CHAT_CONFIG,
@@ -11,7 +11,6 @@ import {
   DEFAULT_SENTRY_CONFIG,
   DEFAULT_TERMINAL_UI_CONFIG
 } from '@/core/config/types.js';
-import { afterEach, beforeEach, mock } from 'bun:test';
 import { CaddyCheck, SecurityCheck } from './doctor-service.js';
 
 function createConfig(overrides: Partial<Config> = {}): Config {
@@ -183,9 +182,7 @@ describe('CaddyCheck', () => {
   });
 
   it('warns when Caddy Admin API is unreachable', async () => {
-    globalThis.fetch = mock(() =>
-      Promise.reject(new Error('Connection refused'))
-    ) as typeof fetch;
+    globalThis.fetch = mock(() => Promise.reject(new Error('Connection refused'))) as typeof fetch;
 
     const config = createConfig({ hostname: 'bunterm.example.com' });
 

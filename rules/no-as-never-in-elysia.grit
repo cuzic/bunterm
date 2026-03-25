@@ -1,0 +1,11 @@
+language js;
+
+// Prevent `as never` type assertions — use per-status response schemas instead.
+// Primarily targets Elysia route files (elysia/) but applies globally.
+`$expr as never` where {
+  register_diagnostic(
+    span = $expr,
+    message = "Avoid 'as never'. In Elysia routes, use per-status response schemas instead of forcing type erasure.",
+    severity = "warning"
+  )
+}
