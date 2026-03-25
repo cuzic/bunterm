@@ -7,12 +7,11 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { treaty } from '@elysiajs/eden';
-import { createElysiaApp } from './app.js';
+import { createMockSessionManager, createTestElysiaApp } from './test-helpers.js';
 
 // === Shared Mock ===
 
-const mockSessionManager = {
+const mockSessionManager = createMockSessionManager({
   listSessions: () => [
     {
       name: 'test-session',
@@ -22,32 +21,17 @@ const mockSessionManager = {
       clientCount: 0,
       tmuxSession: undefined
     }
-  ],
-  hasSession: (name: string) => name === 'test-session',
-  getSession: (name: string) =>
-    name === 'test-session' ? { name: 'test-session', pid: 1234, cwd: '/tmp/test' } : undefined,
-  createSession: async (opts: { name: string; dir: string; path: string }) => ({
-    name: opts.name,
-    pid: 5678,
-    cwd: opts.dir
-  }),
-  stopSession: async (_name: string) => {},
-  findSessionByTmuxSession: () => null
-};
+  ]
+});
 
 // === Helper ===
 
 function createTestClient(basePath: string) {
-  const app = createElysiaApp({
-    sessionManager: mockSessionManager as unknown as Parameters<
-      typeof createElysiaApp
-    >[0]['sessionManager'],
-    config: {
-      daemon_port: 7680,
-      base_path: basePath
-    } as unknown as Parameters<typeof createElysiaApp>[0]['config']
+  const { client } = createTestElysiaApp({
+    sessionManager: mockSessionManager,
+    config: { daemon_port: 7680, base_path: basePath }
   });
-  return treaty(app);
+  return client;
 }
 
 // === Tests ===

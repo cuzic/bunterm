@@ -1,42 +1,26 @@
 import { describe, expect, test } from 'bun:test';
-import { treaty } from '@elysiajs/eden';
-import { createElysiaApp } from './app.js';
+import { createMockSessionManager, createTestElysiaApp } from './test-helpers.js';
 
-// === Mocks ===
+// === Setup ===
 
-const mockSessionManager = {
-  listSessions: () => [
-    {
-      name: 'existing-session',
-      pid: 1234,
-      dir: '/tmp/test',
-      startedAt: '2024-01-01T00:00:00Z',
-      clientCount: 1
-    }
-  ],
-  hasSession: (name: string) => name === 'existing-session',
-  getSession: (name: string) =>
-    name === 'existing-session'
-      ? { name: 'existing-session', pid: 1234, cwd: '/tmp/test' }
-      : undefined,
-  createSession: async (opts: { name: string; dir: string; path: string }) => ({
-    name: opts.name,
-    pid: 5678,
-    cwd: opts.dir
-  }),
-  stopSession: async (_name: string) => {},
-  findSessionByTmuxSession: () => null
-};
-
-const mockConfig = { daemon_port: 7680, base_path: '' };
-
-const app = createElysiaApp({
-  sessionManager: mockSessionManager as unknown as Parameters<
-    typeof createElysiaApp
-  >[0]['sessionManager'],
-  config: mockConfig as unknown as Parameters<typeof createElysiaApp>[0]['config']
+const { client } = createTestElysiaApp({
+  sessionManager: createMockSessionManager({
+    listSessions: () => [
+      {
+        name: 'existing-session',
+        pid: 1234,
+        dir: '/tmp/test',
+        startedAt: '2024-01-01T00:00:00Z',
+        clientCount: 1
+      }
+    ],
+    hasSession: (name: string) => name === 'existing-session',
+    getSession: (name: string) =>
+      name === 'existing-session'
+        ? { name: 'existing-session', pid: 1234, cwd: '/tmp/test' }
+        : undefined
+  })
 });
-const client = treaty(app);
 
 // === Error Handling Tests ===
 

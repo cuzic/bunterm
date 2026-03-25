@@ -7,30 +7,16 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { createElysiaApp } from './app.js';
+import { createMockSessionManager, createTestElysiaApp } from './test-helpers.js';
 
-// === Mocks ===
+// === Setup ===
 
-const mockSessionManager = {
-  listSessions: () => [],
-  hasSession: () => false,
-  getSession: () => undefined,
-  createSession: async (opts: { name: string; dir: string; path: string }) => ({
-    name: opts.name,
-    pid: 1234,
-    cwd: opts.dir
-  }),
-  stopSession: async () => {},
-  findSessionByTmuxSession: () => null
-};
-
-const mockConfig = { daemon_port: 7680, base_path: '' };
-
-const app = createElysiaApp({
-  sessionManager: mockSessionManager as unknown as Parameters<
-    typeof createElysiaApp
-  >[0]['sessionManager'],
-  config: mockConfig as unknown as Parameters<typeof createElysiaApp>[0]['config']
+const { app } = createTestElysiaApp({
+  sessionManager: createMockSessionManager({
+    listSessions: () => [],
+    hasSession: () => false,
+    getSession: () => undefined
+  })
 });
 
 // === Tests ===

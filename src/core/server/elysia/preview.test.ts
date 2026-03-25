@@ -12,23 +12,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Elysia } from 'elysia';
 import { previewFilePlugin } from './preview.js';
+import { createMockSessionManager, DEFAULT_MOCK_CONFIG } from './test-helpers.js';
 
 // === Helpers ===
 
 function createPreviewApp(testDir: string) {
-  const mockSessionManager = {
+  const mockSessionManager = createMockSessionManager({
     getSession: (name: string) =>
       name === 'test-session' ? { name: 'test-session', pid: 1234, cwd: testDir } : undefined,
     listSessions: () => [],
-    hasSession: () => false,
-    createSession: async () => ({ name: 'test', pid: 1234, cwd: testDir }),
-    stopSession: async () => {},
-    findSessionByTmuxSession: () => null
-  };
+    hasSession: () => false
+  });
 
   return new Elysia()
     .state('sessionManager', mockSessionManager)
-    .state('config', { daemon_port: 7680, base_path: '' })
+    .state('config', DEFAULT_MOCK_CONFIG)
     .use(previewFilePlugin);
 }
 
