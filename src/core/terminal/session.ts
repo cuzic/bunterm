@@ -12,6 +12,7 @@
 import { match } from 'ts-pattern';
 import {
   type Block,
+  type ClientMessage,
   createBellMessage,
   createBlockEndMessage,
   createBlockOutputMessage,
@@ -396,8 +397,14 @@ export class TerminalSession implements AsyncDisposable {
   /**
    * Handle an incoming WebSocket message
    */
-  handleMessage(ws: NativeTerminalWebSocket, data: string): void {
-    const message = parseClientMessage(data);
+  handleMessage(ws: NativeTerminalWebSocket, data: string | Record<string, unknown>): void {
+    let message: ClientMessage | null;
+    if (typeof data === 'string') {
+      message = parseClientMessage(data);
+    } else {
+      // Already validated by Elysia TypeBox — trust the shape
+      message = data as ClientMessage;
+    }
     if (!message) {
       ws.send(serializeServerMessage({ type: 'error', message: 'Invalid message format' }));
       return;

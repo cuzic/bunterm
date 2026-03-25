@@ -164,12 +164,8 @@ export const websocketPlugin = (options: WebSocketPluginOptions = {}) => {
       }
 
       // Elysia validates and auto-parses the message via TypeBox body schema.
-      // Pass as JSON string to session.handleMessage (which re-parses with Zod).
-      // TODO: Refactor session.handleMessage to accept typed objects directly
-      //       to eliminate the double-parse (TypeBox + Zod).
-      const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
-
-      session.handleMessage(ws.raw as unknown as NativeTerminalWebSocket, messageStr);
+      // Pass the already-validated object directly to avoid double-parse.
+      session.handleMessage(ws.raw as unknown as NativeTerminalWebSocket, message);
     },
 
     close(ws) {
