@@ -34,21 +34,3 @@ export function getDaemonConnection(config: Config): DaemonConnection {
   const port = daemon?.port ?? config.daemon_port;
   return { baseUrl: `http://localhost:${port}` };
 }
-
-/**
- * Get daemon URL from state or config
- * @deprecated Use getDaemonConnection() instead
- */
-export function getDaemonUrl(config: Config): string {
-  const deps = getDaemonClientDeps();
-  const daemon = deps.stateStore.getDaemonState();
-  const port = daemon?.port ?? config.daemon_port;
-  return `http://localhost:${port}`;
-}
-
-/**
- * Build a full API URL
- */
-export function buildApiUrl(config: Config, path: string): string {
-  return `${getDaemonUrl(config)}${path}`;
-}
