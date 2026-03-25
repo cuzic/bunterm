@@ -9,9 +9,50 @@
  * - Optional Sec-WebSocket-Protocol bearer token authentication
  */
 
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import type { NativeTerminalWebSocket } from '@/core/protocol/index.js';
 import { createErrorMessage, serializeServerMessage } from '@/core/protocol/index.js';
+
+// === WebSocket Message Schemas (TypeBox) ===
+// Single source of truth for client→server WS protocol.
+// Elysia validates incoming messages against this schema.
+
+const WsInputMessage = t.Object({ type: t.Literal('input'), data: t.String() });
+const WsResizeMessage = t.Object({
+  type: t.Literal('resize'),
+  cols: t.Number({ minimum: 1 }),
+  rows: t.Number({ minimum: 1 })
+});
+const WsPingMessage = t.Object({ type: t.Literal('ping') });
+const WsWatchFileMessage = t.Object({
+  type: t.Literal('watchFile'),
+  path: t.String({ minLength: 1 })
+});
+const WsUnwatchFileMessage = t.Object({
+  type: t.Literal('unwatchFile'),
+  path: t.String({ minLength: 1 })
+});
+const WsWatchDirMessage = t.Object({
+  type: t.Literal('watchDir'),
+  path: t.String({ minLength: 1 })
+});
+const WsUnwatchDirMessage = t.Object({
+  type: t.Literal('unwatchDir'),
+  path: t.String({ minLength: 1 })
+});
+const WsReplayRequestMessage = t.Object({ type: t.Literal('replayRequest') });
+
+const WsClientMessage = t.Union([
+  WsInputMessage,
+  WsResizeMessage,
+  WsPingMessage,
+  WsWatchFileMessage,
+  WsUnwatchFileMessage,
+  WsWatchDirMessage,
+  WsUnwatchDirMessage,
+  WsReplayRequestMessage
+]);
+
 import {
   DEFAULT_SECURITY_CONFIG,
   extractBearerToken,
@@ -33,6 +74,7 @@ export const websocketPlugin = (options: WebSocketPluginOptions = {}) => {
   const securityConfig = options.securityConfig ?? DEFAULT_SECURITY_CONFIG;
 
   return new Elysia({ name: 'websocket' }).use(coreContext).ws('/:sessionName/ws', {
+    body: WsClientMessage,
     beforeHandle({ request }) {
       // Origin validation on upgrade
       const originResult = validateOrigin(request, securityConfig);
@@ -121,8 +163,10 @@ export const websocketPlugin = (options: WebSocketPluginOptions = {}) => {
         return;
       }
 
-      // Elysia auto-parses JSON WebSocket messages into objects.
-      // Re-serialize to string for session.handleMessage which expects JSON string.
+      // Elysia validates and auto-parses the message via TypeBox body schema.
+      // Pass as JSON string to session.handleMessage (which re-parses with Zod).
+      // TODO: Refactor session.handleMessage to accept typed objects directly
+      //       to eliminate the double-parse (TypeBox + Zod).
       const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
 
       session.handleMessage(ws.raw as unknown as NativeTerminalWebSocket, messageStr);
