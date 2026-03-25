@@ -9,7 +9,6 @@ bunterm の設定は `~/.config/bunterm/config.yaml` に記述します。すべ
 | `base_path` | string | `"/bunterm"` | URL のベースパス（`/` で始まる必要あり、末尾の `/` は自動削除） |
 | `daemon_port` | number | `7680` | デーモンの HTTP ポート（1024〜65535） |
 | `listen_addresses` | string[] | `["127.0.0.1", "::1"]` | リッスンする IP アドレス |
-| `listen_sockets` | string[] | `[]` | Unix ソケットパス（リバースプロキシ用） |
 | `hostname` | string | _(なし)_ | Caddy 連携用のホスト名 |
 | `caddy_admin_api` | string | `"http://localhost:2019"` | Caddy Admin API の URL |
 | `daemon_manager` | `"direct"` \| `"pm2"` | `"direct"` | デーモンの管理方式 |
@@ -262,9 +261,6 @@ notifications:
 daemon_port: 7680
 listen_addresses:
   - "0.0.0.0"
-listen_sockets:
-  - /tmp/bunterm.sock
-
 command: ["/bin/bash", "-i"]
 
 security:

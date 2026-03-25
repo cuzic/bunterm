@@ -256,7 +256,6 @@ interface Config {
   base_port: number;      // 7600
   daemon_port: number;    // 7680
   listen_addresses: string[];  // ["127.0.0.1", "::1"]
-  listen_sockets: string[];    // Unix ソケットパス（オプション）
   hostname?: string;      // Caddy 連携用ホスト名
   caddy_admin_api: string; // Caddy Admin API URL
   terminal_ui: TerminalUiConfig; // ターミナルUI設定
@@ -285,7 +284,7 @@ interface SessionState {
   - 初回利用時のオンボーディングヒント
 - プッシュ通知（ターミナルベル `\a` で通知）
 - 読み取り専用共有リンク（`bunterm share`）
-- Unix ソケット経由のリバースプロキシ対応 (`listen_sockets`)
+- CLI→デーモン通信は Unix ソケット（`~/.local/state/bunterm/bunterm-api.sock`）経由
 - terminal-ui.js は静的ファイルとして配信（ETag キャッシュ対応）
 
 ### Block UI (Warp スタイル)

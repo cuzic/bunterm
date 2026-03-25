@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by ADR 20260325-00 (Unix Socket API Migration)
+
+`listen_sockets` config は削除。CLI→デーモン通信は固定パス `bunterm-api.sock` の Unix ソケットで自動的に行われる。
 
 ## Context
 
