@@ -15,6 +15,7 @@ import { createLogger } from '@/utils/logger.js';
 import { validateSecurePath } from '@/utils/path-security.js';
 import { coreContext } from './context.js';
 import { ErrorResponseSchema } from './errors.js';
+import { validateFilePath } from './route-helpers.js';
 
 const log = createLogger('preview-api');
 
@@ -179,28 +180,25 @@ export const previewPlugin = new Elysia({ prefix: '/api' })
         });
       }
 
-      let baseDir: string;
+      let targetPath: string;
       if (source === 'plans') {
-        baseDir = join(homedir(), '.claude', 'plans');
-      } else {
-        const session = sessionManager.getSession(sessionName!);
-        if (!session) {
-          return error(404, {
-            error: 'SESSION_NOT_FOUND',
-            message: `Session '${sessionName}' not found`
-          });
+        const baseDir = join(homedir(), '.claude', 'plans');
+        const pathResult = validateSecurePath(baseDir, filePath);
+        if (!pathResult.valid) {
+          return error(403, { error: 'PATH_TRAVERSAL', message: `Invalid path: ${filePath}` });
         }
-        baseDir = session.cwd;
-      }
-
-      const pathResult = validateSecurePath(baseDir, filePath);
-      if (!pathResult.valid) {
-        return error(403, { error: 'PATH_TRAVERSAL', message: `Invalid path: ${filePath}` });
-      }
-      const targetPath = pathResult.targetPath!;
-
-      if (!existsSync(targetPath)) {
-        return error(404, { error: 'NOT_FOUND', message: 'File not found' });
+        targetPath = pathResult.targetPath;
+        if (!existsSync(targetPath)) {
+          return error(404, { error: 'NOT_FOUND', message: 'File not found' });
+        }
+      } else {
+        const result = validateFilePath(sessionManager, sessionName!, filePath, {
+          checkExistence: true
+        });
+        if (!result.valid) {
+          return error(result.status as 403, { error: result.error, message: result.message });
+        }
+        targetPath = result.targetPath;
       }
 
       const stat = statSync(targetPath);
@@ -298,33 +296,17 @@ export const previewFilePlugin = new Elysia({ prefix: '/api' })
       const sessionName = query.session;
       const filePath = query.path;
 
-      const session = sessionManager.getSession(sessionName);
-      if (!session) {
-        set.status = 404;
-        return new Response('Session not found', {
-          status: 404,
+      const result = validateFilePath(sessionManager, sessionName, filePath, {
+        checkExistence: true
+      });
+      if (!result.valid) {
+        set.status = result.status;
+        return new Response(result.message, {
+          status: result.status,
           headers: { 'Content-Type': 'text/plain' }
         });
       }
-
-      const baseDir = session.cwd;
-      const pathResult = validateSecurePath(baseDir, filePath);
-      if (!pathResult.valid) {
-        set.status = 403;
-        return new Response('Invalid path', {
-          status: 403,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
-      const targetPath = pathResult.targetPath!;
-
-      if (!existsSync(targetPath)) {
-        set.status = 404;
-        return new Response('File not found', {
-          status: 404,
-          headers: { 'Content-Type': 'text/plain' }
-        });
-      }
+      const { targetPath } = result;
 
       const content = await Bun.file(targetPath).text();
       log.info(`Serving preview: ${targetPath} (${content.length} bytes)`);
