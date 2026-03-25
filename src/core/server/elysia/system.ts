@@ -10,8 +10,7 @@ import { reloadConfig } from '@/core/config/config-manager.js';
 
 const ShutdownBodySchema = t.Optional(
   t.Object({
-    stopSessions: t.Optional(t.Boolean()),
-    killTmux: t.Optional(t.Boolean())
+    stopSessions: t.Optional(t.Boolean())
   })
 );
 
@@ -38,16 +37,14 @@ export const systemPlugin = new Elysia({ prefix: '/api' })
       }, 100);
       return {
         status: 'shutting_down' as const,
-        stopSessions: body?.stopSessions ?? false,
-        killTmux: body?.killTmux ?? false
+        stopSessions: body?.stopSessions ?? false
       };
     },
     {
       body: ShutdownBodySchema,
       response: t.Object({
         status: t.Literal('shutting_down'),
-        stopSessions: t.Boolean(),
-        killTmux: t.Boolean()
+        stopSessions: t.Boolean()
       })
     }
   )
