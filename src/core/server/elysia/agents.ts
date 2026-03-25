@@ -9,6 +9,7 @@ import { Elysia, t } from 'elysia';
 import { getAgentStatuses } from '@/features/agent-timeline/server/agent-status.js';
 import type { AgentTimelineEvent } from '@/features/agent-timeline/server/types.js';
 import { coreContext } from './context.js';
+import { ErrorResponseSchema } from './errors.js';
 
 // === Plugin ===
 
@@ -59,12 +60,10 @@ export const agentsPlugin = new Elysia({ prefix: '/api' })
   // GET /api/agents/timeline/stream - SSE stream for timeline events
   .get(
     '/agents/timeline/stream',
-    ({ timelineService }) => {
+    ({ timelineService, set }) => {
       if (!timelineService) {
-        return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Timeline service not initialized' }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
-        );
+        set.status = 500;
+        return { error: 'INTERNAL_ERROR', message: 'Timeline service not initialized' };
       }
 
       const service = timelineService;
@@ -105,5 +104,9 @@ export const agentsPlugin = new Elysia({ prefix: '/api' })
         }
       });
     },
-    {}
+    {
+      response: {
+        500: ErrorResponseSchema
+      }
+    }
   );

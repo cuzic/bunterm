@@ -324,21 +324,12 @@ export const blocksPlugin = new Elysia({ prefix: '/api' })
 
       if (!block) {
         set.status = 404;
-        return new Response(
-          JSON.stringify({
-            error: 'BLOCK_NOT_FOUND',
-            message: `Block '${params.blockId}' not found`
-          }),
-          { status: 404, headers: { 'Content-Type': 'application/json' } }
-        );
+        return { error: 'BLOCK_NOT_FOUND', message: `Block '${params.blockId}' not found` };
       }
 
       if (!blockEventEmitter) {
         set.status = 500;
-        return new Response(
-          JSON.stringify({ error: 'INTERNAL_ERROR', message: 'Event emitter not initialized' }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
-        );
+        return { error: 'INTERNAL_ERROR', message: 'Event emitter not initialized' };
       }
 
       const lastEventIdHeader = request.headers.get('Last-Event-ID');
@@ -355,6 +346,10 @@ export const blocksPlugin = new Elysia({ prefix: '/api' })
       });
     },
     {
-      params: t.Object({ blockId: t.String() })
+      params: t.Object({ blockId: t.String() }),
+      response: {
+        404: ErrorResponseSchema,
+        500: ErrorResponseSchema
+      }
     }
   );
