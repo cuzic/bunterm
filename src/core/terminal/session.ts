@@ -75,6 +75,9 @@ export class TerminalSession implements AsyncDisposable {
   // Raw output listeners (for Unix socket relay)
   private readonly rawOutputListeners: Set<(data: Uint8Array) => void> = new Set();
 
+  // PTY master file descriptor (for fd passing to CLI attach clients)
+  private _ptyMasterFd: number | null = null;
+
   // Block UI state
   private currentLine = 0;
   private pendingCommand: string | null = null;
@@ -136,6 +139,9 @@ export class TerminalSession implements AsyncDisposable {
       throw new Error(`Session ${this.name} is already running`);
     }
 
+    // Snapshot PTY fds before spawn to detect new master fd
+    const ptyFdsBefore = this.detectPtmxFds();
+
     // Use Bun.Terminal for PTY management
     this.proc = Bun.spawn(this.command, {
       cwd: this.cwd,
@@ -155,6 +161,13 @@ export class TerminalSession implements AsyncDisposable {
         exit: (_terminal: BunTerminal, _code: number) => {}
       }
     });
+
+    // Detect PTY master fd by diffing before/after spawn
+    const ptyFdsAfter = this.detectPtmxFds();
+    const newFds = ptyFdsAfter.filter((fd) => !ptyFdsBefore.includes(fd));
+    if (newFds.length > 0) {
+      this._ptyMasterFd = newFds[0];
+    }
 
     // Get terminal reference with runtime validation
     // biome-ignore lint: Bun.Terminal proc lacks typed terminal property
@@ -499,6 +512,14 @@ export class TerminalSession implements AsyncDisposable {
   }
 
   /**
+   * Get the PTY master file descriptor (for fd passing to CLI attach clients).
+   * Returns null if not detected (Bun API doesn't expose it directly).
+   */
+  get ptyMasterFd(): number | null {
+    return this._ptyMasterFd;
+  }
+
+  /**
    * Get the process ID
    */
   get pid(): number | undefined {
@@ -603,6 +624,31 @@ export class TerminalSession implements AsyncDisposable {
       }
       this.proc = null;
       this.terminal = null;
+    }
+  }
+
+  /**
+   * Detect PTY master fds by scanning /proc/self/fd (Linux only).
+   * On macOS, returns empty array (fd detection not supported via procfs).
+   */
+  private detectPtmxFds(): number[] {
+    if (process.platform !== 'linux') return [];
+    try {
+      const { readdirSync, readlinkSync } = require('node:fs');
+      const fds: number[] = [];
+      for (const entry of readdirSync('/proc/self/fd')) {
+        try {
+          const link = readlinkSync(`/proc/self/fd/${entry}`);
+          if (link.includes('ptmx')) {
+            fds.push(Number.parseInt(entry, 10));
+          }
+        } catch {
+          // fd may have been closed between readdir and readlink
+        }
+      }
+      return fds;
+    } catch {
+      return [];
     }
   }
 

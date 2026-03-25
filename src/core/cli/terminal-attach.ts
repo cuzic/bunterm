@@ -7,9 +7,8 @@
 
 import { access } from 'node:fs/promises';
 import { createConnection, type Socket } from 'node:net';
-
-import { filterDAResponses, filterFocusEvents } from '@/core/terminal/da-responder.js';
-import { createResizeMessage, parseControlMessage } from '@/utils/socket-relay.js';
+import { isFdPassingSupported, recvFd } from '@/utils/fd-passing.js';
+import { createResizeMessage } from '@/utils/socket-relay.js';
 
 export interface AttachOptions {
   /** Unix socket path (e.g. ~/.local/state/bunterm/sessions/{name}.sock) */
@@ -42,57 +41,85 @@ export async function attachToSession(options: AttachOptions): Promise<number> {
 
     const socket: Socket = createConnection(options.socketPath);
 
-    const onStdinData = (data: Buffer) => {
-      if (socket.destroyed) return;
-
-      // Filter DA responses and focus events from outer terminal
-      let text = data.toString('utf-8');
-      text = filterDAResponses(text) ?? '';
-      text = filterFocusEvents(text) ?? '';
-      if (!text) return;
-
-      socket.write(Buffer.from(text, 'utf-8'));
-    };
-
-    const onResize = () => {
+    // Send resize via socket (works in both fd and relay modes)
+    const sendResize = () => {
       if (socket.destroyed) return;
       if (process.stdout.columns && process.stdout.rows) {
         socket.write(createResizeMessage(process.stdout.columns, process.stdout.rows));
       }
     };
 
-    socket.on('connect', () => {
-      // Enter raw mode so keystrokes are forwarded immediately
+    const enterRawMode = () => {
       if (process.stdin.isTTY) {
         process.stdin.setRawMode(true);
         rawModeSet = true;
       }
       process.stdin.resume();
-      process.stdin.on('data', onStdinData);
-      process.stdout.on('resize', onResize);
+      process.stdout.on('resize', sendResize);
+      sendResize();
+    };
 
-      // Send initial terminal size
-      onResize();
-    });
+    socket.on('connect', () => {
+      enterRawMode();
 
-    socket.on('data', (data: Buffer) => {
-      // Check for control messages (e.g. exit notification from server)
-      const ctrl = parseControlMessage(data);
-      if (ctrl) {
-        // Control messages from server (resize ack etc.) — ignore on client side
-        return;
+      // Try fd passing: receive PTY master fd from server
+      const socketFd = (socket as unknown as { _handle?: { fd?: number } })._handle?.fd;
+      if (socketFd !== undefined && isFdPassingSupported()) {
+        const ptyFd = recvFd(socketFd);
+        if (ptyFd !== null) {
+          // Direct PTY mode — read/write to fd, keep socket for resize only
+          setupDirectMode(ptyFd, socket, sendResize, resolveOnce);
+          return;
+        }
       }
-      // Raw PTY output — write directly to stdout
-      process.stdout.write(data);
+
+      // Fallback: socket relay mode
+      setupRelayMode(socket, sendResize, resolveOnce);
     });
 
-    socket.on('error', () => {
-      resolveOnce(1);
-    });
+    socket.on('error', () => resolveOnce(1));
+    socket.on('close', () => resolveOnce(0));
 
-    socket.on('close', () => {
-      resolveOnce(0);
-    });
+    async function setupDirectMode(
+      ptyFd: number,
+      _controlSocket: Socket,
+      resize: () => void,
+      done: (code: number) => void
+    ) {
+      // Read from PTY fd → stdout
+      const { createReadStream } = await import('node:fs');
+      const readStream = createReadStream('', { fd: ptyFd, autoClose: false });
+      readStream.on('data', (chunk: Buffer) => process.stdout.write(chunk));
+      readStream.on('error', () => done(1));
+      readStream.on('end', () => done(0));
+
+      // stdin → write to PTY fd
+      process.stdin.on('data', (data: Buffer) => {
+        try {
+          const { writeSync } = require('node:fs');
+          writeSync(ptyFd, data);
+        } catch {
+          done(1);
+        }
+      });
+
+      // Keep control socket for resize
+      resize();
+    }
+
+    function setupRelayMode(relaySocket: Socket, resize: () => void, done: (code: number) => void) {
+      // stdin → socket (raw bytes, no filtering needed for pure pipe)
+      process.stdin.on('data', (data: Buffer) => {
+        if (!relaySocket.destroyed) relaySocket.write(data);
+      });
+
+      // socket → stdout (raw PTY output)
+      relaySocket.on('data', (data: Buffer) => process.stdout.write(data));
+      relaySocket.on('error', () => done(1));
+      relaySocket.on('close', () => done(0));
+
+      resize();
+    }
 
     function cleanup() {
       process.stdin.removeListener('data', onStdinData);

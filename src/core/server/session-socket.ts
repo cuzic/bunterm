@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 import { getStateDir } from '@/core/config/state.js';
 import type { TerminalSession } from '@/core/terminal/session.js';
+import { isFdPassingSupported, sendFd } from '@/utils/fd-passing.js';
 import { parseControlMessage } from '@/utils/socket-relay.js';
 
 export interface SessionSocketResult {
@@ -85,7 +86,35 @@ export function createSessionSocket(session: TerminalSession): SessionSocketResu
   const server = createServer((socket: Socket) => {
     connectedClients.add(socket);
 
-    // Handle input from the attached client
+    // Try fd passing: send PTY master fd to client
+    const ptyFd = session.ptyMasterFd;
+    if (ptyFd !== null && isFdPassingSupported()) {
+      try {
+        // Get raw socket fd from Node socket handle
+        const socketFd = (socket as unknown as { _handle?: { fd?: number } })._handle?.fd;
+        if (socketFd !== undefined) {
+          const sent = sendFd(socketFd, ptyFd);
+          if (sent) {
+            // fd sent successfully — client will use it directly
+            // Keep socket open for control messages (resize) only
+            socket.on('data', (data: Buffer) => {
+              const ctrl = parseControlMessage(data);
+              if (ctrl) {
+                session.resize(ctrl.cols, ctrl.rows);
+              }
+              // Ignore non-control data (client reads directly from PTY fd)
+            });
+            socket.on('close', () => connectedClients.delete(socket));
+            socket.on('error', () => connectedClients.delete(socket));
+            return; // Skip relay setup
+          }
+        }
+      } catch {
+        // fd passing failed — fall through to relay mode
+      }
+    }
+
+    // Fallback: socket relay mode — handle input from the attached client
     socket.on('data', (data: Buffer) => {
       // Check for control messages (resize)
       const ctrl = parseControlMessage(data);

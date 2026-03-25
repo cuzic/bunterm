@@ -21,6 +21,7 @@ function createMockSession(name: string) {
 
   return {
     name,
+    ptyMasterFd: null as number | null, // null forces relay mode in tests
     writtenData,
     resizes,
     rawOutputListeners,
