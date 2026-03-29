@@ -692,10 +692,10 @@ class ToolbarApp {
       }, KeyPriority.SEARCH)
     );
 
-    // Priority: GLOBAL (0) - Ctrl+J toggle toolbar
+    // Priority: GLOBAL (0) - Ctrl+; toggle toolbar
     scope.add(
       keyRouter.register((e) => {
-        if (e.key === 'j' && e.ctrlKey && !e.altKey && !e.shiftKey) {
+        if (e.key === ';' && e.ctrlKey && !e.altKey && !e.shiftKey) {
           e.preventDefault();
           this.toggleToolbar();
           return true;
@@ -895,11 +895,11 @@ class ToolbarApp {
 
     // Update toggle button title based on current state
     if (isHidden) {
-      toggleBtn.title = 'ツールバーを表示 (Ctrl+J)';
+      toggleBtn.title = 'ツールバーを表示 (Ctrl+;)';
     } else if (isCollapsed) {
-      toggleBtn.title = '入力欄を非表示 (Ctrl+J)';
+      toggleBtn.title = '入力欄を非表示 (Ctrl+;)';
     } else {
-      toggleBtn.title = 'ボタンを非表示 (Ctrl+J)';
+      toggleBtn.title = 'ボタンを非表示 (Ctrl+;)';
     }
 
     // Show/hide miniBar on mobile based on toolbar visibility
@@ -931,11 +931,8 @@ class ToolbarApp {
     // LayoutManager's ResizeObserver will detect toolbar visibility change
     this.layout.scheduleUpdate();
 
-    // Reinitialize terminal to fix any rendering issues
-    setTimeout(() => {
-      this.terminal.reinitialize();
-      this.layout.forceUpdate();
-    }, 100);
+    // Reinitialize terminal to fix any rendering issues (debounced via setFontSize path)
+    this.terminal.scheduleReinit(() => this.layout.forceUpdate());
   }
 
   /**

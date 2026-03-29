@@ -119,8 +119,8 @@ export const App: FC<AppProps> = ({
       const isMac = /Mac/.test(navigator.platform);
       const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 
-      // Cmd/Ctrl + J: Toggle AI pane
-      if (cmdOrCtrl && e.key === 'j') {
+      // Cmd/Ctrl + ;: Toggle AI pane
+      if (cmdOrCtrl && e.key === ';') {
         e.preventDefault();
         toggleAiPane();
       }

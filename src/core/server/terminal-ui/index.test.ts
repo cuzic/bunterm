@@ -137,7 +137,7 @@ describe('toolbar/onboarding', () => {
   });
 
   test('contains tips content', () => {
-    expect(onboardingHtml).toContain('Ctrl+J');
+    expect(onboardingHtml).toContain('Ctrl+;');
     expect(onboardingHtml).toContain('ピンチ操作');
     expect(onboardingHtml).toContain('ダブルタップ');
   });

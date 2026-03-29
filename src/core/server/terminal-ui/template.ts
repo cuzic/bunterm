@@ -62,7 +62,7 @@ export const terminalUiHtml = `
   <button id="tui-search-regex" class="modifier" title="正規表現">.*</button>
   <button id="tui-search-close" title="閉じる (Esc)">✕</button>
 </div>
-<button id="tui-toggle" title="ツールバーを表示 (Ctrl+J)">
+<button id="tui-toggle" title="ツールバーを表示 (Ctrl+;)">
   <span class="tui-toggle-icon">⌨</span>
   <span class="tui-toggle-label">入力</span>
 </button>
@@ -230,7 +230,7 @@ export const onboardingHtml = `
   <button id="tui-onboarding-close">×</button>
   <strong>Toolbar Tips</strong>
   <ul>
-    <li><code>Ctrl+J</code> でツールバー表示/非表示</li>
+    <li><code>Ctrl+;</code> でツールバー表示/非表示</li>
     <li>ピンチ操作でフォントサイズ変更</li>
     <li>ダブルタップで Enter 送信</li>
     <li>長押しでテキスト選択 → コピー</li>

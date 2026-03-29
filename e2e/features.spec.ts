@@ -799,7 +799,7 @@ test.describe('Session Switcher UI', () => {
 // ============================================================================
 
 test.describe('Toolbar Toggle', () => {
-  test('Ctrl+J toggles toolbar visibility', async ({ page }) => {
+  test('Ctrl+; toggles toolbar visibility', async ({ page }) => {
     await page.goto(getBaseUrl());
     await waitForTerminalReady(page);
     await ensureToolbarVisible(page);
@@ -810,11 +810,11 @@ test.describe('Toolbar Toggle', () => {
     await page.locator('#terminal .xterm-helper-textarea').focus();
     await page.waitForTimeout(100);
 
-    await page.keyboard.press('Control+j');
+    await page.keyboard.press('Control+;');
     await page.waitForTimeout(200);
     await expect(toolbar).toHaveClass(/hidden/);
 
-    await page.keyboard.press('Control+j');
+    await page.keyboard.press('Control+;');
     await page.waitForTimeout(200);
     await expect(toolbar).not.toHaveClass(/hidden/);
   });
