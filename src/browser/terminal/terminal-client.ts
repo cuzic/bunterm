@@ -115,6 +115,7 @@ export class TerminalClient implements Disposable {
   private serializeAddon: import('@xterm/addon-serialize').SerializeAddon | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: number | null = null;
+  private reinitTimer: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: number | null = null;
   private isClosing = false;
 
@@ -279,9 +280,18 @@ export class TerminalClient implements Disposable {
     // Handle Visual Viewport changes (mobile keyboard, address bar)
     if (window.visualViewport) {
       const vv = window.visualViewport;
+      const handleViewportResize = () => {
+        scheduleFit();
+        // Debounced reinit after keyboard show/hide settles
+        if (this.reinitTimer) clearTimeout(this.reinitTimer);
+        this.reinitTimer = setTimeout(() => {
+          this.reinitTimer = null;
+          this.reinitialize();
+        }, 300);
+      };
       // biome-ignore lint: cleaned up via disposables
-      vv.addEventListener('resize', scheduleFit, { passive: true });
-      this.eventListeners.defer(() => vv.removeEventListener('resize', scheduleFit));
+      vv.addEventListener('resize', handleViewportResize, { passive: true });
+      this.eventListeners.defer(() => vv.removeEventListener('resize', handleViewportResize));
       // biome-ignore lint: cleaned up via disposables
       vv.addEventListener('scroll', scheduleFit, { passive: true });
       this.eventListeners.defer(() => vv.removeEventListener('scroll', scheduleFit));
