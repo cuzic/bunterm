@@ -12,13 +12,17 @@ import {
  * Generate auto-reload script for portal page
  * Reloads the page when the tab becomes visible to refresh session list
  */
-function generateAutoReloadScript(): string {
+function generateAutoReloadScript(nonceAttr: string): string {
   return `
-  <script>
+  <script${nonceAttr}>
     document.addEventListener('visibilitychange', function() {
       if (!document.hidden) {
         location.reload();
       }
+    });
+    document.addEventListener('click', function(e) {
+      var el = e.target.closest('[data-action="refresh"]');
+      if (el) { e.preventDefault(); location.reload(); }
     });
   </script>`;
 }
@@ -202,9 +206,9 @@ function generateTmuxSessionsStyles(): string {
 /**
  * Generate tmux sessions JavaScript
  */
-function generateTmuxSessionsScript(basePath: string): string {
+function generateTmuxSessionsScript(basePath: string, nonceAttr: string): string {
   return `
-  <script>
+  <script${nonceAttr}>
     const TMUX_API_BASE = '${basePath}';
 
     function escapeHtml(str) {
@@ -246,7 +250,7 @@ function generateTmuxSessionsScript(basePath: string): string {
             '<span class="tmux-session-name">' + escapeHtml(s.name) + '</span>' +
             '<span class="tmux-session-meta">' + meta + '</span>' +
             '</div>' +
-            '<button class="tmux-connect-btn" onclick="connectToTmux(\\'' + escapeJs(s.name) + '\\')">Connect</button>' +
+            '<button class="tmux-connect-btn" data-tmux-connect="' + escapeHtml(s.name) + '">Connect</button>' +
             '</div>' +
             '</li>';
         }).join('');
@@ -258,8 +262,13 @@ function generateTmuxSessionsScript(basePath: string): string {
       }
     }
 
-    async function connectToTmux(tmuxSessionName) {
-      const btn = event.target;
+    // Event delegation for tmux connect buttons
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-tmux-connect]');
+      if (btn) connectToTmux(btn.dataset.tmuxConnect, btn);
+    });
+
+    async function connectToTmux(tmuxSessionName, btn) {
       btn.disabled = true;
       btn.textContent = 'Connecting...';
 
@@ -268,7 +277,7 @@ function generateTmuxSessionsScript(basePath: string): string {
         const sessionsRes = await fetch(TMUX_API_BASE + '/api/sessions');
         const sessions = await sessionsRes.json();
         const existing = sessions.find(function(s) {
-          return s.tmuxSession === tmuxSessionName;
+          return s.tmuxSession === tmuxSessionName || s.name === tmuxSessionName;
         });
 
         if (existing) {
@@ -334,12 +343,12 @@ function generateDirectoryBrowserModal(): string {
     <div class="modal">
       <div class="modal-header">
         <h2>New Session</h2>
-        <button class="modal-close" onclick="closeDirBrowser()">&times;</button>
+        <button class="modal-close" data-action="closeDirBrowser">&times;</button>
       </div>
       <div class="modal-body">
         <div class="base-selector">
           <label for="baseDir">Base Directory</label>
-          <select id="baseDir" onchange="onBaseDirChange()">
+          <select id="baseDir">
             <option value="">Loading...</option>
           </select>
         </div>
@@ -350,8 +359,8 @@ function generateDirectoryBrowserModal(): string {
         <div id="selectedPath" class="selected-path" style="display: none;"></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeDirBrowser()">Cancel</button>
-        <button id="startSessionBtn" class="btn btn-primary" onclick="startSession()" disabled>Start Session</button>
+        <button class="btn btn-secondary" data-action="closeDirBrowser">Cancel</button>
+        <button id="startSessionBtn" class="btn btn-primary" data-action="startSession" disabled>Start Session</button>
       </div>
     </div>
   </div>`;
@@ -360,9 +369,9 @@ function generateDirectoryBrowserModal(): string {
 /**
  * Generate directory browser JavaScript
  */
-function generateDirectoryBrowserScript(basePath: string): string {
+function generateDirectoryBrowserScript(basePath: string, nonceAttr: string): string {
   return `
-  <script>
+  <script${nonceAttr}>
     const API_BASE = '${basePath}';
     let allowedDirs = [];
     let currentBaseIndex = -1;
@@ -443,7 +452,7 @@ function generateDirectoryBrowserScript(basePath: string): string {
           dirList.innerHTML = '<li class="empty-message">No subdirectories</li>';
         } else {
           dirList.innerHTML = data.directories.map(d =>
-            '<li class="directory-item" onclick="navigateToDir(\\'' + escapeJs(d.path) + '\\')">' +
+            '<li class="directory-item" data-navigate-dir="' + escapeHtml(d.path) + '">' +
             '<span class="icon">&#128193;</span>' +
             '<span class="name">' + escapeHtml(d.name) + '</span>' +
             '<span class="expand">&#8250;</span>' +
@@ -475,13 +484,13 @@ function generateDirectoryBrowserScript(basePath: string): string {
       const breadcrumb = document.getElementById('breadcrumb');
       const baseName = allowedDirs[currentBaseIndex]?.name || '';
 
-      let html = '<span class="breadcrumb-item" onclick="navigateToBreadcrumb(-1)">' + escapeHtml(baseName) + '</span>';
+      let html = '<span class="breadcrumb-item" data-breadcrumb="-1">' + escapeHtml(baseName) + '</span>';
 
       if (currentPath) {
         const parts = currentPath.split('/').filter(p => p);
         parts.forEach((part, i) => {
           html += '<span class="breadcrumb-separator">/</span>';
-          html += '<span class="breadcrumb-item" onclick="navigateToBreadcrumb(' + i + ')">' + escapeHtml(part) + '</span>';
+          html += '<span class="breadcrumb-item" data-breadcrumb="' + i + '">' + escapeHtml(part) + '</span>';
         });
       }
 
@@ -551,10 +560,28 @@ function generateDirectoryBrowserScript(basePath: string): string {
         closeDirBrowser();
       }
     });
+
+    // Event delegation for directory browser actions
+    document.addEventListener('click', function(e) {
+      var el = e.target.closest('[data-navigate-dir]');
+      if (el) { navigateToDir(el.dataset.navigateDir); return; }
+      el = e.target.closest('[data-breadcrumb]');
+      if (el) { navigateToBreadcrumb(parseInt(el.dataset.breadcrumb, 10)); return; }
+      el = e.target.closest('[data-action]');
+      if (el) {
+        var action = el.dataset.action;
+        if (action === 'openDirBrowser') openDirBrowser();
+        else if (action === 'closeDirBrowser') closeDirBrowser();
+        else if (action === 'startSession') startSession();
+        else if (action === 'refresh') { e.preventDefault(); location.reload(); }
+      }
+    });
+
+    document.getElementById('baseDir').addEventListener('change', onBaseDirChange);
   </script>`;
 }
 
-export function generatePortalHtml(config: Config, sessions: SessionState[]): string {
+export function generatePortalHtml(config: Config, sessions: SessionState[], nonce?: string): string {
   const basePath = config.base_path;
   const sessionItems = sessions
     .map((session) => {
@@ -575,16 +602,17 @@ export function generatePortalHtml(config: Config, sessions: SessionState[]): st
 
   const dirBrowserEnabled = config.directory_browser.enabled;
   const newSessionButton = dirBrowserEnabled
-    ? '<button class="new-session-btn" onclick="openDirBrowser()">+ New Shell Session</button>'
+    ? '<button class="new-session-btn" data-action="openDirBrowser">+ New Shell Session</button>'
     : '';
   const dirBrowserModal = dirBrowserEnabled ? generateDirectoryBrowserModal() : '';
-  const dirBrowserScript = dirBrowserEnabled ? generateDirectoryBrowserScript(basePath) : '';
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
+  const dirBrowserScript = dirBrowserEnabled ? generateDirectoryBrowserScript(basePath, nonceAttr) : '';
   const dirBrowserCss = dirBrowserEnabled ? directoryBrowserStyles : '';
 
   // tmux sessions section
   const tmuxSessionsSection = generateTmuxSessionsSection();
   const tmuxSessionsStyles = generateTmuxSessionsStyles();
-  const tmuxSessionsScript = generateTmuxSessionsScript(basePath);
+  const tmuxSessionsScript = generateTmuxSessionsScript(basePath, nonceAttr);
 
   // Active sessions section (only if there are sessions)
   const activeSessionsSection =
@@ -627,8 +655,8 @@ ${sessionItems}
   ${activeSessionsSection}
   ${newSessionButton}
   <div class="refresh">
-    <a href="javascript:location.reload()">Refresh</a>
-  </div>${dirBrowserModal}${generateSwRegistration(basePath)}${generateAutoReloadScript()}${dirBrowserScript}${tmuxSessionsScript}
+    <a href="#" data-action="refresh">Refresh</a>
+  </div>${dirBrowserModal}${generateSwRegistration(basePath, nonceAttr)}${generateAutoReloadScript(nonceAttr)}${dirBrowserScript}${tmuxSessionsScript}
 </body>
 </html>
 `;

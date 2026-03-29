@@ -27,6 +27,14 @@ const shareManager = createShareManager({
 
 export { shareManager };
 
+/**
+ * Generate a cryptographically random nonce for CSP.
+ * Returns a base64-encoded 16-byte random value.
+ */
+function generateNonce(): string {
+  return randomBytes(16).toString('base64');
+}
+
 // === Plugin ===
 
 export const pagesPlugin = new Elysia()
@@ -35,7 +43,9 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/ - Portal page
   .get(
     '/',
-    ({ sessionManager, config }) => {
+    ({ sessionManager, config, store }) => {
+      const nonce = generateNonce();
+      store.cspNonce = nonce;
       const sessions = sessionManager.listSessions().map((s) => ({
         name: s.name,
         pid: s.pid,
@@ -44,7 +54,7 @@ export const pagesPlugin = new Elysia()
         dir: s.dir,
         started_at: s.startedAt
       }));
-      const html = generatePortalHtml(config, sessions);
+      const html = generatePortalHtml(config, sessions, nonce);
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
@@ -55,8 +65,9 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/agents - Agent timeline page
   .get(
     '/agents',
-    () => {
-      const nonce = randomBytes(16).toString('base64');
+    ({ store }) => {
+      const nonce = generateNonce();
+      store.cspNonce = nonce;
       const html = generateTimelineHtml('', nonce);
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -68,7 +79,7 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/share/:token - Share page
   .get(
     '/share/:token',
-    ({ sessionManager, config, params, set }) => {
+    ({ sessionManager, config, params, set, store }) => {
       const token = decodeURIComponent(params.token);
       const share = shareManager.validateShare(token);
 
@@ -89,13 +100,17 @@ export const pagesPlugin = new Elysia()
         });
       }
 
+      const nonce = generateNonce();
+      store.cspNonce = nonce;
+
       const basePath = config.base_path;
       const html = generateNativeTerminalHtml({
         sessionName,
         basePath,
         sessionPath: `${basePath}/${sessionName}`,
         config,
-        isShared: true
+        isShared: true,
+        nonce
       });
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -109,7 +124,7 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/:sessionName - Terminal session page
   .get(
     '/:sessionName',
-    async ({ sessionManager, config, params, set }) => {
+    async ({ sessionManager, config, params, set, store }) => {
       const sessionName = params.sessionName;
       const basePath = config.base_path;
 
@@ -134,11 +149,15 @@ export const pagesPlugin = new Elysia()
         }
       }
 
+      const nonce = generateNonce();
+      store.cspNonce = nonce;
+
       const html = generateNativeTerminalHtml({
         sessionName,
         basePath,
         sessionPath: `${basePath}/${sessionName}`,
-        config
+        config,
+        nonce
       });
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }

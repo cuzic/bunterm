@@ -31,9 +31,9 @@ export function generatePwaHead(basePath: string): string {
 /**
  * Generate Service Worker registration script
  */
-export function generateSwRegistration(basePath: string): string {
+export function generateSwRegistration(basePath: string, nonceAttr = ''): string {
   return `
-  <script>
+  <script${nonceAttr}>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('${basePath}/sw.js')
         .catch(err => console.warn('SW registration failed:', err));
