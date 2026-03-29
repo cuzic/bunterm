@@ -2,15 +2,24 @@
  * Up command - Start session for current directory
  */
 
+import { spawnSync } from 'node:child_process';
 import { buildSessionUrl } from '@/core/cli/helpers/url-builder.js';
 import { parseCliOptions, type UpOptions, UpOptionsSchema } from '@/core/cli/schemas.js';
-import { attachToSession } from '@/core/cli/terminal-attach.js';
 import { startSession as apiStartSession, ensureDaemon, getSessions } from '@/core/client/index.js';
 import { loadConfig } from '@/core/config/config.js';
-import { getStateDir } from '@/core/config/state.js';
+import { sanitizeName } from '@/utils/command-template.js';
 import { CliError, getErrorMessage } from '@/utils/errors.js';
 
 export type { UpOptions };
+
+/**
+ * Check if the config command template uses tmux.
+ */
+function isTmuxCommand(command: string | string[] | undefined): boolean {
+  if (!command) return false;
+  const cmd = Array.isArray(command) ? command[0] : command.split(/\s+/)[0];
+  return cmd === 'tmux';
+}
 
 export async function upCommand(rawOptions: unknown): Promise<number | undefined> {
   const options = parseCliOptions(rawOptions, UpOptionsSchema, 'up');
@@ -55,13 +64,14 @@ export async function upCommand(rawOptions: unknown): Promise<number | undefined
     }
   }
 
-  // Attach to terminal if requested (CLI flag or config default)
+  // Attach to tmux session if config command uses tmux
   const shouldAttach = options.attach ?? config.attach_on_up;
-  if (shouldAttach && sessionName) {
-    const stateDir = getStateDir();
-    const socketPath = `${stateDir}/sessions/${sessionName}.sock`;
-    console.log('Attaching to terminal...');
-    return attachToSession({ socketPath });
+  if (shouldAttach && sessionName && isTmuxCommand(config.command)) {
+    const tmuxName = sanitizeName(sessionName);
+    const result = spawnSync('tmux', ['attach-session', '-t', tmuxName], {
+      stdio: 'inherit'
+    });
+    return result.status ?? 0;
   }
 
   return undefined;
