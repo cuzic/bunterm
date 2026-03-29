@@ -17,6 +17,7 @@ import type { InputHandler } from './InputHandler.js';
 export class TerminalController {
   private config: TerminalUiConfig;
   private isMobile: boolean;
+  private reinitTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: TerminalUiConfig) {
     this.config = config;
@@ -99,6 +100,9 @@ export class TerminalController {
       setTimeout(() => this.fitTerminal(), 50);
       setTimeout(() => this.fitTerminal(), 150);
     }
+
+    // Debounced reinitialize after zoom settles
+    this.scheduleReinit();
 
     return true;
   }
@@ -223,6 +227,18 @@ export class TerminalController {
     const rows = term.rows ?? 24;
     // If buffer length is greater than visible rows, we have scrollback
     return bufferLength > rows;
+  }
+
+  /**
+   * Schedule a debounced reinitialize (300ms). Optionally run a callback after reinit.
+   */
+  scheduleReinit(afterReinit?: () => void): void {
+    if (this.reinitTimer) clearTimeout(this.reinitTimer);
+    this.reinitTimer = setTimeout(() => {
+      this.reinitTimer = null;
+      this.reinitialize();
+      afterReinit?.();
+    }, 300);
   }
 
   /**
