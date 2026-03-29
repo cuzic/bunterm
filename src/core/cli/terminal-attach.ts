@@ -122,8 +122,8 @@ export async function attachToSession(options: AttachOptions): Promise<number> {
     }
 
     function cleanup() {
-      process.stdin.removeListener('data', onStdinData);
-      process.stdout.removeListener('resize', onResize);
+      process.stdin.removeAllListeners('data');
+      process.stdout.removeListener('resize', sendResize);
       if (rawModeSet && process.stdin.isTTY) {
         process.stdin.setRawMode(false);
       }
