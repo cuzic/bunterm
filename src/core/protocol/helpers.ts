@@ -15,6 +15,7 @@ import type { ServerMessage } from './index.js';
 import type {
   BellMessage,
   ClientMessage,
+  ClipboardMessage,
   ErrorMessage,
   ExitMessage,
   FileChangeMessage,
@@ -181,6 +182,13 @@ export function createPongMessage(): PongMessage {
  */
 export function createBellMessage(): BellMessage {
   return { type: 'bell' };
+}
+
+/**
+ * Create a clipboard message
+ */
+export function createClipboardMessage(text: string): ClipboardMessage {
+  return { type: 'clipboard', text };
 }
 
 /**

@@ -16,6 +16,7 @@ export {
   getStatus,
   getTmuxSessions,
   requestShutdown,
+  sendClipboard,
   startSession,
   stopSession
 } from './eden-client.js';

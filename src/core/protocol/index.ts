@@ -47,6 +47,7 @@ export {
 // === Helpers ===
 export {
   createBellMessage,
+  createClipboardMessage,
   createBlockEndMessage,
   createBlockListMessage,
   createBlockOutputMessage,
@@ -67,6 +68,7 @@ export {
 export type {
   BellMessage,
   ClientMessage,
+  ClipboardMessage,
   ErrorMessage,
   ExitMessage,
   FileChangeMessage,
@@ -108,6 +110,7 @@ import type {
 // === Import for ServerMessage union ===
 import type {
   BellMessage,
+  ClipboardMessage,
   ErrorMessage,
   ExitMessage,
   FileChangeMessage,
@@ -137,6 +140,7 @@ export type ServerMessage =
   | PongMessage
   | ErrorMessage
   | BellMessage
+  | ClipboardMessage
   | FileChangeMessage
   | BlockStartMessage
   | BlockEndMessage

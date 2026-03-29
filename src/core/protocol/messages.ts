@@ -95,6 +95,11 @@ export interface BellMessage {
   type: 'bell';
 }
 
+export interface ClipboardMessage {
+  type: 'clipboard';
+  text: string;
+}
+
 export interface FileChangeMessage {
   type: 'fileChange';
   /** File path relative to session directory */
@@ -120,6 +125,8 @@ export interface TerminalSessionOptions {
   rows?: number;
   /** Output buffer size for AI features (number of messages to keep) */
   outputBufferSize?: number;
+  /** API socket path for OSC 633 side-channel (passed as BUNTERM_API_SOCK to shell) */
+  apiSocketPath?: string;
 }
 
 export interface TerminalSessionInfo {

@@ -18,6 +18,8 @@ import { filesPlugin } from './files.js';
 import { authPlugin } from './middleware/auth.js';
 import { securityHeadersPlugin } from './middleware/security-headers.js';
 import { notificationsPlugin } from './notifications.js';
+import { clipboardPlugin } from './clipboard.js';
+import { osc633Plugin } from './osc633.js';
 import { pagesPlugin } from './pages.js';
 import { previewFilePlugin, previewPlugin } from './preview.js';
 import { sessionsPlugin } from './sessions.js';
@@ -78,6 +80,8 @@ export function createElysiaApp(deps: ElysiaAppDeps) {
     .use(aiPlugin)
     .use(claudeQuotesPlugin)
     .use(notificationsPlugin)
+    .use(clipboardPlugin)
+    .use(osc633Plugin)
     .use(filesPlugin)
     .use(previewPlugin)
     .use(authRoutesPlugin)

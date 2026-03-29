@@ -10,6 +10,7 @@ import {
   caddySyncCommand
 } from '@/core/cli/commands/caddy.js';
 import { connectCommand } from '@/core/cli/commands/connect.js';
+import { copyCommand } from '@/core/cli/commands/copy.js';
 import { connectionsCommand, connectionsRevokeCommand } from '@/core/cli/commands/connections.js';
 import { daemonCommand } from '@/core/cli/commands/daemon.js';
 import { deployCommand } from '@/core/cli/commands/deploy.js';
@@ -65,6 +66,13 @@ program
   .description('Connect to a running session from terminal')
   .option('-c, --config <path>', 'Config file path')
   .action(wrapCommand((name, options) => connectCommand(name, options)));
+
+program
+  .command('copy')
+  .description('Copy stdin to browser clipboard (pipe text to this command)')
+  .option('-s, --session <name>', 'Target session name')
+  .option('-c, --config <path>', 'Config file path')
+  .action(wrapCommand((options) => copyCommand(options)));
 
 program
   .command('status')

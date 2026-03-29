@@ -92,6 +92,11 @@ export const BellMessageSchema = z.object({
   type: z.literal('bell')
 });
 
+export const ClipboardMessageSchema = z.object({
+  type: z.literal('clipboard'),
+  text: z.string()
+});
+
 export const FileChangeMessageSchema = z.object({
   type: z.literal('fileChange'),
   path: z.string(),
@@ -246,6 +251,7 @@ export const ServerMessageSchema = z.discriminatedUnion('type', [
   PongMessageSchema,
   ErrorMessageSchema,
   BellMessageSchema,
+  ClipboardMessageSchema,
   FileChangeMessageSchema,
   // Block messages
   BlockStartMessageSchema,

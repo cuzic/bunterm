@@ -117,6 +117,18 @@ export async function requestShutdown(
 }
 
 /**
+ * Send text to browser clipboard via WebSocket
+ */
+export async function sendClipboard(
+  config: Config,
+  request: { session: string; text: string; encoding?: 'base64' | 'plain' }
+) {
+  const client = createClient(getDaemonConnection(config));
+  const response = await client.api.clipboard.post(request);
+  return unwrap(response);
+}
+
+/**
  * Get tmux sessions
  */
 export async function getTmuxSessions(config: Config) {

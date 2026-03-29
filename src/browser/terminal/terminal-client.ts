@@ -19,6 +19,7 @@ import { ClaudeBlockManager } from './ClaudeBlockManager.js';
 import { type BlockInfo, DecorationManager } from './DecorationManager.js';
 import { FileOpsSidebar } from './FileOpsSidebar.js';
 import { PathLinkManager } from './PathLinkManager.js';
+import { fetchWebSocketErrorDetail, formatWebSocketConnectionError } from './ws-error-detail.js';
 
 declare global {
   interface Window {
@@ -619,8 +620,16 @@ export class TerminalClient implements Disposable {
         this.handleMessage(event.data);
       };
 
-      this.ws.onerror = (error) => {
-        reject(error);
+      this.ws.onerror = (_error) => {
+        // The WebSocket onerror event does not expose the HTTP status code or body.
+        // Fetch the WS URL via HTTP to retrieve the rejection reason from the body.
+        fetchWebSocketErrorDetail(this.options.wsUrl)
+          .then((detail) => {
+            reject(new Error(formatWebSocketConnectionError(detail)));
+          })
+          .catch(() => {
+            reject(new Error('接続に失敗しました。サーバーが起動しているか確認してください。'));
+          });
       };
 
       this.ws.onclose = (_event) => {
@@ -666,6 +675,9 @@ export class TerminalClient implements Disposable {
         })
         .with({ type: 'bell' }, () => {
           this.terminal?.write('\x07');
+        })
+        .with({ type: 'clipboard', text: P.string }, ({ text }) => {
+          this.handleClipboardMessage(text);
         })
         .with({ type: 'fileChange', path: P.string }, ({ path, timestamp }) => {
           const ts = typeof timestamp === 'number' ? timestamp : Date.now();
@@ -730,6 +742,69 @@ export class TerminalClient implements Disposable {
           // Unknown message type - ignore
         });
     } catch (_error) {}
+  }
+
+  /**
+   * Handle clipboard message from server — write text to system clipboard
+   */
+  private handleClipboardMessage(text: string): void {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        this.showClipboardToast('Copied to clipboard');
+      },
+      () => {
+        // Clipboard API failed (no focus, permissions, or browser restriction)
+        this.showClipboardToast('Click to copy', text);
+      }
+    );
+  }
+
+  /**
+   * Show a clipboard toast notification
+   */
+  private showClipboardToast(message: string, fallbackText?: string): void {
+    // Remove any existing toast
+    const existing = document.getElementById('bunterm-clipboard-toast');
+    if (existing) {
+      existing.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.id = 'bunterm-clipboard-toast';
+    toast.style.cssText =
+      'position:fixed;bottom:20px;right:20px;padding:8px 16px;' +
+      'background:#333;color:#fff;border-radius:6px;font-size:13px;' +
+      'z-index:10000;cursor:default;opacity:0;transition:opacity 0.2s;' +
+      'font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.3)';
+
+    if (fallbackText !== undefined) {
+      toast.textContent = message;
+      toast.style.cursor = 'pointer';
+      toast.addEventListener('click', () => {
+        navigator.clipboard.writeText(fallbackText).then(
+          () => {
+            toast.textContent = 'Copied!';
+            setTimeout(() => toast.remove(), 1000);
+          },
+          () => {
+            toast.textContent = 'Copy failed';
+            setTimeout(() => toast.remove(), 1500);
+          }
+        );
+      });
+    } else {
+      toast.textContent = message;
+    }
+
+    document.body.appendChild(toast);
+    // Trigger reflow for opacity transition
+    toast.offsetHeight;
+    toast.style.opacity = '1';
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 200);
+    }, 3000);
   }
 
   /**
