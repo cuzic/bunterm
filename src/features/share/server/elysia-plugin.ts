@@ -6,8 +6,8 @@
  */
 
 import { Elysia, t } from 'elysia';
-import { coreContext } from './context.js';
-import { ErrorResponseSchema } from './errors.js';
+import { coreContext } from '@/core/server/elysia/context.js';
+import { ErrorResponseSchema } from '@/core/server/elysia/errors.js';
 
 // === Response Schemas ===
 

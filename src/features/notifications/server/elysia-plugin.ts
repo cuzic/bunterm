@@ -16,8 +16,8 @@ import {
 import type { PushSubscriptionState } from '@/core/config/types.js';
 import { getPublicVapidKey } from '@/features/notifications/server/vapid.js';
 import { createLogger } from '@/utils/logger.js';
-import { coreContext } from './context.js';
-import { ErrorResponseSchema } from './errors.js';
+import { coreContext } from '@/core/server/elysia/context.js';
+import { ErrorResponseSchema } from '@/core/server/elysia/errors.js';
 
 const log = createLogger('notifications-api');
 

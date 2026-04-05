@@ -9,8 +9,8 @@ import { Elysia, t } from 'elysia';
 import type { CommandRequest } from '@/core/protocol/index.js';
 import type { CommandExecutorManager } from '@/core/terminal/command-executor-manager.js';
 import { createBlockSSEStream } from '@/features/blocks/server/block-event-emitter.js';
-import { coreContext } from './context.js';
-import { ErrorResponseSchema } from './errors.js';
+import { coreContext } from '@/core/server/elysia/context.js';
+import { ErrorResponseSchema } from '@/core/server/elysia/errors.js';
 
 // === Helper ===
 
