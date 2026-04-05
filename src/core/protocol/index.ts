@@ -118,18 +118,19 @@ import type {
   TitleMessage
 } from './messages.js';
 
-// Re-export Claude Watcher types
+// Extension message types (optional features)
 export type {
   ClaudeAssistantTextWS,
+  ClaudeSessionEndWS,
   ClaudeSessionStartWS,
   ClaudeThinkingWS,
   ClaudeToolResultWS,
   ClaudeToolUseWS,
   ClaudeUserMessageWS,
   ClaudeWatcherMessage
-} from '@/features/claude-watcher/server/types.js';
+} from './extension-messages.js';
 
-import type { ClaudeWatcherMessage } from '@/features/claude-watcher/server/types.js';
+import type { ClaudeWatcherMessage } from './extension-messages.js';
 
 /** All server message types */
 export type ServerMessage =
