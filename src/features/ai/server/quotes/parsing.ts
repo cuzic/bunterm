@@ -73,11 +73,21 @@ export async function parseTurnsFromSessionFile(
     }
 
     const entry = result.data;
-    if (entry.isMeta || entry.type !== 'assistant' || !Array.isArray(entry.message)) {
+    if (entry.isMeta || entry.type !== 'assistant') {
       continue;
     }
 
-    const { fullText, hasToolUse, editedFiles } = parseAssistantContent(entry.message);
+    // Support both old format (message = content array) and new format (message = API response object)
+    const contentBlocks = Array.isArray(entry.message)
+      ? entry.message
+      : 'content' in entry.message && Array.isArray(entry.message.content)
+        ? entry.message.content
+        : null;
+    if (!contentBlocks) {
+      continue;
+    }
+
+    const { fullText, hasToolUse, editedFiles } = parseAssistantContent(contentBlocks);
 
     // Only include entries with text content that has 3+ lines
     if (fullText && fullText.split('\n').length >= 3) {
@@ -114,11 +124,20 @@ export async function parseTurnByUuidFromSessionFile(
     }
 
     const entry = result.data;
-    if (entry.uuid !== uuid || entry.type !== 'assistant' || !Array.isArray(entry.message)) {
+    if (entry.uuid !== uuid || entry.type !== 'assistant') {
       continue;
     }
 
-    const { fullText, toolUses } = parseAssistantContent(entry.message);
+    const contentBlocks = Array.isArray(entry.message)
+      ? entry.message
+      : 'content' in entry.message && Array.isArray(entry.message.content)
+        ? entry.message.content
+        : null;
+    if (!contentBlocks) {
+      continue;
+    }
+
+    const { fullText, toolUses } = parseAssistantContent(contentBlocks);
 
     return {
       uuid,
