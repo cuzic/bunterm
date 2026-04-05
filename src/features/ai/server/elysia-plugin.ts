@@ -9,10 +9,10 @@ import { existsSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Elysia, t } from 'elysia';
-import type { BlockContext, FileContext } from '@/features/ai/server/types.js';
-import { validateSecurePath } from '@/utils/path-security.js';
 import { coreContext } from '@/core/server/elysia/context.js';
 import { ErrorResponseSchema } from '@/core/server/elysia/errors.js';
+import type { BlockContext, FileContext } from '@/features/ai/server/types.js';
+import { validateSecurePath } from '@/utils/path-security.js';
 
 // === Request/Response Schemas ===
 

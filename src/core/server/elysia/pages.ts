@@ -14,7 +14,6 @@ import { coreContext } from './context.js';
 
 const log = createLogger('pages-elysia');
 
-
 /**
  * Generate a cryptographically random nonce for CSP.
  * Returns a base64-encoded 16-byte random value.

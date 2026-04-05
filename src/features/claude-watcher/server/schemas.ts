@@ -79,10 +79,12 @@ export const ClaudeAssistantContentSchema = z.discriminatedUnion('type', [
 export type ClaudeAssistantContent = z.infer<typeof ClaudeAssistantContentSchema>;
 
 // New format: message is an API response object with content array
-const ClaudeApiResponseSchema = z.object({
-  role: z.literal('assistant'),
-  content: z.array(ClaudeAssistantContentSchema)
-}).passthrough();
+const ClaudeApiResponseSchema = z
+  .object({
+    role: z.literal('assistant'),
+    content: z.array(ClaudeAssistantContentSchema)
+  })
+  .passthrough();
 
 export const ClaudeSessionEntrySchema = z.object({
   type: z.enum(['user', 'assistant']),

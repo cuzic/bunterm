@@ -17,7 +17,9 @@ export interface Terminal {
   cols?: number;
   getSelection(): string;
   hasSelection?(): boolean;
-  getSelectionPosition?(): { start: { x: number; y: number }; end: { x: number; y: number } } | undefined;
+  getSelectionPosition?():
+    | { start: { x: number; y: number }; end: { x: number; y: number } }
+    | undefined;
   clearSelection?(): void;
   select?(column: number, row: number, length: number): void;
   selectLines?(start: number, end: number): void;

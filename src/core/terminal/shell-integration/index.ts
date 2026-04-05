@@ -31,7 +31,7 @@ function getZshIntegration(): string {
 /**
  * Get shell integration script by shell name
  */
-function getShellIntegration(shell: 'bash' | 'zsh'): string {
+function _getShellIntegration(shell: 'bash' | 'zsh'): string {
   switch (shell) {
     case 'bash':
       return getBashIntegration();
@@ -68,7 +68,7 @@ export function getShellIntegrationDir(): string {
  * Get auto-detection snippet that sources the appropriate script
  * This can be added to a generic profile
  */
-function getAutoDetectSnippet(basePath: string): string {
+function _getAutoDetectSnippet(basePath: string): string {
   return `
 # bunterm shell integration auto-detection
 if [ -n "$BUNTERM_NATIVE" ]; then

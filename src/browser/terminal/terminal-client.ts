@@ -78,7 +78,15 @@ interface TerminalClientOptions {
 }
 
 interface ClientMessage {
-  type: 'input' | 'resize' | 'ping' | 'watchFile' | 'unwatchFile' | 'watchDir' | 'unwatchDir' | 'replayRequest';
+  type:
+    | 'input'
+    | 'resize'
+    | 'ping'
+    | 'watchFile'
+    | 'unwatchFile'
+    | 'watchDir'
+    | 'unwatchDir'
+    | 'replayRequest';
   data?: string;
   cols?: number;
   rows?: number;
@@ -1229,7 +1237,6 @@ export class TerminalClient implements Disposable {
       // Request replay of buffered output to restore terminal content
       this.send({ type: 'replayRequest' });
     }
-
   }
 
   /**

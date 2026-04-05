@@ -21,7 +21,7 @@ export interface ValidationResult {
 }
 
 /** Default security configuration */
-const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
+const _DEFAULT_SECURITY_CONFIG: SecurityConfig = {
   devMode: false,
   allowedOrigins: []
 };

@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanupTestState, resetTestState, TEST_STATE_DIR } from '@/test-setup.js';
+import { cleanupTestState, getTestStateDir, resetTestState } from '@/test-setup.js';
 
 describe('state', () => {
   beforeEach(() => {
@@ -17,9 +17,10 @@ describe('state', () => {
   describe('getStateDir / getSocketPath', () => {
     test('returns test directory when env var is set', async () => {
       const { getStateDir, getSocketPath } = await import('./state.js');
+      const testStateDir = getTestStateDir();
 
-      expect(getStateDir()).toBe(TEST_STATE_DIR);
-      expect(getSocketPath()).toBe(`${TEST_STATE_DIR}/bunterm.sock`);
+      expect(getStateDir()).toBe(testStateDir);
+      expect(getSocketPath()).toBe(`${testStateDir}/bunterm.sock`);
     });
   });
 

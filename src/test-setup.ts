@@ -70,4 +70,3 @@ export function getTestStateDir(): string {
   }
   return currentTestStateDir;
 }
-

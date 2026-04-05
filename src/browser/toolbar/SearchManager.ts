@@ -14,7 +14,6 @@ export class SearchManager {
   private caseSensitive = false;
   private regex = false;
   private currentMatchIndex = 0;
-  private totalMatches = 0;
 
   private searchBar: HTMLElement | null = null;
   private searchInput: HTMLInputElement | null = null;

@@ -7,8 +7,6 @@
 
 import type { DaemonManager } from '@/core/config/types.js';
 import {
-  type DaemonClientDeps,
-  defaultDaemonClientDeps,
   getDaemonClientDeps,
   resetDaemonClientDeps,
   setDaemonClientDeps
@@ -29,12 +27,7 @@ import {
 } from './daemon-waiter.js';
 
 // Re-export probe functions
-export {
-  isDaemonRunning,
-  resetDaemonClientDeps,
-  sendCommand,
-  setDaemonClientDeps
-};
+export { isDaemonRunning, resetDaemonClientDeps, sendCommand, setDaemonClientDeps };
 
 /**
  * Ensure daemon is running, starting it if necessary

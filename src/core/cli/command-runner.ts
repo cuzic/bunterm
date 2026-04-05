@@ -94,7 +94,7 @@ async function runResultCommand(fn: ResultCommandFn): Promise<void> {
 /**
  * Create a wrapped Result-returning command action for Commander.
  */
-function wrapResultCommand<T extends unknown[]>(
+function _wrapResultCommand<T extends unknown[]>(
   fn: (...args: T) => Promise<ResultCommandResult> | ResultCommandResult
 ): (...args: T) => void {
   return (...args: T) => {

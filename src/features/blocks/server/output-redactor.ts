@@ -261,7 +261,7 @@ export function createRedactor(config?: RedactionConfig): OutputRedactor {
 /**
  * Convenience function to redact text with default settings
  */
-function redactSensitive(text: string): string {
+function _redactSensitive(text: string): string {
   const redactor = new OutputRedactor();
   return redactor.redact(text);
 }

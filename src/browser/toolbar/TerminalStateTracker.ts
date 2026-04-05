@@ -29,13 +29,15 @@ export class TerminalStateTracker implements Mountable {
     scope.onBus(toolbarEvents, 'claude:sessionEnd', () => this.setState('idle'));
 
     // Listen for selection events
-    scope.add(toolbarEvents.on('selection:change', (hasSelection) => {
-      if (hasSelection && this._state === 'idle') {
-        this.setState('selecting');
-      } else if (!hasSelection && this._state === 'selecting') {
-        this.setState('idle');
-      }
-    }));
+    scope.add(
+      toolbarEvents.on('selection:change', (hasSelection) => {
+        if (hasSelection && this._state === 'idle') {
+          this.setState('selecting');
+        } else if (!hasSelection && this._state === 'selecting') {
+          this.setState('idle');
+        }
+      })
+    );
   }
 
   onChange(cb: (state: TerminalState) => void): () => void {

@@ -13,8 +13,8 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { BlockModel } from '@/features/blocks/server/block-model.js';
-import { nullPlugins } from './session-plugins.js';
 import { TerminalSession } from './session.js';
+import { nullPlugins } from './session-plugins.js';
 
 // === Helpers ===
 

@@ -92,7 +92,7 @@ export async function stopSession(config: Config, name: string): Promise<void> {
  *
  * Falls back to raw fetch since shutdown may not be in the Elysia app yet.
  */
-async function requestShutdown(
+async function _requestShutdown(
   config: Config,
   options?: { stopSessions?: boolean; killTmux?: boolean }
 ): Promise<void> {
@@ -129,7 +129,7 @@ export async function sendClipboard(
 /**
  * Get tmux sessions
  */
-async function getTmuxSessions(config: Config) {
+async function _getTmuxSessions(config: Config) {
   const client = createClient(getDaemonConnection(config));
   const response = await client.api.tmux.sessions.get();
   return unwrap(response);

@@ -8,7 +8,9 @@
 import mittModule, { type Emitter, type Handler, type WildcardHandler } from 'mitt';
 
 // mitt exports default function, but TypeScript module resolution may wrap it
-const mitt = mittModule as unknown as <Events extends Record<string, unknown>>(all?: unknown) => Emitter<Events>;
+const mitt = mittModule as unknown as <Events extends Record<string, unknown>>(
+  all?: unknown
+) => Emitter<Events>;
 
 /**
  * Toolbar event types with their payloads

@@ -158,7 +158,7 @@ export function validateEnvAtStartup(): string[] {
 /**
  * Get bunterm config directory (with fallback)
  */
-function getConfigDir(fallback: string): string {
+function _getConfigDir(fallback: string): string {
   const env = parseBuntermEnv();
   return env?.BUNTERM_CONFIG_DIR ?? fallback;
 }
@@ -166,7 +166,7 @@ function getConfigDir(fallback: string): string {
 /**
  * Get bunterm state directory (with fallback)
  */
-function getStateDir(fallback: string): string {
+function _getStateDir(fallback: string): string {
   const env = parseBuntermEnv();
   return env?.BUNTERM_STATE_DIR ?? fallback;
 }
@@ -174,7 +174,7 @@ function getStateDir(fallback: string): string {
 /**
  * Get log level
  */
-function getLogLevel(): LogLevel {
+function _getLogLevel(): LogLevel {
   const env = parseBuntermEnv();
   return env?.BUNTERM_LOG_LEVEL ?? 'info';
 }
@@ -182,7 +182,7 @@ function getLogLevel(): LogLevel {
 /**
  * Get log file path
  */
-function getLogFile(): string | null {
+function _getLogFile(): string | null {
   const env = parseBuntermEnv();
   return env?.BUNTERM_LOG_FILE ?? null;
 }
@@ -190,7 +190,7 @@ function getLogFile(): string | null {
 /**
  * Check if running inside tmux
  */
-function isInsideTmux(): boolean {
+function _isInsideTmux(): boolean {
   const env = parseSystemEnv();
   return !!env?.TMUX;
 }
@@ -198,7 +198,7 @@ function isInsideTmux(): boolean {
 /**
  * Get default shell
  */
-function getDefaultShell(): string {
+function _getDefaultShell(): string {
   const env = parseSystemEnv();
   return env?.SHELL ?? '/bin/bash';
 }
@@ -206,7 +206,7 @@ function getDefaultShell(): string {
 /**
  * Get home directory
  */
-function getHomeDir(): string {
+function _getHomeDir(): string {
   const env = parseSystemEnv();
   return env?.HOME ?? '/tmp';
 }
@@ -214,7 +214,7 @@ function getHomeDir(): string {
 /**
  * Clear cached environment (for testing)
  */
-function clearEnvCache(): void {
+function _clearEnvCache(): void {
   cachedBuntermEnv = null;
   cachedSystemEnv = null;
 }

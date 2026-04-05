@@ -9,8 +9,8 @@ import {
   caddyStatusCommand
 } from '@/core/cli/commands/caddy.js';
 import { connectCommand } from '@/core/cli/commands/connect.js';
-import { copyCommand } from '@/core/cli/commands/copy.js';
 import { connectionsCommand, connectionsRevokeCommand } from '@/core/cli/commands/connections.js';
+import { copyCommand } from '@/core/cli/commands/copy.js';
 import { daemonCommand } from '@/core/cli/commands/daemon.js';
 import { deployCommand } from '@/core/cli/commands/deploy.js';
 import { doctorCommand } from '@/core/cli/commands/doctor.js';

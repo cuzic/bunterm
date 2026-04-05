@@ -280,3 +280,100 @@ describe('generateNativeTerminalHtml', () => {
     expect(html).toContain('"base_path":"/custom-base"');
   });
 });
+
+describe('generateNativeTerminalHtml with nonce', () => {
+  test('inline script tags have nonce attribute when nonce is provided', () => {
+    const nonce = 'testNonce12345==';
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig(),
+      nonce
+    });
+
+    // All inline <script> tags must have nonce attribute
+    const inlineScripts = html.match(/<script(?:[^>]*)>[\s\S]*?<\/script>/g) ?? [];
+    const inlineOnly = inlineScripts.filter((s) => !s.includes('src='));
+    expect(inlineOnly.length).toBeGreaterThan(0);
+    for (const script of inlineOnly) {
+      expect(script).toContain(`nonce="${nonce}"`);
+    }
+  });
+
+  test('external script src tags have nonce attribute when nonce is provided', () => {
+    const nonce = 'testNonce12345==';
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig(),
+      nonce
+    });
+
+    // External <script src="..."> tags must also have nonce attribute
+    const externalScripts = html.match(/<script[^>]+src="[^"]*"[^>]*>/g) ?? [];
+    expect(externalScripts.length).toBeGreaterThan(0);
+    for (const script of externalScripts) {
+      expect(script).toContain(`nonce="${nonce}"`);
+    }
+  });
+
+  test('no nonce attribute on script tags when nonce is not provided', () => {
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig()
+    });
+
+    expect(html).not.toContain('nonce=');
+  });
+
+  test('nonce value is properly set on config inline script', () => {
+    const nonce = 'configNonce==';
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig(),
+      nonce
+    });
+
+    // The config script containing __TERMINAL_UI_CONFIG__ must have nonce
+    expect(html).toContain(`<script nonce="${nonce}">`);
+    expect(html).toContain('window.__TERMINAL_UI_CONFIG__');
+  });
+
+  test('nonce value is properly set on initialization inline script', () => {
+    const nonce = 'initNonce==';
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig(),
+      nonce
+    });
+
+    // The initialization script containing TerminalClient must have nonce
+    const initScriptMatch = html.match(
+      /<script[^>]*nonce="[^"]*"[^>]*>[\s\S]*?TerminalClient[\s\S]*?<\/script>/
+    );
+    expect(initScriptMatch).not.toBeNull();
+    expect(initScriptMatch![0]).toContain(`nonce="${nonce}"`);
+  });
+
+  test('nonce is HTML-safe and does not break attribute parsing for base64', () => {
+    // Base64 nonces can contain +, /, = characters — these are safe in double-quoted attributes
+    const nonce = 'aB3+c/d==';
+    const html = generateNativeTerminalHtml({
+      sessionName: 'test-session',
+      basePath: '/bunterm',
+      sessionPath: '/bunterm/test-session',
+      config: createTestConfig(),
+      nonce
+    });
+
+    expect(html).toContain(`nonce="${nonce}"`);
+  });
+});

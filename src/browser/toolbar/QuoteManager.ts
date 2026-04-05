@@ -535,7 +535,9 @@ export class QuoteManager implements Mountable {
         const meta = document.createElement('div');
         meta.className = 'tui-quote-item-meta';
         meta.textContent =
-          turn.editedFiles && turn.editedFiles.length > 0 ? `Edited: ${turn.editedFiles.join(', ')}` : 'Used tools';
+          turn.editedFiles && turn.editedFiles.length > 0
+            ? `Edited: ${turn.editedFiles.join(', ')}`
+            : 'Used tools';
         content.appendChild(meta);
       }
 
@@ -1195,7 +1197,9 @@ export class QuoteManager implements Mountable {
 
     if (turn.hasToolUse || (turn.editedFiles && turn.editedFiles.length > 0)) {
       const tools =
-        turn.editedFiles && turn.editedFiles.length > 0 ? `Edited: ${turn.editedFiles.join(', ')}` : 'Used tools';
+        turn.editedFiles && turn.editedFiles.length > 0
+          ? `Edited: ${turn.editedFiles.join(', ')}`
+          : 'Used tools';
       const metaDiv = document.createElement('div');
       Object.assign(metaDiv.style, { color: '#888', fontSize: '9px', marginTop: '4px' });
       metaDiv.textContent = `🔧 ${tools}`;

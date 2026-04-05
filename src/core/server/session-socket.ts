@@ -11,14 +11,18 @@
  * 4. Control messages: 0x01 prefix = resize JSON, else raw data
  */
 
-import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { join } from 'node:path';
 
 import { getStateDir } from '@/core/config/state.js';
 import type { TerminalSession } from '@/core/terminal/session.js';
 import { isFdPassingSupported, sendFd } from '@/utils/fd-passing.js';
+import { createLogger } from '@/utils/logger.js';
+import { isPeerCredentialSupported, validateSameUser } from '@/utils/peer-credentials.js';
 import { parseControlMessage } from '@/utils/socket-relay.js';
+
+const log = createLogger('session-socket');
 
 export interface SessionSocketResult {
   /** The net.Server listening on the Unix socket */
@@ -29,11 +33,15 @@ export interface SessionSocketResult {
   cleanup: () => void;
 }
 
+export interface SessionSocketOptions {
+  stateDir?: string;
+}
+
 /**
  * Ensure the sessions directory exists under the state dir.
  */
-function ensureSessionsDir(): string {
-  const sessionsDir = join(getStateDir(), 'sessions');
+function ensureSessionsDir(stateDir: string): string {
+  const sessionsDir = join(stateDir, 'sessions');
   if (!existsSync(sessionsDir)) {
     mkdirSync(sessionsDir, { recursive: true });
   }
@@ -50,8 +58,12 @@ function ensureSessionsDir(): string {
  * Resize control messages (0x01 prefix) trigger session.resize().
  * Raw PTY output is forwarded to all connected socket clients.
  */
-export function createSessionSocket(session: TerminalSession): SessionSocketResult {
-  const sessionsDir = ensureSessionsDir();
+export function createSessionSocket(
+  session: TerminalSession,
+  options?: SessionSocketOptions
+): SessionSocketResult {
+  const stateDir = options?.stateDir ?? getStateDir();
+  const sessionsDir = ensureSessionsDir(stateDir);
   const socketPath = join(sessionsDir, `${session.name}.sock`);
 
   // Remove stale socket file if it exists
@@ -84,6 +96,17 @@ export function createSessionSocket(session: TerminalSession): SessionSocketResu
   session.addRawOutputListener(onRawOutput);
 
   const server = createServer((socket: Socket) => {
+    // Credential check: reject connections from different users
+    const socketFd = (socket as unknown as { _handle?: { fd?: number } })._handle?.fd;
+    if (socketFd !== undefined && isPeerCredentialSupported()) {
+      const result = validateSameUser(socketFd);
+      if (!result.allowed) {
+        log.warn(`Rejected session socket connection: ${result.reason}`);
+        socket.destroy();
+        return;
+      }
+    }
+
     connectedClients.add(socket);
 
     // Try fd passing: send PTY master fd to client
@@ -137,6 +160,13 @@ export function createSessionSocket(session: TerminalSession): SessionSocketResu
   });
 
   server.listen(socketPath);
+
+  // Restrict socket file to owner only (defense in depth)
+  try {
+    chmodSync(socketPath, 0o600);
+  } catch {
+    log.warn(`Failed to set permissions on session socket: ${socketPath}`);
+  }
 
   let cleaned = false;
 

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
+import { withEnvSync, withoutEnvSync } from '@/test-helpers/env-scope.js';
 import { createMockProcessRunner } from './process-runner.js';
 import {
   createMockTmuxClient,
@@ -8,27 +9,19 @@ import {
 } from './tmux-client.js';
 
 describe('createTmuxClient', () => {
-  const originalEnv = process.env['TMUX'];
-
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env['TMUX'] = originalEnv;
-    } else {
-      process.env['TMUX'] = undefined;
-    }
-  });
-
   describe('isInsideTmux', () => {
     test('returns true when TMUX env is set', () => {
-      process.env['TMUX'] = '/tmp/tmux-1000/default,12345,0';
-      const client = createTmuxClient();
-      expect(client.isInsideTmux()).toBe(true);
+      withEnvSync({ TMUX: '/tmp/tmux-1000/default,12345,0' }, () => {
+        const client = createTmuxClient();
+        expect(client.isInsideTmux()).toBe(true);
+      });
     });
 
     test('returns false when TMUX env is not set', () => {
-      process.env['TMUX'] = undefined;
-      const client = createTmuxClient();
-      expect(client.isInsideTmux()).toBe(false);
+      withoutEnvSync(['TMUX'], () => {
+        const client = createTmuxClient();
+        expect(client.isInsideTmux()).toBe(false);
+      });
     });
   });
 

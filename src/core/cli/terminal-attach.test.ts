@@ -65,7 +65,7 @@ async function createTestSocketServer(): Promise<TestSocketServer> {
       } catch {
         // already removed
       }
-    },
+    }
   };
 }
 

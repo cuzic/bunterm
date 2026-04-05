@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { getFeaturePlugins } from '@/bootstrap/plugin-registry.js';
+import { createServices, createSessionPluginsFactory } from '@/bootstrap/service-factory.js';
 import { getCurrentConfig, initConfigManager } from '@/core/config/config-manager.js';
 import { clearDaemonState, getStateDir, setDaemonState } from '@/core/config/state.js';
 import type { Config } from '@/core/config/types.js';
-import { getFeaturePlugins } from '@/bootstrap/plugin-registry.js';
-import { createServices, createSessionPluginsFactory } from '@/bootstrap/service-factory.js';
 import { InMemoryCookieSessionStore } from '@/core/server/auth/cookie-session.js';
-import { NativeSessionManager } from '@/core/server/session-manager.js';
 import { createNativeTerminalServer, type NativeTerminalServer } from '@/core/server/server.js';
+import { NativeSessionManager } from '@/core/server/session-manager.js';
 import { createLogger, setLogFile } from '@/utils/logger.js';
 import { captureException, initSentry } from '@/utils/sentry.js';
 import { VERSION } from '@/version.js';

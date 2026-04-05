@@ -82,7 +82,12 @@ export class SearchableList<T> implements Mountable {
 
       const index = Number.parseInt(indexStr, 10);
       const item = this._filteredItems[index];
-      if (!Number.isNaN(index) && index >= 0 && index < this._filteredItems.length && item !== undefined) {
+      if (
+        !Number.isNaN(index) &&
+        index >= 0 &&
+        index < this._filteredItems.length &&
+        item !== undefined
+      ) {
         this.config.onSelect(item, index);
       }
     });
@@ -160,7 +165,11 @@ export class SearchableList<T> implements Mountable {
    */
   private selectCurrent(): void {
     const item = this._filteredItems[this._selectedIndex];
-    if (this._filteredItems.length > 0 && this._selectedIndex < this._filteredItems.length && item !== undefined) {
+    if (
+      this._filteredItems.length > 0 &&
+      this._selectedIndex < this._filteredItems.length &&
+      item !== undefined
+    ) {
       this.config.onSelect(item, this._selectedIndex);
     }
   }

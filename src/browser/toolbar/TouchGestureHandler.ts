@@ -45,8 +45,6 @@ export class TouchGestureHandler implements Mountable {
   private pinchStartFontSize: number;
   private lastTapTime = 0;
   private scrollActive = false;
-
-  private touchStartPos: { x: number; y: number } | null = null;
   private scrollBtn: HTMLElement | null = null;
 
   // Edge swipe for session switcher

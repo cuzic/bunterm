@@ -13,10 +13,7 @@ const DAEMON_CHECK_INTERVAL = 100;
 /**
  * Poll until condition returns true, or timeout.
  */
-function waitForCondition(
-  condition: () => Promise<boolean>,
-  timeout: number
-): Promise<boolean> {
+function waitForCondition(condition: () => Promise<boolean>, timeout: number): Promise<boolean> {
   return new Promise((resolve) => {
     const startTime = Date.now();
 

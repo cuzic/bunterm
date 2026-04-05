@@ -24,6 +24,8 @@ export interface NativeTerminalHtmlOptions {
   title?: string;
   /** Current working directory of the session */
   cwd?: string;
+  /** CSP nonce for script tags (eliminates 'unsafe-inline' from script-src) */
+  nonce?: string;
 }
 
 /**
@@ -37,8 +39,12 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
     config,
     isShared = false,
     title = `${sessionName} - bunterm`,
-    cwd = ''
+    cwd = '',
+    nonce
   } = options;
+
+  // Build nonce attribute string for script tags
+  const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
 
   const wsPath = `${sessionPath}/ws`;
 
@@ -169,7 +175,7 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   ${onboardingHtml.replace('id="tui-onboarding"', 'id="tui-onboarding" style="display:none"')}
 
   <!-- Configuration (must be before terminal-ui.js) -->
-  <script>
+  <script${nonceAttr}>
     // Configuration for terminal-ui.js
     window.__TERMINAL_UI_CONFIG__ = ${terminalUiConfig};
     window.__BUNTERM_CONFIG__ = window.__TERMINAL_UI_CONFIG__;
@@ -178,12 +184,12 @@ export function generateNativeTerminalHtml(options: NativeTerminalHtmlOptions): 
   </script>
 
   <!-- Scripts -->
-  <script src="${basePath}/xterm-bundle.js"></script>
-  <script src="${basePath}/terminal-client.js"></script>
-  <script src="${basePath}/terminal-ui.js"></script>
-  ${aiChatEnabled ? `<script src="${basePath}/ai-chat.js"></script>` : ''}
+  <script src="${basePath}/xterm-bundle.js"${nonceAttr}></script>
+  <script src="${basePath}/terminal-client.js"${nonceAttr}></script>
+  <script src="${basePath}/terminal-ui.js"${nonceAttr}></script>
+  ${aiChatEnabled ? `<script src="${basePath}/ai-chat.js"${nonceAttr}></script>` : ''}
 
-  <script>
+  <script${nonceAttr}>
     (function() {
       'use strict';
 

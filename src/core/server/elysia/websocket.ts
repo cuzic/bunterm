@@ -54,28 +54,31 @@ const WsClientMessage = t.Union([
 ]);
 
 import {
-  DEFAULT_SECURITY_CONFIG,
+  createSecurityConfig,
   extractBearerToken,
   getTokenGenerator,
-  type SecurityConfig,
   validateOrigin
 } from '@/core/server/ws/index.js';
 import { coreContext } from './context.js';
 
 export interface WebSocketPluginOptions {
-  /** Security configuration for Origin validation */
-  securityConfig?: SecurityConfig;
   /** Enable token authentication (default: false for backward compatibility) */
   enableTokenAuth?: boolean;
 }
 
 export const websocketPlugin = (options: WebSocketPluginOptions = {}) => {
   const { enableTokenAuth = false } = options;
-  const securityConfig = options.securityConfig ?? DEFAULT_SECURITY_CONFIG;
 
   return new Elysia({ name: 'websocket' }).use(coreContext).ws('/:sessionName/ws', {
     body: WsClientMessage,
-    beforeHandle({ request }) {
+    beforeHandle({ request, config }) {
+      // Build SecurityConfig from coreContext config on each request
+      const securityConfig = createSecurityConfig({
+        devMode: config.security.dev_mode,
+        allowedOrigins: config.security.allowed_origins,
+        hostname: config.hostname
+      });
+
       // Origin validation on upgrade
       const originResult = validateOrigin(request, securityConfig);
       if (!originResult.allowed) {

@@ -11,7 +11,11 @@ import { createConnection, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { createSessionSocket, type SessionSocketResult } from './session-socket.js';
+import {
+  createSessionSocket,
+  type SessionSocketOptions,
+  type SessionSocketResult
+} from './session-socket.js';
 
 // Minimal mock of TerminalSession for socket testing
 function createMockSession(name: string) {
@@ -56,7 +60,6 @@ function setupTestStateDir(): string {
     `bunterm-test-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(testDir, { recursive: true });
-  process.env['BUNTERM_STATE_DIR'] = testDir;
   return testDir;
 }
 
@@ -71,9 +74,11 @@ function connectToSocket(socketPath: string): Promise<Socket> {
 describe('createSessionSocket', () => {
   let testDir: string;
   let socketResult: SessionSocketResult | null = null;
+  let socketOptions: SessionSocketOptions;
 
   beforeEach(() => {
     testDir = setupTestStateDir();
+    socketOptions = { stateDir: testDir };
   });
 
   afterEach(() => {
@@ -81,7 +86,6 @@ describe('createSessionSocket', () => {
       socketResult.cleanup();
       socketResult = null;
     }
-    delete process.env['BUNTERM_STATE_DIR'];
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -90,7 +94,7 @@ describe('createSessionSocket', () => {
   test('creates a .sock file in sessions directory', async () => {
     const session = createMockSession('test-session');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     const expectedPath = join(testDir, 'sessions', 'test-session.sock');
     expect(socketResult.socketPath).toBe(expectedPath);
@@ -110,7 +114,7 @@ describe('createSessionSocket', () => {
   test('client can connect to the socket', async () => {
     const session = createMockSession('connect-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     // Wait for server to start listening
     await new Promise<void>((resolve) => {
@@ -129,7 +133,7 @@ describe('createSessionSocket', () => {
   test('cleanup removes the .sock file', async () => {
     const session = createMockSession('cleanup-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     // Wait for server to start listening
     await new Promise<void>((resolve) => {
@@ -152,7 +156,7 @@ describe('createSessionSocket', () => {
   test('cleanup removes raw output listener', () => {
     const session = createMockSession('listener-cleanup-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     expect(session.rawOutputListeners.size).toBe(1);
 
@@ -165,7 +169,7 @@ describe('createSessionSocket', () => {
   test('client receives PTY output', async () => {
     const session = createMockSession('output-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     await new Promise<void>((resolve) => {
       if (socketResult!.server.listening) {
@@ -192,7 +196,7 @@ describe('createSessionSocket', () => {
   test('client input is written to PTY', async () => {
     const session = createMockSession('input-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     await new Promise<void>((resolve) => {
       if (socketResult!.server.listening) {
@@ -218,7 +222,7 @@ describe('createSessionSocket', () => {
   test('resize control message triggers session resize', async () => {
     const session = createMockSession('resize-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     await new Promise<void>((resolve) => {
       if (socketResult!.server.listening) {
@@ -248,7 +252,7 @@ describe('createSessionSocket', () => {
   test('cleanup is idempotent', () => {
     const session = createMockSession('idempotent-test');
     // biome-ignore lint: mock type lacks full TerminalSession interface
-    socketResult = createSessionSocket(session as any);
+    socketResult = createSessionSocket(session as any, socketOptions);
 
     // Should not throw when called multiple times
     socketResult.cleanup();

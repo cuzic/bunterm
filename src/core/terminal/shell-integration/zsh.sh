@@ -31,7 +31,15 @@ export __BUNTERM_SHELL_INTEGRATION__=1
 
 # OSC escape sequence helpers
 __bunterm_osc_633() {
+    # Traditional stdout output (for xterm.js via tmux passthrough)
     printf '\033]633;%s\007' "$1"
+    # Side-channel: send directly to bunterm daemon via osc633-sender binary
+    if [[ -n "$BUNTERM_OSC633_SENDER" ]] && [[ -x "$BUNTERM_OSC633_SENDER" ]]; then
+        local _type="${1%%\;*}"
+        local _data="${1#*\;}"
+        [[ "$_data" = "$1" ]] && _data=""
+        "$BUNTERM_OSC633_SENDER" "$BUNTERM_SESSION" "$_type" "$_data" &>/dev/null &!
+    fi
 }
 
 # Send current working directory

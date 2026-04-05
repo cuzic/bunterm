@@ -8,8 +8,8 @@
 import { getApiSocketPath } from '@/core/config/state.js';
 import type { Config, NativeTerminalConfig } from '@/core/config/types.js';
 import type { NativeTerminalWebSocket, TerminalSessionInfo } from '@/core/protocol/index.js';
-import type { SessionPlugins } from '@/core/terminal/session-plugins.js';
 import { TerminalSession } from '@/core/terminal/session.js';
+import type { SessionPlugins } from '@/core/terminal/session-plugins.js';
 import { buildSpawnArgs, expandCommand, sanitizeName } from '@/utils/command-template.js';
 import { createSessionSocket, type SessionSocketResult } from './session-socket.js';
 

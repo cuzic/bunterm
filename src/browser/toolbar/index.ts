@@ -6,7 +6,7 @@
  */
 
 import { toolbarEvents } from '@/browser/shared/events.js';
-import { KeyPriority, KeyRouter } from '@/browser/shared/key-router.js';
+import { KeyPriority } from '@/browser/shared/key-router.js';
 import { Scope } from '@/browser/shared/lifecycle.js';
 import { RepeatButtonHandler } from '@/browser/shared/RepeatButtonHandler.js';
 import type {
@@ -74,7 +74,6 @@ class ToolbarApp {
   private selectionHandles: SelectionHandleManager;
   private stateTracker: TerminalStateTracker;
   private miniBar: MiniBar;
-  private keyRouter = new KeyRouter();
 
   private isMobile: boolean;
 
@@ -967,14 +966,18 @@ class ToolbarApp {
     scope.add(toolbarEvents.on('notification:bell', () => {}));
 
     // Listen for toast notifications
-    scope.add(toolbarEvents.on('toast:show', ({ message, type }) => {
-      this.notifications.showToast(message, type || 'info');
-    }));
+    scope.add(
+      toolbarEvents.on('toast:show', ({ message, type }) => {
+        this.notifications.showToast(message, type || 'info');
+      })
+    );
 
     // Listen for font change events
-    scope.add(toolbarEvents.on('font:change', (size) => {
-      this.fontSizeManager.save(size);
-    }));
+    scope.add(
+      toolbarEvents.on('font:change', (size) => {
+        this.fontSizeManager.save(size);
+      })
+    );
 
     // Listen for error events
     scope.add(toolbarEvents.on('error', (_error) => {}));

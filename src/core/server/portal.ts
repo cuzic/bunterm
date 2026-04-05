@@ -581,7 +581,11 @@ function generateDirectoryBrowserScript(basePath: string, nonceAttr: string): st
   </script>`;
 }
 
-export function generatePortalHtml(config: Config, sessions: SessionState[], nonce?: string): string {
+export function generatePortalHtml(
+  config: Config,
+  sessions: SessionState[],
+  nonce?: string
+): string {
   const basePath = config.base_path;
   const sessionItems = sessions
     .map((session) => {
@@ -606,7 +610,9 @@ export function generatePortalHtml(config: Config, sessions: SessionState[], non
     : '';
   const dirBrowserModal = dirBrowserEnabled ? generateDirectoryBrowserModal() : '';
   const nonceAttr = nonce ? ` nonce="${nonce}"` : '';
-  const dirBrowserScript = dirBrowserEnabled ? generateDirectoryBrowserScript(basePath, nonceAttr) : '';
+  const dirBrowserScript = dirBrowserEnabled
+    ? generateDirectoryBrowserScript(basePath, nonceAttr)
+    : '';
   const dirBrowserCss = dirBrowserEnabled ? directoryBrowserStyles : '';
 
   // tmux sessions section

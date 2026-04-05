@@ -47,11 +47,11 @@ export {
 // === Helpers ===
 export {
   createBellMessage,
-  createClipboardMessage,
   createBlockEndMessage,
   createBlockListMessage,
   createBlockOutputMessage,
   createBlockStartMessage,
+  createClipboardMessage,
   createErrorMessage,
   createExitMessage,
   createFileChangeMessage,

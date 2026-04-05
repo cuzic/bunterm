@@ -172,7 +172,7 @@ export async function handleFileList(
 /**
  * Handle recent files request
  */
-async function handleRecentFiles(
+async function _handleRecentFiles(
   manager: FileTransferManager,
   res: ServerResponse,
   options: RecentFilesOptions
@@ -257,7 +257,7 @@ export function parseMultipartFile(body: Buffer, boundary: string): ParsedFile |
  * Extract boundary from Content-Type header
  * Uses string parsing instead of regex for security
  */
-function extractBoundary(contentType: string): string | null {
+function _extractBoundary(contentType: string): string | null {
   // Limit Content-Type header length to prevent DoS
   if (contentType.length > 500) {
     return null;

@@ -5,9 +5,8 @@
  */
 
 import type { FitAddon } from '@xterm/addon-fit';
-import type { SearchAddon } from '@xterm/addon-search';
 import type { SerializeAddon } from '@xterm/addon-serialize';
-import type { IDisposable, Terminal } from '@xterm/xterm';
+import type { Terminal } from '@xterm/xterm';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Window.XtermBundle is declared in terminal-client.ts

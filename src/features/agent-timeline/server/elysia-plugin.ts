@@ -6,10 +6,10 @@
  */
 
 import { Elysia, t } from 'elysia';
-import { getAgentStatuses } from '@/features/agent-timeline/server/agent-status.js';
-import type { AgentTimelineEvent } from '@/features/agent-timeline/server/types.js';
 import { coreContext } from '@/core/server/elysia/context.js';
 import { ErrorResponseSchema } from '@/core/server/elysia/errors.js';
+import { getAgentStatuses } from '@/features/agent-timeline/server/agent-status.js';
+import type { AgentTimelineEvent } from '@/features/agent-timeline/server/types.js';
 
 // === Plugin ===
 

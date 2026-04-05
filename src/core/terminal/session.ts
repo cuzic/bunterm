@@ -31,10 +31,7 @@ import {
   type TerminalSessionOptions
 } from '@/core/protocol/index.js';
 import { ClientBroadcaster } from './broadcaster.js';
-import { type SessionPlugins, nullPlugins } from './session-plugins.js';
-import type { BlockManager, FileChangeNotifier, SessionWatcher } from './session-plugins.js';
 import { applyCjkWorkaround, needsCjkWorkaround } from './cjk-workaround.js';
-import { buildShellEnvInjection } from './shell-env-injection.js';
 import { filterDAResponses, filterFocusEvents } from './da-responder.js';
 import { fixOsc52ClipboardTarget } from './dcs-handler.js';
 import { type OscNotification, parseOscNotifications } from './osc-notification-parser.js';
@@ -45,6 +42,9 @@ import {
   parseProperty,
   unescapeOsc633Command
 } from './osc633-parser.js';
+import type { BlockManager, FileChangeNotifier, SessionWatcher } from './session-plugins.js';
+import { nullPlugins, type SessionPlugins } from './session-plugins.js';
+import { buildShellEnvInjection } from './shell-env-injection.js';
 
 // Bell character (ASCII 7)
 const BELL_CHAR = 0x07;
@@ -168,10 +168,7 @@ export class TerminalSession implements AsyncDisposable {
     const ptyFdsBefore = this.detectPtmxFds();
 
     // Build shell-specific env injection (e.g. PROMPT_COMMAND for bash, ZDOTDIR for zsh)
-    const injection = buildShellEnvInjection(
-      this.command,
-      process.env as Record<string, string>
-    );
+    const injection = buildShellEnvInjection(this.command, process.env as Record<string, string>);
     if (injection.cleanupDir) {
       this.injectionCleanupDir = injection.cleanupDir;
     }

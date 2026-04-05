@@ -1,5 +1,5 @@
 import { swagger } from '@elysiajs/swagger';
-import { Elysia, type AnyElysia } from 'elysia';
+import { type AnyElysia, Elysia } from 'elysia';
 import type { Config } from '@/core/config/types.js';
 import type { CookieSessionStore } from '@/core/server/auth/cookie-session.js';
 import type { OtpManager } from '@/core/server/auth/otp-manager.js';
@@ -8,10 +8,10 @@ import type { CommandExecutorManager } from '@/core/terminal/command-executor-ma
 import type { AgentTimelineService } from '@/features/agent-timeline/server/timeline-service.js';
 import type { BlockEventEmitter } from '@/features/blocks/server/block-event-emitter.js';
 import type { ShareManager } from '@/features/share/server/share-manager.js';
-import type { TimelineHtmlRenderer } from './context.js';
 import { authRoutesPlugin } from './auth.js';
 import { authSessionsPlugin } from './auth-sessions.js';
 import { clipboardPlugin } from './clipboard.js';
+import type { TimelineHtmlRenderer } from './context.js';
 import { filesPlugin } from './files.js';
 import { authPlugin } from './middleware/auth.js';
 import { securityHeadersPlugin } from './middleware/security-headers.js';
