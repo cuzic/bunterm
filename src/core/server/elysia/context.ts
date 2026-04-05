@@ -17,6 +17,9 @@ import type { AgentTimelineService } from '@/features/agent-timeline/server/time
 import type { BlockEventEmitter } from '@/features/blocks/server/block-event-emitter.js';
 import type { ShareManager } from '@/features/share/server/share-manager.js';
 
+/** Function type for rendering the agent timeline HTML page */
+export type TimelineHtmlRenderer = (basePath: string, nonce: string) => string;
+
 export const coreContext = new Elysia({ name: 'core-context' })
   .state('sessionManager', null as unknown as NativeSessionManager)
   .state('config', null as unknown as Config)
@@ -26,6 +29,7 @@ export const coreContext = new Elysia({ name: 'core-context' })
   .state('cookieSessionStore', null as null | CookieSessionStore)
   .state('shareManager', null as null | ShareManager)
   .state('otpManager', null as null | OtpManager)
+  .state('generateTimelineHtml', null as null | TimelineHtmlRenderer)
   .derive(({ store }) => ({
     sessionManager: store.sessionManager,
     config: store.config,
@@ -34,6 +38,7 @@ export const coreContext = new Elysia({ name: 'core-context' })
     blockEventEmitter: store.blockEventEmitter,
     cookieSessionStore: store.cookieSessionStore,
     shareManager: store.shareManager,
-    otpManager: store.otpManager
+    otpManager: store.otpManager,
+    generateTimelineHtml: store.generateTimelineHtml
   }))
   .as('global');

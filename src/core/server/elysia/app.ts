@@ -1,5 +1,5 @@
 import { swagger } from '@elysiajs/swagger';
-import { Elysia } from 'elysia';
+import { Elysia, type AnyElysia } from 'elysia';
 import type { Config } from '@/core/config/types.js';
 import type { CookieSessionStore } from '@/core/server/auth/cookie-session.js';
 import type { OtpManager } from '@/core/server/auth/otp-manager.js';
@@ -8,12 +8,7 @@ import type { CommandExecutorManager } from '@/core/terminal/command-executor-ma
 import type { AgentTimelineService } from '@/features/agent-timeline/server/timeline-service.js';
 import type { BlockEventEmitter } from '@/features/blocks/server/block-event-emitter.js';
 import type { ShareManager } from '@/features/share/server/share-manager.js';
-import { agentsPlugin } from '@/features/agent-timeline/server/elysia-plugin.js';
-import { aiPlugin } from '@/features/ai/server/elysia-plugin.js';
-import { blocksPlugin } from '@/features/blocks/server/elysia-plugin.js';
-import { claudeQuotesPlugin } from '@/features/ai/server/elysia-quotes-plugin.js';
-import { notificationsPlugin } from '@/features/notifications/server/elysia-plugin.js';
-import { sharesPlugin } from '@/features/share/server/elysia-plugin.js';
+import type { TimelineHtmlRenderer } from './context.js';
 import { authRoutesPlugin } from './auth.js';
 import { authSessionsPlugin } from './auth-sessions.js';
 import { clipboardPlugin } from './clipboard.js';
@@ -37,6 +32,10 @@ export interface ElysiaAppDeps {
   cookieSessionStore?: CookieSessionStore | null;
   shareManager?: ShareManager | null;
   otpManager?: OtpManager | null;
+  /** Timeline HTML renderer (injected from bootstrap) */
+  generateTimelineHtml?: TimelineHtmlRenderer | null;
+  /** Feature plugins registered by the bootstrap layer */
+  featurePlugins?: AnyElysia[];
 }
 
 export function createElysiaApp(deps: ElysiaAppDeps) {
@@ -73,24 +72,24 @@ export function createElysiaApp(deps: ElysiaAppDeps) {
     .state('cookieSessionStore', deps.cookieSessionStore ?? null)
     .state('shareManager', deps.shareManager ?? null)
     .state('otpManager', deps.otpManager ?? null)
+    .state('generateTimelineHtml', deps.generateTimelineHtml ?? null)
     .use(systemPlugin)
     .use(sessionsPlugin)
-    .use(agentsPlugin)
-    .use(blocksPlugin)
-    .use(aiPlugin)
-    .use(claudeQuotesPlugin)
-    .use(notificationsPlugin)
     .use(clipboardPlugin)
     .use(osc633Plugin)
     .use(filesPlugin)
     .use(previewPlugin)
     .use(authRoutesPlugin)
     .use(authSessionsPlugin)
-    .use(sharesPlugin)
     .use(staticFilesPlugin)
     .use(previewFilePlugin)
     .use(websocketPlugin())
     .use(pagesPlugin);
+
+  // Register feature plugins from bootstrap layer
+  for (const plugin of deps.featurePlugins ?? []) {
+    app.use(plugin);
+  }
 
   return app;
 }

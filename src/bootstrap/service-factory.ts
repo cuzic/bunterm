@@ -6,16 +6,22 @@
  * so server.ts only handles server startup.
  */
 
-import { getAllPushSubscriptions, getStateDir } from '@/core/config/state.js';
+import { addShare, getAllShares, getShare, getAllPushSubscriptions, getStateDir, removeShare } from '@/core/config/state.js';
 import type { Config } from '@/core/config/types.js';
-import type { NativeSessionManager } from '@/core/server/session-manager.js';
+import type { NativeSessionManager, SessionPluginsFactory } from '@/core/server/session-manager.js';
 import { createCommandExecutorManager } from '@/core/terminal/command-executor-manager.js';
+import type { SessionPlugins } from '@/core/terminal/session-plugins.js';
 import { AgentTimelineService } from '@/features/agent-timeline/server/timeline-service.js';
+import { BlockModel } from '@/features/blocks/server/block-model.js';
 import { createBlockEventEmitter } from '@/features/blocks/server/block-event-emitter.js';
 import { createBlockStore } from '@/features/blocks/server/block-store.js';
 import { createRedactor } from '@/features/blocks/server/output-redactor.js';
+import { ClaudeSessionWatcher } from '@/features/claude-watcher/server/index.js';
+import { FileWatcher } from '@/features/file-watcher/server/file-watcher.js';
 import { createNotificationSender } from '@/features/notifications/server/sender.js';
 import { loadOrGenerateVapidKeys } from '@/features/notifications/server/vapid.js';
+import { generateTimelineHtml } from '@/features/agent-timeline/client/timeline-page.js';
+import { createShareManager, type ShareManager } from '@/features/share/server/share-manager.js';
 import { createLogger } from '@/utils/logger.js';
 
 const log = createLogger('bootstrap');
@@ -24,6 +30,8 @@ export interface BootstrappedServices {
   timelineService: AgentTimelineService;
   executorManager: ReturnType<typeof createCommandExecutorManager>;
   blockEventEmitter: ReturnType<typeof createBlockEventEmitter>;
+  shareManager: ShareManager;
+  generateTimelineHtml: (basePath: string, nonce: string) => string;
 }
 
 /**
@@ -77,9 +85,31 @@ export function createServices(
     eventEmitter: blockEventEmitter
   });
 
+  // Share manager
+  const shareManagerInstance = createShareManager({
+    getShares: getAllShares,
+    addShare: addShare,
+    removeShare: removeShare,
+    getShare: (token: string) => getShare(token)
+  });
+
   return {
     timelineService,
     executorManager,
-    blockEventEmitter
+    blockEventEmitter,
+    shareManager: shareManagerInstance,
+    generateTimelineHtml
   };
+}
+
+/**
+ * Factory function that creates SessionPlugins for a given working directory.
+ * Wires up feature implementations (BlockModel, ClaudeSessionWatcher, FileWatcher).
+ */
+export function createSessionPluginsFactory(): SessionPluginsFactory {
+  return (cwd: string): SessionPlugins => ({
+    blockManager: new BlockModel(cwd),
+    sessionWatcher: new ClaudeSessionWatcher({ cwd }),
+    fileChangeNotifier: new FileWatcher(cwd, () => {})
+  });
 }

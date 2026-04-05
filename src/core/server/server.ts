@@ -6,12 +6,13 @@
  */
 
 import { chmodSync, existsSync, unlinkSync } from 'node:fs';
+import type { AnyElysia } from 'elysia';
 import { getApiSocketPath, getStateDir } from '@/core/config/state.js';
 import type { Config } from '@/core/config/types.js';
 import { OtpManager } from '@/core/server/auth/otp-manager.js';
 import { createElysiaApp } from '@/core/server/elysia/app.js';
 import { rateLimiterPlugin } from '@/core/server/elysia/middleware/rate-limiter.js';
-import { NativeSessionManager } from '@/core/server/session-manager.js';
+import type { NativeSessionManager } from '@/core/server/session-manager.js';
 import type { CommandExecutorManager } from '@/core/terminal/command-executor-manager.js';
 import type { AgentTimelineService } from '@/features/agent-timeline/server/timeline-service.js';
 import type { BlockEventEmitter } from '@/features/blocks/server/block-event-emitter.js';
@@ -22,12 +23,14 @@ const log = createLogger('native-server');
 export interface NativeTerminalServerOptions {
   config: Config;
   getConfig: () => Config;
-  sessionManager?: NativeSessionManager;
+  sessionManager: NativeSessionManager;
   cookieSessionStore?: import('@/core/server/auth/cookie-session.js').CookieSessionStore | null;
   shareManager?: import('@/features/share/server/share-manager.js').ShareManager | null;
   timelineService: AgentTimelineService;
   executorManager: CommandExecutorManager;
   blockEventEmitter: BlockEventEmitter;
+  featurePlugins?: AnyElysia[];
+  generateTimelineHtml?: ((basePath: string, nonce: string) => string) | null;
 }
 
 export interface NativeTerminalServer {
@@ -42,8 +45,7 @@ export interface NativeTerminalServer {
 export function createNativeTerminalServer(
   options: NativeTerminalServerOptions
 ): NativeTerminalServer {
-  const { config, timelineService, executorManager, blockEventEmitter } = options;
-  const sessionManager = options.sessionManager ?? new NativeSessionManager(config);
+  const { config, sessionManager, timelineService, executorManager, blockEventEmitter } = options;
 
   // Initialize OTP manager for browser authentication
   const otpManager = config.security?.auth_enabled ? new OtpManager() : null;
@@ -57,7 +59,9 @@ export function createNativeTerminalServer(
     blockEventEmitter,
     cookieSessionStore: options.cookieSessionStore ?? null,
     shareManager: options.shareManager ?? null,
-    otpManager
+    otpManager,
+    generateTimelineHtml: options.generateTimelineHtml ?? null,
+    featurePlugins: options.featurePlugins
   }).use(rateLimiterPlugin);
 
   // Primary: TCP listener (for browsers + WebSocket)

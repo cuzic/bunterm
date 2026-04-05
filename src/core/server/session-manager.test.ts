@@ -7,6 +7,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import type { Config } from '@/core/config/types.js';
+import { nullPlugins } from '@/core/terminal/session-plugins.js';
 import { NativeSessionManager } from './session-manager.js';
 
 // Test config
@@ -105,7 +106,7 @@ describe('NativeSessionManager', () => {
   let manager: NativeSessionManager;
 
   beforeEach(() => {
-    manager = new NativeSessionManager(createTestConfig());
+    manager = new NativeSessionManager(createTestConfig(), () => nullPlugins);
   });
 
   afterEach(async () => {
@@ -168,7 +169,7 @@ describe.skipIf(!hasPtySupport)('NativeSessionManager with real PTY', () => {
   const testDir = process.cwd();
 
   beforeEach(() => {
-    manager = new NativeSessionManager(createTestConfig());
+    manager = new NativeSessionManager(createTestConfig(), () => nullPlugins);
   });
 
   afterEach(async () => {
@@ -328,7 +329,7 @@ describe.skipIf(!hasPtySupport)('NativeSessionManager with real PTY', () => {
   test('createSession with command template', async () => {
     const config = createTestConfig();
     config.command = 'echo hello {{name}}';
-    const mgr = new NativeSessionManager(config);
+    const mgr = new NativeSessionManager(config, () => nullPlugins);
 
     try {
       const session = await mgr.createSession({

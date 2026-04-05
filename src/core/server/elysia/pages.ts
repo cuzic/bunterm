@@ -7,23 +7,12 @@
 
 import { randomBytes } from 'node:crypto';
 import { Elysia, t } from 'elysia';
-import { addShare, getAllShares, getShare, removeShare } from '@/core/config/state.js';
 import { generateNativeTerminalHtml } from '@/core/server/html-template.js';
 import { generatePortalHtml } from '@/core/server/portal.js';
-import { generateTimelineHtml } from '@/features/agent-timeline/client/timeline-page.js';
-import { createShareManager } from '@/features/share/server/share-manager.js';
 import { createLogger } from '@/utils/logger.js';
 import { coreContext } from './context.js';
 
 const log = createLogger('pages-elysia');
-
-// Create ShareManager with file-system backed store
-const shareManager = createShareManager({
-  getShares: getAllShares,
-  addShare: addShare,
-  removeShare: removeShare,
-  getShare: (token: string) => getShare(token)
-});
 
 
 /**
@@ -64,7 +53,13 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/agents - Agent timeline page
   .get(
     '/agents',
-    ({ store }) => {
+    ({ store, generateTimelineHtml }) => {
+      if (!generateTimelineHtml) {
+        return new Response('Agent timeline not available', {
+          status: 404,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
       const nonce = generateNonce();
       store.cspNonce = nonce;
       const html = generateTimelineHtml('', nonce);
@@ -78,9 +73,9 @@ export const pagesPlugin = new Elysia()
   // GET /basePath/share/:token - Share page
   .get(
     '/share/:token',
-    ({ sessionManager, config, params, set, store }) => {
+    ({ sessionManager, config, params, set, store, shareManager }) => {
       const token = decodeURIComponent(params.token);
-      const share = shareManager.validateShare(token);
+      const share = shareManager?.validateShare(token);
 
       if (!share) {
         set.status = 404;

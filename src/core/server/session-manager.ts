@@ -10,11 +10,11 @@ import type { Config, NativeTerminalConfig } from '@/core/config/types.js';
 import type { NativeTerminalWebSocket, TerminalSessionInfo } from '@/core/protocol/index.js';
 import type { SessionPlugins } from '@/core/terminal/session-plugins.js';
 import { TerminalSession } from '@/core/terminal/session.js';
-import { BlockModel } from '@/features/blocks/server/block-model.js';
-import { ClaudeSessionWatcher } from '@/features/claude-watcher/server/index.js';
-import { FileWatcher } from '@/features/file-watcher/server/file-watcher.js';
 import { buildSpawnArgs, expandCommand, sanitizeName } from '@/utils/command-template.js';
 import { createSessionSocket, type SessionSocketResult } from './session-socket.js';
+
+/** Factory function that creates SessionPlugins for a given working directory */
+export type SessionPluginsFactory = (cwd: string) => SessionPlugins;
 
 export interface NativeSessionOptions {
   /** Session name */
@@ -45,10 +45,12 @@ export class NativeSessionManager {
   private sessionSockets: Map<string, SessionSocketResult> = new Map();
   private readonly config: Config;
   private readonly nativeConfig: NativeTerminalConfig;
+  private readonly pluginsFactory: SessionPluginsFactory;
 
-  constructor(config: Config) {
+  constructor(config: Config, pluginsFactory: SessionPluginsFactory) {
     this.config = config;
     this.nativeConfig = config.native_terminal;
+    this.pluginsFactory = pluginsFactory;
   }
 
   /**
@@ -76,12 +78,8 @@ export class NativeSessionManager {
       spawnArgs = buildSpawnArgs(undefined);
     }
 
-    // Build session plugins (feature implementations)
-    const plugins: SessionPlugins = {
-      blockManager: new BlockModel(dir),
-      sessionWatcher: new ClaudeSessionWatcher({ cwd: dir }),
-      fileChangeNotifier: new FileWatcher(dir, () => {})
-    };
+    // Build session plugins via injected factory
+    const plugins = this.pluginsFactory(dir);
 
     // Create terminal session
     const session = new TerminalSession(
