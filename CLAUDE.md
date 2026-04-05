@@ -106,6 +106,8 @@ src/
 │       ├── lifecycle.ts
 │       ├── key-router.ts
 │       └── events.ts
+├── tools/                # CLI ツール
+│   └── osc633-sender.ts  # OSC 633 サイドチャネル送信
 ├── caddy/                # Caddy 連携
 ├── deploy/               # デプロイ
 └── utils/                # 共通ユーティリティ
@@ -183,6 +185,19 @@ Bun.Terminal API を使用した組み込み PTY 実装:
 - [docs/domain-models.md](docs/domain-models.md) - ドメインモデル定義
 - [docs/optional-field-inventory.md](docs/optional-field-inventory.md) - optional 使用ポリシー
 - [docs/error-handling.md](docs/error-handling.md) - エラーハンドリングポリシー
+
+### テストでの環境変数操作
+
+テストファイルで `process.env` を直接操作しないでください。代わりに `withEnv` / `withEnvSync` ヘルパーを使用してください:
+
+```typescript
+import { withEnv, withEnvSync } from '@/test-helpers/env-scope.js';
+
+// NG: process.env['KEY'] = 'value' / delete process.env['KEY']
+// OK: withEnv({ KEY: 'value' }, async () => { ... })
+```
+
+チェック: `scripts/check-env-usage.sh --all` で全テストファイルを検査できます。
 
 ### HTTP ルーティング (server/elysia/)
 

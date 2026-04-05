@@ -107,6 +107,36 @@ command: "screen -dRR {{safeName}}"
 
 テンプレート変数の詳細は [docs/config-reference.md](config-reference.md#commandコマンドテンプレート) を参照してください。
 
+## Block UI が tmux で動作しない
+
+tmux 環境では OSC 633 エスケープシーケンスが tmux に吸収されるため、Block UI（コマンドブロック表示）が動作しないことがあります。以下のいずれかの方法で対処できます。
+
+### 方法1: tmux passthrough を有効にする
+
+tmux.conf に以下を追加して、OSC エスケープシーケンスを通過させます:
+
+```
+set -g allow-passthrough on
+```
+
+設定後、tmux を再起動してください。
+
+### 方法2: OSC 633 サイドチャネルを使う（推奨）
+
+tmux passthrough を設定せずに Block UI を動作させる方法です。OSC 633 シーケンスを PTY 経由ではなく専用バイナリ経由で送信します。
+
+1. サイドチャネル送信バイナリをビルドします:
+
+```bash
+bun run build:osc633-sender
+```
+
+2. `dist/osc633-sender` が生成されます。デーモンはこのバイナリのパスを環境変数 `BUNTERM_OSC633_SENDER` 経由でシェルに自動的に渡します。
+
+3. シェル統合スクリプトが `BUNTERM_OSC633_SENDER` を検出すると、OSC 633 シーケンスを PTY ではなくサイドチャネル経由で送信するようになります。tmux passthrough の設定は不要です。
+
+詳細は [docs/adr/20260325-01-osc633-side-channel.md](adr/20260325-01-osc633-side-channel.md) を参照してください。
+
 ## Windows で動く？
 
 **動きません。** bunterm は POSIX 環境（Linux / macOS）のみ対応です。
@@ -139,6 +169,20 @@ bunterm reload
 ```bash
 bunterm restart
 ```
+
+## デーモンの再起動方法
+
+デーモンの再起動にはいくつかの方法があります。いずれも graceful shutdown（SIGTERM → 正常停止）が行われます。
+
+| 方法 | コマンド | 動作 |
+|------|---------|------|
+| bunterm CLI | `bunterm restart` | 内部で `shutdown` → `ensureDaemon` を実行 |
+| pm2 直接 | `pm2 restart bunterm` | SIGINT を送信 → プロセス再起動 |
+| 停止→起動 | `bunterm down && bunterm up` | 明示的に停止してから起動 |
+
+`pm2 restart bunterm` でも問題ありません。デーモンは SIGINT / SIGTERM の両方をハンドルしており、サーバーの停止と状態のクリーンアップを行ってから終了します。
+
+**設定変更だけの場合**は `bunterm reload` で再起動なしにリロードできます。コードの更新やビルドし直した場合は再起動が必要です。
 
 ## 認証を有効にしたい
 
