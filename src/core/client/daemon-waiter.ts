@@ -11,59 +11,43 @@ export const DAEMON_STOP_TIMEOUT = 5000;
 const DAEMON_CHECK_INTERVAL = 100;
 
 /**
- * Wait for daemon to become ready
- * Uses setInterval to keep the event loop alive during the wait
+ * Poll until condition returns true, or timeout.
  */
-export async function waitForDaemon(): Promise<boolean> {
+function waitForCondition(
+  condition: () => Promise<boolean>,
+  timeout: number
+): Promise<boolean> {
   return new Promise((resolve) => {
     const startTime = Date.now();
 
     const check = async () => {
-      if (Date.now() - startTime >= DAEMON_START_TIMEOUT) {
+      if (Date.now() - startTime >= timeout) {
         clearInterval(intervalId);
         resolve(false);
         return;
       }
 
-      const running = await isDaemonRunning();
-      if (running) {
+      if (await condition()) {
         clearInterval(intervalId);
         resolve(true);
       }
     };
 
-    // Use setInterval to keep the event loop alive
     const intervalId = setInterval(check, DAEMON_CHECK_INTERVAL);
-    // Run the first check immediately
     check();
   });
 }
 
 /**
- * Wait for daemon to stop
- * Uses setInterval to keep the event loop alive during the wait
+ * Wait for daemon to become ready
  */
-export async function waitForDaemonStop(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
+export function waitForDaemon(): Promise<boolean> {
+  return waitForCondition(() => isDaemonRunning(), DAEMON_START_TIMEOUT);
+}
 
-    const check = async () => {
-      if (Date.now() - startTime >= DAEMON_STOP_TIMEOUT) {
-        clearInterval(intervalId);
-        resolve(false);
-        return;
-      }
-
-      const running = await isDaemonRunning();
-      if (!running) {
-        clearInterval(intervalId);
-        resolve(true);
-      }
-    };
-
-    // Use setInterval to keep the event loop alive
-    const intervalId = setInterval(check, DAEMON_CHECK_INTERVAL);
-    // Run the first check immediately
-    check();
-  });
+/**
+ * Wait for daemon to stop
+ */
+export function waitForDaemonStop(): Promise<boolean> {
+  return waitForCondition(async () => !(await isDaemonRunning()), DAEMON_STOP_TIMEOUT);
 }
