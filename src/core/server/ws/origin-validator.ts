@@ -21,7 +21,7 @@ export interface ValidationResult {
 }
 
 /** Default security configuration */
-export const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
+const DEFAULT_SECURITY_CONFIG: SecurityConfig = {
   devMode: false,
   allowedOrigins: []
 };
@@ -111,9 +111,39 @@ export function validateOrigin(req: Request, config: SecurityConfig): Validation
 export function createSecurityConfig(options?: {
   devMode?: boolean;
   allowedOrigins?: string[];
+  hostname?: string;
 }): SecurityConfig {
+  const manualOrigins = options?.allowedOrigins ?? [];
+  const hostnameOrigin = options?.hostname ? `https://${options.hostname}` : null;
+
+  const allowedOrigins =
+    hostnameOrigin && !manualOrigins.includes(hostnameOrigin)
+      ? [...manualOrigins, hostnameOrigin]
+      : [...manualOrigins];
+
   return {
     devMode: options?.devMode ?? process.env.NODE_ENV === 'development',
-    allowedOrigins: options?.allowedOrigins ?? []
+    allowedOrigins
   };
+}
+
+/**
+ * Return a user-facing hint message for a WebSocket connection rejection reason.
+ *
+ * These messages are displayed in the browser when the WebSocket upgrade is rejected.
+ * They should be actionable so the user knows how to fix the problem.
+ */
+export function getWebSocketErrorHint(reason: ValidationResult['reason'] | string): string {
+  switch (reason) {
+    case 'origin_not_allowed':
+      return 'Origin が許可されていません。config.yaml の security.allowed_origins を確認してください。';
+    case 'missing_origin':
+      return 'Origin ヘッダーがありません。ブラウザから直接アクセスしてください。';
+    case 'allowlist_match':
+      return '接続が許可されました。';
+    case 'dev_mode_localhost':
+      return 'ローカルホストからの接続が許可されました。';
+    default:
+      return '接続が拒否されました。設定を確認してください。';
+  }
 }

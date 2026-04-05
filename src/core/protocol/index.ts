@@ -57,7 +57,6 @@ export {
   createFileChangeMessage,
   createOutputMessage,
   createPongMessage,
-  createTitleMessage,
   parseClientMessage,
   parseClientMessageSafe,
   parseServerMessage,

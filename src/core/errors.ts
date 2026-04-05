@@ -208,10 +208,10 @@ export function parseError(
 /**
  * Shorthand constructors for common parse errors
  */
-export const missingField = (source: ParseErrorSource, field: string): ParseError =>
+const missingField = (source: ParseErrorSource, field: string): ParseError =>
   parseError('MISSING_FIELD', source, field, `Missing required field: ${field}`);
 
-export const invalidType = (
+const invalidType = (
   source: ParseErrorSource,
   field: string,
   expected: string,
@@ -228,14 +228,14 @@ export const invalidType = (
     }
   );
 
-export const invalidFormat = (
+const invalidFormat = (
   source: ParseErrorSource,
   field: string,
   format: string
 ): ParseError =>
   parseError('INVALID_FORMAT', source, field, `Invalid format for ${field}: expected ${format}`);
 
-export const outOfRange = (
+const outOfRange = (
   source: ParseErrorSource,
   field: string,
   min?: number,
@@ -250,7 +250,7 @@ export const outOfRange = (
   return parseError('OUT_OF_RANGE', source, field, `${field} out of range: expected ${range}`);
 };
 
-export const invalidEnum = (
+const invalidEnum = (
   source: ParseErrorSource,
   field: string,
   allowed: string[]
@@ -262,7 +262,7 @@ export const invalidEnum = (
     `Invalid value for ${field}: must be one of ${allowed.join(', ')}`
   );
 
-export const parseFailed = (source: ParseErrorSource, message: string): ParseError =>
+const parseFailed = (source: ParseErrorSource, message: string): ParseError =>
   parseError('PARSE_FAILED', source, '_root', message);
 
 // === Validation Errors ===
@@ -313,7 +313,7 @@ export const sessionNotFound = (sessionName: string): SessionNotFoundError => ({
   sessionName
 });
 
-export const sessionAlreadyExists = (sessionName: string): SessionAlreadyExistsError => ({
+const sessionAlreadyExists = (sessionName: string): SessionAlreadyExistsError => ({
   code: 'SESSION_ALREADY_EXISTS',
   message: `Session '${sessionName}' already exists`,
   sessionName
@@ -331,18 +331,18 @@ export const daemonNotRunning = (): DaemonNotRunningError => ({
   message: 'Daemon is not running'
 });
 
-export const daemonAlreadyRunning = (): DaemonAlreadyRunningError => ({
+const daemonAlreadyRunning = (): DaemonAlreadyRunningError => ({
   code: 'DAEMON_ALREADY_RUNNING',
   message: 'Daemon is already running'
 });
 
-export const daemonStartFailed = (reason: string): DaemonStartFailedError => ({
+const daemonStartFailed = (reason: string): DaemonStartFailedError => ({
   code: 'DAEMON_START_FAILED',
   message: `Failed to start daemon: ${reason}`,
   reason
 });
 
-export const daemonUnavailable = (reason: string): DaemonUnavailableError => ({
+const daemonUnavailable = (reason: string): DaemonUnavailableError => ({
   code: 'DAEMON_UNAVAILABLE',
   message: `Daemon unavailable: ${reason}`,
   reason
@@ -354,21 +354,21 @@ export const configNotFound = (path: string): ConfigNotFoundError => ({
   path
 });
 
-export const configInvalidYaml = (path: string, parseError: string): ConfigInvalidYamlError => ({
+const configInvalidYaml = (path: string, parseError: string): ConfigInvalidYamlError => ({
   code: 'CONFIG_INVALID_YAML',
   message: `Invalid YAML in ${path}: ${parseError}`,
   path,
   parseError
 });
 
-export const configValidationFailed = (field: string, reason: string): ConfigValidationError => ({
+const configValidationFailed = (field: string, reason: string): ConfigValidationError => ({
   code: 'CONFIG_VALIDATION_FAILED',
   message: `Config validation failed for ${field}: ${reason}`,
   field,
   reason
 });
 
-export const fileNotFound = (path: string): FileNotFoundError => ({
+const fileNotFound = (path: string): FileNotFoundError => ({
   code: 'FILE_NOT_FOUND',
   message: `File not found: ${path}`,
   path
@@ -380,7 +380,7 @@ export const pathTraversal = (path: string): PathTraversalError => ({
   path
 });
 
-export const fileReadError = (path: string, reason: string): FileReadError => ({
+const fileReadError = (path: string, reason: string): FileReadError => ({
   code: 'FILE_READ_ERROR',
   message: `Failed to read file ${path}: ${reason}`,
   path,
@@ -392,44 +392,44 @@ export const tmuxNotInstalled = (): TmuxNotInstalledError => ({
   message: 'tmux is not installed'
 });
 
-export const tmuxSessionNotFound = (sessionName: string): TmuxSessionNotFoundError => ({
+const tmuxSessionNotFound = (sessionName: string): TmuxSessionNotFoundError => ({
   code: 'TMUX_SESSION_NOT_FOUND',
   message: `tmux session '${sessionName}' not found`,
   sessionName
 });
 
-export const blockNotFound = (blockId: string): BlockNotFoundError => ({
+const blockNotFound = (blockId: string): BlockNotFoundError => ({
   code: 'BLOCK_NOT_FOUND',
   message: `Block '${blockId}' not found`,
   blockId
 });
 
-export const blockAlreadyRunning = (blockId: string): BlockAlreadyRunningError => ({
+const blockAlreadyRunning = (blockId: string): BlockAlreadyRunningError => ({
   code: 'BLOCK_ALREADY_RUNNING',
   message: `Block '${blockId}' is already running`,
   blockId
 });
 
-export const validationFailed = (field: string, reason: string): ValidationError => ({
+const validationFailed = (field: string, reason: string): ValidationError => ({
   code: 'VALIDATION_FAILED',
   message: `Validation failed for '${field}': ${reason}`,
   field,
   reason
 });
 
-export const unauthorized = (message = 'Unauthorized'): UnauthorizedError => ({
+const unauthorized = (message = 'Unauthorized'): UnauthorizedError => ({
   code: 'UNAUTHORIZED',
   message
 });
 
-export const methodNotAllowed = (method: string, allowed: string[]): MethodNotAllowedError => ({
+const methodNotAllowed = (method: string, allowed: string[]): MethodNotAllowedError => ({
   code: 'METHOD_NOT_ALLOWED',
   message: `Method ${method} not allowed. Allowed: ${allowed.join(', ')}`,
   method,
   allowed
 });
 
-export const notFound = (path: string): NotFoundError => ({
+const notFound = (path: string): NotFoundError => ({
   code: 'NOT_FOUND',
   message: `Not found: ${path}`,
   path
@@ -440,7 +440,7 @@ export const notFound = (path: string): NotFoundError => ({
 /**
  * Check if an error has a specific code
  */
-export function hasErrorCode<T extends DomainError>(
+function hasErrorCode<T extends DomainError>(
   error: DomainError,
   code: T['code']
 ): error is T {

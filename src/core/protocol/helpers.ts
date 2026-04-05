@@ -166,7 +166,7 @@ export function createExitMessage(code: number): ExitMessage {
 /**
  * Create a title message
  */
-export function createTitleMessage(title: string): TitleMessage {
+function createTitleMessage(title: string): TitleMessage {
   return { type: 'title', title };
 }
 

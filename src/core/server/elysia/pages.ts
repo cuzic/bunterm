@@ -25,7 +25,6 @@ const shareManager = createShareManager({
   getShare: (token: string) => getShare(token)
 });
 
-export { shareManager };
 
 /**
  * Generate a cryptographically random nonce for CSP.

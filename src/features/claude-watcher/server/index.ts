@@ -13,13 +13,9 @@ export {
 } from './message-parser.js';
 export {
   cwdToProjectPath,
-  extractSessionId,
   getHistoryFilePath,
   getProjectDir,
-  getProjectsDir,
-  getSessionFilePath,
-  isMatchingProject,
-  projectPathToCwd
+  getSessionFilePath
 } from './path-utils.js';
 export { ClaudeSessionWatcher } from './session-watcher.js';
 export type {

@@ -28,7 +28,7 @@ type ResultCommandFn = () => Promise<ResultCommandResult> | ResultCommandResult;
  * - If command throws CliError → print message and exit with CliError.exitCode
  * - If command throws other error → print message and exit 1
  */
-export async function runCommand(fn: CommandFn): Promise<void> {
+async function runCommand(fn: CommandFn): Promise<void> {
   try {
     const result = await fn();
     // If command returns an exit code, use it
@@ -70,7 +70,7 @@ export function wrapCommand<T extends unknown[]>(
  * - If Result is Ok with number → exit with that code
  * - If Result is Err → print message and exit with mapped exit code
  */
-export async function runResultCommand(fn: ResultCommandFn): Promise<void> {
+async function runResultCommand(fn: ResultCommandFn): Promise<void> {
   try {
     const result = await fn();
 
@@ -94,7 +94,7 @@ export async function runResultCommand(fn: ResultCommandFn): Promise<void> {
 /**
  * Create a wrapped Result-returning command action for Commander.
  */
-export function wrapResultCommand<T extends unknown[]>(
+function wrapResultCommand<T extends unknown[]>(
   fn: (...args: T) => Promise<ResultCommandResult> | ResultCommandResult
 ): (...args: T) => void {
   return (...args: T) => {

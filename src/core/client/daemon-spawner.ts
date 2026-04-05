@@ -27,7 +27,7 @@ function resolveScriptPath(scriptPath: string | undefined): string {
 /**
  * Detect how the script is being run
  */
-export function detectRunMode(): 'bun-run' | 'script' | 'binary' {
+function detectRunMode(): 'bun-run' | 'script' | 'binary' {
   const arg1 = process.argv[1];
   if (arg1 === 'run') {
     return 'bun-run';
@@ -44,7 +44,7 @@ export function detectRunMode(): 'bun-run' | 'script' | 'binary' {
 /**
  * Build the command to spawn daemon based on how this script is being run
  */
-export function buildDaemonCommand(configPath?: string): DaemonCommand {
+function buildDaemonCommand(configPath?: string): DaemonCommand {
   const mode = detectRunMode();
   let executable: string;
   let args: string[];

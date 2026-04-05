@@ -9,22 +9,11 @@
 
 export {
   createSecurityConfig,
-  DEFAULT_SECURITY_CONFIG,
+  getWebSocketErrorHint,
   type SecurityConfig,
   type ValidationResult,
   validateOrigin
 } from './origin-validator.js';
-export {
-  AdaptiveQoS,
-  type AdaptiveQoSOptions,
-  AIStreamThrottler,
-  type AIStreamThrottlerOptions,
-  type DynamicQoS,
-  getAdaptiveQoS,
-  resetAdaptiveQoS,
-  TerminalOutputThrottler,
-  type TerminalOutputThrottlerOptions
-} from './qos.js';
 export {
   createBearerProtocol,
   extractBearerToken,

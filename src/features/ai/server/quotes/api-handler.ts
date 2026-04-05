@@ -213,7 +213,7 @@ function findRoute(apiPath: string): RouteMatch | null {
  * Handle Claude Quotes API request
  * @returns Response if handled, null if not a claude-quotes route
  */
-export async function handleClaudeQuotesApi(
+async function handleClaudeQuotesApi(
   req: Request,
   apiPath: string,
   method: string,

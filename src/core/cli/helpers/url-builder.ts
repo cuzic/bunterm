@@ -10,7 +10,7 @@ import type { Config } from '@/core/config/types.js';
 /**
  * Build the base URL for accessing bunterm
  */
-export function buildBaseUrl(config: Config): string {
+function buildBaseUrl(config: Config): string {
   const hostname = config.hostname ?? `localhost:${config.daemon_port}`;
   const protocol = config.hostname ? 'https' : 'http';
   return `${protocol}://${hostname}`;

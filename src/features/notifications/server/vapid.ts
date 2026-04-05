@@ -10,7 +10,7 @@ import type { VapidKeys } from './types.js';
 /**
  * Get VAPID keys file path
  */
-export function getVapidKeysPath(stateDir: string): string {
+function getVapidKeysPath(stateDir: string): string {
   return join(stateDir, 'vapid-keys.json');
 }
 

@@ -28,12 +28,8 @@ import {
   waitForDaemonStop
 } from './daemon-waiter.js';
 
-// Re-export types and DI functions
-export type { DaemonClientDeps };
 // Re-export probe functions
 export {
-  defaultDaemonClientDeps,
-  getDaemonClientDeps,
   isDaemonRunning,
   resetDaemonClientDeps,
   sendCommand,

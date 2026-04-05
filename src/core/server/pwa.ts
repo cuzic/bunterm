@@ -138,10 +138,10 @@ export const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
 
 // 192x192 PNG icon (base64 encoded)
 // Simple terminal icon with >_ symbol
-export const icon192Base64 = generateIconPngBase64(192);
+const icon192Base64 = generateIconPngBase64(192);
 
 // 512x512 PNG icon (base64 encoded)
-export const icon512Base64 = generateIconPngBase64(512);
+const icon512Base64 = generateIconPngBase64(512);
 
 /**
  * Generate a simple PNG icon as base64

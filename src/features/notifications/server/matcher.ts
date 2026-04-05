@@ -52,7 +52,7 @@ const DANGEROUS_PATTERNS = [
  * Validate regex pattern for safety
  * Returns true if the pattern is safe, false if it's potentially dangerous
  */
-export function isRegexSafe(pattern: string): boolean {
+function isRegexSafe(pattern: string): boolean {
   // Check length
   if (pattern.length > MAX_REGEX_LENGTH) {
     return false;

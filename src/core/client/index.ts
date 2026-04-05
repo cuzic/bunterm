@@ -1,8 +1,6 @@
 // Re-export all from daemon-client
 
 export {
-  type DaemonClientDeps,
-  defaultDaemonClientDeps,
   ensureDaemon,
   isDaemonRunning,
   resetDaemonClientDeps,
@@ -14,8 +12,6 @@ export {
 export {
   getSessions,
   getStatus,
-  getTmuxSessions,
-  requestShutdown,
   sendClipboard,
   startSession,
   stopSession

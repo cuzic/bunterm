@@ -11,13 +11,13 @@ import { z } from 'zod';
 /**
  * Log level enum
  */
-export const LogLevelSchema = z.enum(['debug', 'info', 'warn', 'error']).default('info');
-export type LogLevel = z.infer<typeof LogLevelSchema>;
+const LogLevelSchema = z.enum(['debug', 'info', 'warn', 'error']).default('info');
+type LogLevel = z.infer<typeof LogLevelSchema>;
 
 /**
  * Environment schema for bunterm-specific variables
  */
-export const BuntermEnvSchema = z.object({
+const BuntermEnvSchema = z.object({
   /** Config directory override */
   BUNTERM_CONFIG_DIR: z.string().optional(),
 
@@ -37,12 +37,12 @@ export const BuntermEnvSchema = z.object({
   BUNTERM_DAEMON_PORT: z.coerce.number().int().min(1024).max(65535).optional()
 });
 
-export type BuntermEnv = z.infer<typeof BuntermEnvSchema>;
+type BuntermEnv = z.infer<typeof BuntermEnvSchema>;
 
 /**
  * System environment schema
  */
-export const SystemEnvSchema = z.object({
+const SystemEnvSchema = z.object({
   /** User's home directory */
   HOME: z.string().min(1),
 
@@ -53,7 +53,7 @@ export const SystemEnvSchema = z.object({
   TMUX: z.string().optional()
 });
 
-export type SystemEnv = z.infer<typeof SystemEnvSchema>;
+type SystemEnv = z.infer<typeof SystemEnvSchema>;
 
 // === Cached Environment ===
 
@@ -66,7 +66,7 @@ let cachedSystemEnv: SystemEnv | null = null;
  * Parse and validate bunterm environment variables
  * Returns validated env or null on validation failure
  */
-export function parseBuntermEnv(): BuntermEnv | null {
+function parseBuntermEnv(): BuntermEnv | null {
   if (cachedBuntermEnv) {
     return cachedBuntermEnv;
   }
@@ -91,7 +91,7 @@ export function parseBuntermEnv(): BuntermEnv | null {
 /**
  * Parse and validate system environment variables
  */
-export function parseSystemEnv(): SystemEnv | null {
+function parseSystemEnv(): SystemEnv | null {
   if (cachedSystemEnv) {
     return cachedSystemEnv;
   }
@@ -158,7 +158,7 @@ export function validateEnvAtStartup(): string[] {
 /**
  * Get bunterm config directory (with fallback)
  */
-export function getConfigDir(fallback: string): string {
+function getConfigDir(fallback: string): string {
   const env = parseBuntermEnv();
   return env?.BUNTERM_CONFIG_DIR ?? fallback;
 }
@@ -166,7 +166,7 @@ export function getConfigDir(fallback: string): string {
 /**
  * Get bunterm state directory (with fallback)
  */
-export function getStateDir(fallback: string): string {
+function getStateDir(fallback: string): string {
   const env = parseBuntermEnv();
   return env?.BUNTERM_STATE_DIR ?? fallback;
 }
@@ -174,7 +174,7 @@ export function getStateDir(fallback: string): string {
 /**
  * Get log level
  */
-export function getLogLevel(): LogLevel {
+function getLogLevel(): LogLevel {
   const env = parseBuntermEnv();
   return env?.BUNTERM_LOG_LEVEL ?? 'info';
 }
@@ -182,7 +182,7 @@ export function getLogLevel(): LogLevel {
 /**
  * Get log file path
  */
-export function getLogFile(): string | null {
+function getLogFile(): string | null {
   const env = parseBuntermEnv();
   return env?.BUNTERM_LOG_FILE ?? null;
 }
@@ -190,7 +190,7 @@ export function getLogFile(): string | null {
 /**
  * Check if running inside tmux
  */
-export function isInsideTmux(): boolean {
+function isInsideTmux(): boolean {
   const env = parseSystemEnv();
   return !!env?.TMUX;
 }
@@ -198,7 +198,7 @@ export function isInsideTmux(): boolean {
 /**
  * Get default shell
  */
-export function getDefaultShell(): string {
+function getDefaultShell(): string {
   const env = parseSystemEnv();
   return env?.SHELL ?? '/bin/bash';
 }
@@ -206,7 +206,7 @@ export function getDefaultShell(): string {
 /**
  * Get home directory
  */
-export function getHomeDir(): string {
+function getHomeDir(): string {
   const env = parseSystemEnv();
   return env?.HOME ?? '/tmp';
 }
@@ -214,7 +214,7 @@ export function getHomeDir(): string {
 /**
  * Clear cached environment (for testing)
  */
-export function clearEnvCache(): void {
+function clearEnvCache(): void {
   cachedBuntermEnv = null;
   cachedSystemEnv = null;
 }

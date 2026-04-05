@@ -30,7 +30,7 @@ export interface RedactionConfig {
 }
 
 /** Default redaction configuration */
-export const DEFAULT_REDACTION_CONFIG: RedactionConfig = {
+const DEFAULT_REDACTION_CONFIG: RedactionConfig = {
   enabled: true,
   customPatterns: []
 };
@@ -38,7 +38,7 @@ export const DEFAULT_REDACTION_CONFIG: RedactionConfig = {
 /**
  * Built-in redaction patterns for common secret formats
  */
-export const BUILTIN_PATTERNS: RedactionPattern[] = [
+const BUILTIN_PATTERNS: RedactionPattern[] = [
   // AWS Access Key ID (starts with AKIA)
   {
     name: 'aws_access_key',
@@ -261,7 +261,7 @@ export function createRedactor(config?: RedactionConfig): OutputRedactor {
 /**
  * Convenience function to redact text with default settings
  */
-export function redactSensitive(text: string): string {
+function redactSensitive(text: string): string {
   const redactor = new OutputRedactor();
   return redactor.redact(text);
 }

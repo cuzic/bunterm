@@ -149,9 +149,9 @@ class NullFileChangeNotifier implements FileChangeNotifier {
   close(): void {}
 }
 
-export const nullBlockManager: BlockManager = new NullBlockManager();
-export const nullSessionWatcher: SessionWatcher = new NullSessionWatcher();
-export const nullFileChangeNotifier: FileChangeNotifier = new NullFileChangeNotifier();
+const nullBlockManager: BlockManager = new NullBlockManager();
+const nullSessionWatcher: SessionWatcher = new NullSessionWatcher();
+const nullFileChangeNotifier: FileChangeNotifier = new NullFileChangeNotifier();
 
 export const nullPlugins: SessionPlugins = {
   blockManager: nullBlockManager,

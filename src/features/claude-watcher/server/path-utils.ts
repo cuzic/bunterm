@@ -21,7 +21,7 @@ export function cwdToProjectPath(cwd: string): string {
  * Convert Claude project path back to working directory
  * @example "-home-cuzic-bunterm" → "/home/cuzic/bunterm"
  */
-export function projectPathToCwd(projectPath: string): string {
+function projectPathToCwd(projectPath: string): string {
   // Replace all dashes with forward slashes
   // Leading dash becomes leading slash
   return projectPath.replace(/-/g, '/');
@@ -31,7 +31,7 @@ export function projectPathToCwd(projectPath: string): string {
  * Get the Claude projects directory path
  * @example "/home/cuzic/.claude/projects"
  */
-export function getProjectsDir(claudeDir: string = CLAUDE_WATCHER_DEFAULTS.claudeDir): string {
+function getProjectsDir(claudeDir: string = CLAUDE_WATCHER_DEFAULTS.claudeDir): string {
   return `${claudeDir}/projects`;
 }
 
@@ -70,7 +70,7 @@ export function getHistoryFilePath(claudeDir: string = CLAUDE_WATCHER_DEFAULTS.c
 /**
  * Check if a project path matches a working directory
  */
-export function isMatchingProject(projectPath: string, cwd: string): boolean {
+function isMatchingProject(projectPath: string, cwd: string): boolean {
   return cwdToProjectPath(cwd) === projectPath;
 }
 
@@ -78,7 +78,7 @@ export function isMatchingProject(projectPath: string, cwd: string): boolean {
  * Extract session ID from a session file path
  * @example "/path/to/abc-123.jsonl" → "abc-123"
  */
-export function extractSessionId(filePath: string): string | null {
+function extractSessionId(filePath: string): string | null {
   const match = filePath.match(/([a-f0-9-]+)\.jsonl$/i);
   return match?.[1] ?? null;
 }
