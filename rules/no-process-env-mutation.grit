@@ -1,0 +1,10 @@
+language js;
+
+// Ban: delete process.env[KEY]
+`delete process.env[$KEY]` where {
+  register_diagnostic(
+    span = $KEY,
+    message = "Do not delete process.env directly. Use withEnv/withoutEnvSync from @/test-helpers/env-scope.js instead.",
+    severity = "error"
+  )
+}

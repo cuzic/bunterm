@@ -1,0 +1,10 @@
+language js;
+
+// Ban: process.env[KEY] = value
+`process.env[$KEY] = $VAL` where {
+  register_diagnostic(
+    span = $KEY,
+    message = "Do not assign to process.env directly. Use withEnv/withEnvSync from @/test-helpers/env-scope.js instead.",
+    severity = "error"
+  )
+}
