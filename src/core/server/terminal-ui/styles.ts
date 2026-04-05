@@ -440,6 +440,9 @@ body:has(#tui.hidden) .xterm-screen {
   #tui-buttons {
     gap: 4px;
     margin-bottom: 6px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tui-group {

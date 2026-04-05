@@ -103,7 +103,7 @@ export class PreviewManager implements Mountable {
    * Toggle preview pane visibility
    */
   toggle(): void {
-    if (this.pane.isVisible()) {
+    if (this.pane.isVisible) {
       this.close();
     } else {
       this.open();
@@ -165,7 +165,7 @@ export class PreviewManager implements Mountable {
     this.pane.setTitle(this.getFileName(path));
 
     // Show pane if hidden
-    if (!this.pane.isVisible()) {
+    if (!this.pane.isVisible) {
       this.pane.show();
       this.updateButtonState();
     }
@@ -200,7 +200,7 @@ export class PreviewManager implements Mountable {
     this.pane.setTitle(normalizedPath || 'Preview');
 
     // Show pane if hidden
-    if (!this.pane.isVisible()) {
+    if (!this.pane.isVisible) {
       this.pane.show();
       this.updateButtonState();
     }
@@ -310,7 +310,7 @@ export class PreviewManager implements Mountable {
     }
 
     const { previewBtn } = this.elements;
-    if (this.pane.isVisible()) {
+    if (this.pane.isVisible) {
       previewBtn.classList.add('active');
     } else {
       previewBtn.classList.remove('active');
