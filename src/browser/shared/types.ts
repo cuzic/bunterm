@@ -26,6 +26,7 @@ export interface Terminal {
   loadAddon(addon: unknown): void;
   onBell(callback: () => void): void;
   scrollLines(amount: number): void;
+  scrollToBottom(): void;
   refresh(start: number, end: number): void;
 }
 
@@ -123,6 +124,7 @@ export interface ToolbarElements {
   bsBtn: HTMLButtonElement;
   upBtn: HTMLButtonElement;
   downBtn: HTMLButtonElement;
+  bottomBtn: HTMLButtonElement;
   copyAllBtn: HTMLButtonElement;
   pasteBtn: HTMLButtonElement;
   autoBtn: HTMLButtonElement;

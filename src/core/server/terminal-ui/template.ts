@@ -21,6 +21,7 @@ export const terminalUiHtml = `
     <div class="tui-group" data-label="移動">
       <button id="tui-up">↑</button>
       <button id="tui-down">↓</button>
+      <button id="tui-bottom" title="一番下へ">⏬</button>
     </div>
     <div class="tui-group" data-label="文字">
       <button id="tui-zoomout">A-</button>

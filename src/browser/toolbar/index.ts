@@ -174,6 +174,7 @@ class ToolbarApp {
       bsBtn: document.getElementById('tui-bs') as HTMLButtonElement,
       upBtn: document.getElementById('tui-up') as HTMLButtonElement,
       downBtn: document.getElementById('tui-down') as HTMLButtonElement,
+      bottomBtn: document.getElementById('tui-bottom') as HTMLButtonElement,
       copyAllBtn: document.getElementById('tui-copyall') as HTMLButtonElement,
       pasteBtn: document.getElementById('tui-paste') as HTMLButtonElement,
       autoBtn: document.getElementById('tui-auto') as HTMLButtonElement,
@@ -437,6 +438,7 @@ class ToolbarApp {
 
     bindClickScoped(scope, elements.upBtn, () => this.input.sendArrow('up'));
     bindClickScoped(scope, elements.downBtn, () => this.input.sendArrow('down'));
+    bindClickScoped(scope, elements.bottomBtn, () => this.scrollToBottom());
 
     // Copy all button
     bindClickScoped(scope, elements.copyAllBtn, () => this.terminal.copyAll());
@@ -812,6 +814,19 @@ class ToolbarApp {
     const input = this.elements.input;
     input.style.height = 'auto';
     input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  }
+
+  /**
+   * Scroll to bottom: xterm.js scrollback + exit tmux copy mode
+   */
+  private scrollToBottom(): void {
+    // 1. Scroll xterm.js to bottom
+    const term = this.terminal.findTerminal();
+    if (term) {
+      term.scrollToBottom();
+    }
+    // 2. Send 'q' to exit tmux copy mode (no-op if not in copy mode)
+    this.ws.sendText('q');
   }
 
   /**
