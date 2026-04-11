@@ -71,6 +71,9 @@ export const websocketPlugin = (options: WebSocketPluginOptions = {}) => {
 
   return new Elysia({ name: 'websocket' }).use(coreContext).ws('/:sessionName/ws', {
     body: WsClientMessage,
+    // Enable WebSocket per-message compression (deflate) to reduce bandwidth
+    // for long terminal output on mobile networks
+    perMessageDeflate: true,
     beforeHandle({ request, config }) {
       // Build SecurityConfig from coreContext config on each request
       const securityConfig = createSecurityConfig({
